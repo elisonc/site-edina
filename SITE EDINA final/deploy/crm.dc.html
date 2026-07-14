@@ -790,6 +790,32 @@
         </div>
 
         <div style="background:#fffdf8;border:1px solid #ddd3bd;padding:26px;margin-bottom:20px">
+          <div style="font-size:15px;font-weight:700;margin-bottom:6px">Transição de páginas (efeito "porta" + assinatura)</div>
+          <div style="font-size:12.5px;color:#746b5c;margin-bottom:18px;line-height:1.5">Envie a imagem da assinatura (fundo transparente, traço escuro funciona melhor) que aparece ao entrar no site e ao trocar de página. Escolha também a cor das "portas".</div>
+          <div style="display:grid;gap:14px">
+            <div>
+              <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Imagem da assinatura</div>
+              <div style="display:flex;align-items:center;gap:14px">
+                <div style="{{ site.signatureImgStyle }}" ref="{{ site.signatureImgRef }}"></div>
+                <input type="file" accept="image/*,.heic,.heif,.HEIC,.HEIF" onChange="{{ onSignatureFile }}" style="font-size:13px" />
+                <sc-if value="{{ site.hasSignature }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ removeSignature }}" style="background:none;border:1px solid #ddd3bd;padding:8px 14px;font-size:12px;cursor:pointer;font-family:'Manrope',sans-serif">Remover</button>
+                </sc-if>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Cor das portas</div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <sc-for list="{{ transitionDoorOptions }}" as="tdo" hint-placeholder-count="5">
+                  <div onClick="{{ tdo.select }}" title="{{ tdo.label }}" style="{{ tdo.style }}"></div>
+                </sc-for>
+                <input type="color" value="{{ transitionDoorCustom }}" onChange="{{ onTransitionDoorCustom }}" style="width:44px;height:44px;border:1px solid #ddd3bd;padding:0;cursor:pointer;border-radius:3px" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#fffdf8;border:1px solid #ddd3bd;padding:26px;margin-bottom:20px">
           <div style="font-size:15px;font-weight:700;margin-bottom:6px">Seção Destaque ("O verdadeiro significado do luxo")</div>
           <div style="font-size:12.5px;color:#746b5c;margin-bottom:18px;line-height:1.5">Escolha o imóvel que aparece nesta seção — as informações e a foto são puxadas automaticamente. Depois você pode trocar a foto e sobrescrever os textos abaixo (deixe em branco para usar os dados do imóvel).</div>
           <div style="margin-bottom:16px">
@@ -1212,6 +1238,14 @@ class Component extends DCLogic {
       .catch(() => window.alert('Não foi possível ler essa imagem (formato não suportado, ex: HEIC do iPhone). Exporte como JPEG e tente novamente.'));
   };
   removeAboutImage = () => this.setState({ siteContent: { ...this.state.siteContent, aboutImage: '' }, siteSaved: false });
+  onSignatureFile = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    (window.CRMData ? window.CRMData.resizeImage(file, 700, 0.9) : Promise.resolve(''))
+      .then(dataUrl => this.setState({ siteContent: { ...this.state.siteContent, signatureUrl: dataUrl }, siteSaved: false }))
+      .catch(() => window.alert('Não foi possível ler essa imagem (formato não suportado, ex: HEIC do iPhone). Exporte como JPEG ou PNG e tente novamente.'));
+  };
+  removeSignature = () => this.setState({ siteContent: { ...this.state.siteContent, signatureUrl: '' }, siteSaved: false });
   saveSite = () => {
     const ok = window.CRMData && window.CRMData.saveSiteContent(this.state.siteContent);
     if (ok === false) { window.alert('Não foi possível salvar: armazenamento do navegador está cheio. Remova alguma imagem/áudio grande e tente novamente.'); return; }
@@ -1884,7 +1918,10 @@ class Component extends DCLogic {
         aboutLabel: site.aboutLabel || '', aboutQuote: site.aboutQuote || '', aboutP1: site.aboutP1 || '', aboutP2: site.aboutP2 || '',
         hasAboutImage: !!site.aboutImage,
         aboutImgStyle: site.aboutImage ? `width:64px;height:64px;border:1px solid #ddd3bd;background-size:cover;background-position:center` : `width:64px;height:64px;border:1px dashed #ddd3bd;background:#f4eee0`,
-        aboutImgRef: (el) => { if (el) el.style.backgroundImage = site.aboutImage ? `url('${site.aboutImage}')` : 'none'; }
+        aboutImgRef: (el) => { if (el) el.style.backgroundImage = site.aboutImage ? `url('${site.aboutImage}')` : 'none'; },
+        hasSignature: !!site.signatureUrl,
+        signatureImgStyle: site.signatureUrl ? `width:120px;height:64px;border:1px solid #ddd3bd;background:#2c2618;background-size:contain;background-repeat:no-repeat;background-position:center` : `width:120px;height:64px;border:1px dashed #ddd3bd;background:#f4eee0`,
+        signatureImgRef: (el) => { if (el) el.style.backgroundImage = site.signatureUrl ? `url('${site.signatureUrl}')` : 'none'; }
       },
       onSiteField_heroLabel: this.updateSiteField('heroLabel'),
       onSiteField_heroSlideInterval: this.updateSiteField('heroSlideInterval'),
@@ -1912,6 +1949,20 @@ class Component extends DCLogic {
       onSiteField_aboutP1: this.updateSiteField('aboutP1'),
       onSiteField_aboutP2: this.updateSiteField('aboutP2'),
       onAboutImageFile: this.onAboutImageFile, removeAboutImage: this.removeAboutImage,
+      onSignatureFile: this.onSignatureFile, removeSignature: this.removeSignature,
+      transitionDoorCustom: /^#/.test(site.transitionDoorColor || '') ? site.transitionDoorColor : '#c4a886',
+      onTransitionDoorCustom: this.updateSiteField('transitionDoorColor'),
+      transitionDoorOptions: [
+        { label: 'Areia (padrão)', color: '#c4a886' },
+        { label: 'Escuro', color: '#141108' },
+        { label: 'Verde profundo', color: '#1f2e22' },
+        { label: 'Azul-marinho', color: '#151d2b' },
+        { label: 'Bordô', color: '#2c1418' }
+      ].map(o => ({
+        label: o.label,
+        style: `width:44px;height:44px;border-radius:3px;cursor:pointer;background:${o.color};border:2px solid ${ (site.transitionDoorColor || '#c4a886') === o.color ? 'var(--accent)' : '#ddd3bd' }`,
+        select: this.updateSiteFieldValue('transitionDoorColor', o.color)
+      })),
       onSpotlightImageFile: this.onSpotlightImageFile, removeSpotlightImage: this.removeSpotlightImage,
       onSiteField_heroTitle: this.updateSiteField('heroTitle'),
       onSiteField_heroSubtitle: this.updateSiteField('heroSubtitle'),

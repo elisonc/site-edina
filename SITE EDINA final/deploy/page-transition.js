@@ -20,11 +20,21 @@
 
   var overlay = document.createElement('div');
   overlay.id = 'edina-transition';
+  var sigSrc = './assinatura-ink.png';
+  var doorColor = '#c4a886';
+  try {
+    if (window.CRMData && window.CRMData.getSiteContent) {
+      var sc = window.CRMData.getSiteContent();
+      if (sc && sc.signatureUrl) sigSrc = sc.signatureUrl;
+      if (sc && sc.transitionDoorColor) doorColor = sc.transitionDoorColor;
+    }
+  } catch (e) {}
   overlay.innerHTML =
     '<div class="et-door et-door-l"></div>' +
     '<div class="et-door et-door-r"></div>' +
-    '<img class="et-sig" src="./assinatura-ink.png" alt="" />';
+    '<img class="et-sig" src="' + sigSrc + '" alt="" />';
   document.documentElement.appendChild(overlay);
+  overlay.querySelectorAll('.et-door').forEach(function (d) { d.style.background = doorColor; });
 
   function playIntro() {
     overlay.style.pointerEvents = 'auto';
