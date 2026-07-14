@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <meta name="description" content="Blog — Mercado Imobiliário de Luxo — Edina Oliveira" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --accent:#c1664a; --tan:#c4a886; --cream:#f6f3ec; --bg-alt:#ece5d6; --olive:#8a9463; --blue:#6e93ac; --stone:#cfc7b8; --ink:#241f18; --header-bg:#f6f3ec; --footer-bg:#ece5d6; }
+    body { margin: 0; background: var(--cream); }
+  </style>
+  <script src="./crm-data.js"></script>
+  <script src="./page-transition.js"></script>
+  <script src="./responsive.js"></script>
+</helmet>
+
+<div style="font-family:'Manrope',sans-serif;color:var(--ink);background:var(--cream);min-height:100vh" data-screen-label="Blog">
+
+  <header style="display:flex;align-items:center;justify-content:space-between;padding:20px 64px;background:var(--header-bg);border-bottom:1px solid #ddd3bd;position:sticky;top:0;z-index:50">
+    <a href="index.dc.html" style="text-decoration:none;display:flex;align-items:center;min-height:32px">
+      <sc-if value="{{ hasLogo }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ logoImgStyle }}" ref="{{ logoImgRef }}"></div>
+      </sc-if>
+      <sc-if value="{{ hasNoLogo }}" hint-placeholder-val="{{ true }}">
+        <span style="font-family:'Cormorant Garamond',serif;font-size:31px;font-weight:600;color:var(--ink);white-space:nowrap">{{ brandName }}</span>
+      </sc-if>
+    </a>
+    <nav style="display:flex;align-items:center;gap:22px">
+      <a href="imoveis.dc.html" style="color:#1d1a15;text-decoration:none;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase">Portfólio</a>
+      <a href="blog.dc.html" style="color:var(--accent);text-decoration:none;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700">Blog</a>
+      <a href="index.dc.html#contato" style="color:#1d1a15;text-decoration:none;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase">Contato</a>
+      <a href="favoritos.dc.html" style="position:relative;font-size:17px;color:#1d1a15;text-decoration:none" title="Favoritos">♥</a>
+      <a href="crm.dc.html" style="color:#746b5c;text-decoration:none;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase" title="Acesso restrito da equipe">🔒 Acesso</a>
+      <div style="display:flex;align-items:center;gap:2px;border:1px solid #ddd3bd;border-radius:3px">
+        <button onClick="{{ onFontDec }}" title="Diminuir texto" style="border:none;background:none;cursor:pointer;font-family:'Manrope',sans-serif;font-size:11px;padding:5px 7px;color:#1d1a15;border-right:1px solid #ddd3bd">A-</button>
+        <button onClick="{{ onFontReset }}" title="Tamanho padrão" style="border:none;background:none;cursor:pointer;font-family:'Manrope',sans-serif;font-size:13px;padding:5px 7px;color:#1d1a15;border-right:1px solid #ddd3bd">A</button>
+        <button onClick="{{ onFontInc }}" title="Aumentar texto" style="border:none;background:none;cursor:pointer;font-family:'Manrope',sans-serif;font-size:15px;padding:5px 7px;color:#1d1a15">A+</button>
+      </div>
+    </nav>
+  </header>
+
+  <section style="padding:70px 64px 40px;border-bottom:1px solid #ddd3bd">
+    <div style="font-size:13px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:12px">Blog</div>
+    <h1 style="font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:600;margin:0 0 28px">Mercado Imobiliário de Luxo</h1>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <sc-for list="{{ categoryFilters }}" as="cf" hint-placeholder-count="5">
+        <button onClick="{{ cf.select }}" style="{{ cf.style }}">{{ cf.label }}</button>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="padding:56px 64px 100px">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:28px">
+      <sc-for list="{{ posts }}" as="post" hint-placeholder-count="6">
+        <a href="{{ post.href }}" style="text-decoration:none;color:inherit;display:block;background:#fffdf8;border:1px solid #e5ddcd">
+          <div style="{{ post.imgStyle }}" ref="{{ post.imgRef }}"><sc-if value="{{ post.hasPlaceholderText }}" hint-placeholder-val="{{ true }}"><span>[ imagem do artigo ]</span></sc-if></div>
+          <div style="padding:22px">
+            <div style="font-size:12px;color:var(--accent);letter-spacing:.03em;margin-bottom:8px">{{ post.cat }} · {{ post.date }} · {{ post.read }} de leitura</div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;margin-bottom:10px;line-height:1.25">{{ post.title }}</div>
+            <div style="font-size:13.5px;color:#746b5c;line-height:1.6">{{ post.excerpt }}</div>
+          </div>
+        </a>
+      </sc-for>
+    </div>
+    <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+      <div style="text-align:center;padding:80px 20px;color:#746b5c">Nenhum artigo nessa categoria.</div>
+    </sc-if>
+  </section>
+
+  <a href="{{ whatsappFloatLink }}" target="_blank" style="position:fixed;bottom:28px;right:28px;width:56px;height:56px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;color:#fff;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.25);z-index:60"><svg viewBox="0 0 32 32" width="30" height="30" fill="#fff"><path d="M16.04 4C9.4 4 4 9.37 4 16c0 2.2.6 4.28 1.62 6.06L4 28l6.1-1.6A11.9 11.9 0 0 0 16.04 28C22.68 28 28 22.63 28 16S22.68 4 16.04 4Zm0 21.7c-1.9 0-3.68-.53-5.2-1.44l-.37-.22-3.62.95.97-3.53-.24-.36A9.63 9.63 0 0 1 6.3 16c0-5.36 4.37-9.7 9.74-9.7 5.36 0 9.73 4.34 9.73 9.7s-4.37 9.7-9.73 9.7Zm5.33-7.27c-.29-.15-1.73-.85-2-.95-.27-.1-.46-.15-.66.14-.2.3-.76.95-.93 1.14-.17.2-.34.22-.63.07-.29-.15-1.22-.45-2.32-1.43-.86-.76-1.44-1.7-1.6-1.99-.17-.3-.02-.45.13-.6.13-.13.29-.34.44-.51.15-.17.2-.3.29-.49.1-.2.05-.37-.02-.51-.07-.15-.66-1.58-.9-2.17-.24-.57-.48-.49-.66-.5h-.56c-.2 0-.51.07-.78.37-.27.3-1.02 1-1.02 2.44s1.05 2.83 1.2 3.03c.15.2 2.06 3.15 5 4.42.7.3 1.24.48 1.67.61.7.22 1.34.19 1.84.12.56-.08 1.73-.71 1.97-1.39.24-.68.24-1.27.17-1.39-.07-.12-.27-.2-.56-.35Z"/></svg></a>
+
+  <footer style="background:var(--footer-bg);border-top:1px solid #ddd3bd;padding:36px 64px;font-size:12.5px;color:#746b5c;text-align:center">
+    © 2026 {{ brandName }}. {{ creci }}. Conteúdo fictício para fins de demonstração.
+  </footer>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+class Component extends DCLogic {
+  state = { cat: 'all', posts: [], site: {}, fontScale: 100 };
+
+  adjustFont = (delta) => () => {
+    const next = Math.max(80, Math.min(150, (this.state.fontScale || 100) + delta));
+    if (window.CRMData) window.CRMData.setFontScale(next);
+    document.body.style.zoom = next / 100;
+    this.setState({ fontScale: next });
+  };
+  resetFont = () => {
+    if (window.CRMData) window.CRMData.setFontScale(100);
+    document.body.style.zoom = 1;
+    this.setState({ fontScale: 100 });
+  };
+
+  componentDidMount() {
+    if (window.CRMData) this.setState({ fontScale: window.CRMData.applyFontScale() });
+    this.loadData();
+  }
+
+  loadData = () => {
+    if (window.CRMData) {
+      const site = window.CRMData.getSiteContent();
+      window.CRMData.applyTheme(site.theme);
+      this.setState({ posts: window.CRMData.getPosts().filter(p => p.status === 'publicado'), site });
+    } else {
+      setTimeout(this.loadData, 40);
+    }
+  };
+
+  selectCat = (c) => () => this.setState({ cat: c });
+
+  renderVals() {
+    const s = this.state;
+    const all = s.posts || [];
+    const tones = [
+      'repeating-linear-gradient(135deg,#e9e1cf,#e9e1cf 12px,#e2d8c2 12px,#e2d8c2 24px)',
+      'repeating-linear-gradient(135deg,#dfe3da,#dfe3da 12px,#d3d9cc 12px,#d3d9cc 24px)',
+      'repeating-linear-gradient(135deg,#e6dcdc,#e6dcdc 12px,#dccdcd 12px,#dccdcd 24px)'
+    ];
+    const cats = ['all', ...Array.from(new Set(all.map(p => p.cat)))];
+    const categoryFilters = cats.map(c => ({
+      label: c === 'all' ? 'Todos' : c,
+      select: this.selectCat(c),
+      style: `padding:10px 18px;border:1px solid ${s.cat === c ? '#1d1a15' : '#ddd3bd'};background:${s.cat === c ? '#1d1a15' : '#fffdf8'};color:${s.cat === c ? '#f6f3ec' : '#4a4438'};font-size:13px;cursor:pointer;font-family:'Manrope',sans-serif`
+    }));
+    const filtered = s.cat === 'all' ? all : all.filter(p => p.cat === s.cat);
+    const posts = filtered.map(p => ({
+      href: `blog-post.dc.html?id=${p.id}`,
+      cat: p.cat, date: p.date, read: p.read, title: p.title, excerpt: p.excerpt,
+      imgStyle: p.image ? `height:180px;background-size:cover;background-position:center` : `background:${tones[p.tone % 3]};height:180px;display:flex;align-items:center;justify-content:center;color:#8a7c5c;font-family:monospace;font-size:12px`,
+      imgRef: (el) => { if (el && p.image) el.style.backgroundImage = `url('${p.image}')`; },
+      hasPlaceholderText: !p.image
+    }));
+    return {
+      onFontDec: this.adjustFont(-10), onFontInc: this.adjustFont(10), onFontReset: this.resetFont,
+      whatsappFloatLink: (s.site || {}).contactMode === 'link' && (s.site || {}).contactLink ? (s.site || {}).contactLink : `https://wa.me/${(s.site || {}).whatsapp || '5547999991234'}?text=${encodeURIComponent('Olá! Vim pelo blog do site e gostaria de conhecer melhor seus imóveis de alto padrão. Poderia me ajudar?')}`,
+      categoryFilters, posts, noResults: posts.length === 0,
+      brandName: (s.site || {}).brandName || 'Edina Oliveira', creci: (s.site || {}).creci || 'CRECI 00.000-F',
+      hasLogo: !!(s.site || {}).logoUrl, hasNoLogo: !(s.site || {}).logoUrl,
+      logoImgStyle: (s.site || {}).logoUrl ? `width:${(s.site||{}).logoWidth || 210}px;height:${Math.round(((s.site||{}).logoWidth||210)*0.28)}px;background-size:contain;background-repeat:no-repeat;background-position:left center` : `width:0;height:0`,
+      logoImgRef: (el) => { if (el && (s.site || {}).logoUrl) el.style.backgroundImage = `url('${s.site.logoUrl}')`; }
+    };
+  }
+}
+
+</script>
+</body>
+</html>
