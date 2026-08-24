@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,7 +13,6 @@
   <meta property="og:title" content="Imóvel de Alto Padrão — Edina Oliveira">
   <meta property="og:description" content="Confira este imóvel de alto padrão selecionado pela Edina Oliveira.">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="foto-edina-mrbkan4r.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Imóvel de Alto Padrão — Edina Oliveira">
   <meta name="twitter:description" content="Confira este imóvel de alto padrão selecionado pela Edina Oliveira.">
@@ -574,8 +573,8 @@ class Component extends DCLogic {
       hasLocationButton: !!fullAddress, mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`,
       hasPlantas: plantas.length > 0, openPlantasButton: this.openPlantasButton,
       showPhotosTab: this.showPhotosTab, showPlantasTab: this.showPlantasTab,
-      photosTabStyle: `background:none;border:none;color:${s.lightboxTab === 'plantas' ? '#a89a7c' : '#fff'};font-weight:${s.lightboxTab === 'plantas' ? '400' : '700'};font-size:13px;cursor:pointer;font-family:'Manrope',sans-serif;border-bottom:2px solid ${s.lightboxTab === 'plantas' ? 'transparent' : '#fff'};padding-bottom:4px`,
-      plantasTabStyle: `background:none;border:none;color:${s.lightboxTab === 'plantas' ? '#fff' : '#a89a7c'};font-weight:${s.lightboxTab === 'plantas' ? '700' : '400'};font-size:13px;cursor:pointer;font-family:'Manrope',sans-serif;border-bottom:2px solid ${s.lightboxTab === 'plantas' ? '#fff' : 'transparent'};padding-bottom:4px`,
+      photosTabStyle: `background:none;border:none;color:${s.lightboxTab === 'plantas' ? '#7d7157' : '#fff'};font-weight:${s.lightboxTab === 'plantas' ? '400' : '700'};font-size:13px;cursor:pointer;font-family:'Manrope',sans-serif;border-bottom:2px solid ${s.lightboxTab === 'plantas' ? 'transparent' : '#fff'};padding-bottom:4px`,
+      plantasTabStyle: `background:none;border:none;color:${s.lightboxTab === 'plantas' ? '#fff' : '#7d7157'};font-weight:${s.lightboxTab === 'plantas' ? '700' : '400'};font-size:13px;cursor:pointer;font-family:'Manrope',sans-serif;border-bottom:2px solid ${s.lightboxTab === 'plantas' ? '#fff' : 'transparent'};padding-bottom:4px`,
       whatsappGeneralLink: site.contactMode === 'link' && site.contactLink ? site.contactLink : `https://wa.me/${site.whatsapp || '5547999991234'}`,
       whatsappFloatLink: site.contactMode === 'link' && site.contactLink ? site.contactLink : `https://wa.me/${site.whatsapp || '5547999991234'}?text=${encodeURIComponent(`Olá! Vim pelo site e tenho interesse no imóvel: ${p.title || ''}${p.location ? ' (' + p.location + ')' : ''}. Poderia me passar mais informações?`)}`,
       onFontDec: this.adjustFont(-10), onFontInc: this.adjustFont(10), onFontReset: this.resetFont,

@@ -118,7 +118,7 @@
   const seedSiteContent = {
     logoUrl: "",
     faviconUrl: "",
-    signatureUrl: "./assinatura-ink.png",
+    signatureUrl: "",
     heroLabel: "Navegantes · Itajaí · Camboriú · Praia Brava",
     heroTitle: "Bem-vindos ao litoral de alto padrão",
     heroSubtitle: "Os melhores imóveis de alto padrão em Navegantes, Itajaí, Camboriú e Praia Brava, selecionados para quem busca vista, exclusividade e conforto.",
@@ -1040,6 +1040,20 @@
     getHistory: function () {
       const cutoff = Date.now() - this.HISTORY_MAX_AGE_DAYS * 86400000;
       return get(LS.history, []).filter(h => h.ts >= cutoff).slice().sort((a, b) => b.ts - a.ts);
+    },
+    // Registro de auditoria à parte do histórico normal: nada neste projeto tem permissão de
+    // apagar dele, nem o "Zerar site" nem "apagar histórico" — é o rastro permanente de quando
+    // o site inteiro foi zerado e por quem.
+    AUDIT_KEY: 'edina_audit_log_v1',
+    addAuditEntry: function (actor, action, detail) {
+      try {
+        const arr = JSON.parse(localStorage.getItem(this.AUDIT_KEY) || '[]');
+        arr.unshift({ ts: Date.now(), date: new Date().toLocaleString('pt-BR'), actor, action, detail: detail || '' });
+        localStorage.setItem(this.AUDIT_KEY, JSON.stringify(arr.slice(0, 500)));
+      } catch (e) {}
+    },
+    getAuditLog: function () {
+      try { return JSON.parse(localStorage.getItem(this.AUDIT_KEY) || '[]'); } catch (e) { return []; }
     },
     // scope: 'all' apaga tudo; {before: tsInMillis} apaga só entradas anteriores a essa data;
     // {id: entryTs} apaga só aquele registro (usa o timestamp como id, é único).

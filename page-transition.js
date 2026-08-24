@@ -30,7 +30,8 @@
   }
 
   function build() {
-    var sigSrc = './assinatura-ink.png';
+    // Sem assinatura configurada no CRM, nenhum arquivo de exemplo aparece no lugar dela.
+    var sigSrc = '';
     var doorColor = '#c4a886';
     var speedMs = 420;
     try {
@@ -50,7 +51,7 @@
   overlay.innerHTML =
     '<div class="et-door et-door-l"></div>' +
     '<div class="et-door et-door-r"></div>' +
-    '<img class="et-sig" src="' + conf.sigSrc + '" alt="" />';
+    (conf.sigSrc ? '<img class="et-sig" src="' + conf.sigSrc + '" alt="" />' : '');
   document.documentElement.appendChild(overlay);
   overlay.querySelectorAll('.et-door').forEach(function (d) { d.style.background = conf.doorColor; });
   applySpeed(conf.speedMs);

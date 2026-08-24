@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,7 +15,62 @@
   <style>
     :root { --accent:#c1664a; --tan:#c4a886; --cream:#f6f3ec; --bg-alt:#ece5d6; --olive:#8a9463; --blue:#6e93ac; --stone:#cfc7b8; --ink:#241f18; --header-bg:#f6f3ec; --footer-bg:#ece5d6; }
     body { margin: 0; background: var(--cream); }
-  </style>
+
+    /* No celular a barra lateral fixa de 230px comprimia o conteúdo numa coluna de poucas
+       letras. Aqui ela vira um cabeçalho no topo com o menu em chips, e o painel usa a
+       largura inteira da tela. */
+    @media (max-width: 900px) {
+      /* Barra lateral vira um cabeçalho fixo no topo com um botão de menu; o menu completo
+         (marca, busca, itens, "ver como", sessão) desliza como gaveta por cima do conteúdo —
+         sem isso ele cobria a tela inteira e escondia a Dashboard atrás de si mesmo. */
+      [data-crm-nav] {
+        width: 100% !important;
+        height: 60px !important;
+        position: fixed !important;
+        top: 0; left: 0; z-index: 100;
+        flex-direction: row !important;
+        align-items: center;
+        padding: 0 14px !important;
+        overflow: visible !important;
+      }
+      [data-crm-nav] > div:first-child { padding: 0 !important; margin: 0 !important; border: none !important; flex: 1; }
+      [data-crm-nav] > div:first-child a { font-size: 17px !important; }
+      [data-crm-nav] > div:first-child > div { display: none !important; }
+      [data-crm-nav] > div:nth-child(2) { display: none !important; }
+      [data-crm-nav] > button { display: none !important; }
+      [data-crm-nav] > div:not(:first-child) { display: none !important; }
+      [data-crm-menu-btn] { display: flex !important; }
+      [data-crm-scrim] { display: block !important; }
+
+      [data-crm-nav].crm-drawer-open {
+        height: 100vh !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        overflow-y: auto !important;
+        padding: 0 0 20px !important;
+      }
+      [data-crm-nav].crm-drawer-open > div:first-child { padding: 20px 24px 16px !important; border-bottom: 1px solid #3a3529; flex: none; display: flex; justify-content: space-between; align-items: center; }
+      [data-crm-nav].crm-drawer-open > div:first-child > div { display: block !important; }
+      [data-crm-nav].crm-drawer-open > div:nth-child(2) { display: block !important; padding: 16px !important; }
+      [data-crm-nav].crm-drawer-open > div:not(:first-child) { display: block !important; }
+      [data-crm-nav].crm-drawer-open > button {
+        display: block !important; width: calc(100% - 32px) !important; margin: 0 16px 8px !important;
+        padding: 13px 16px !important; min-height: 44px; text-align: left;
+      }
+      [data-crm-nav].crm-drawer-open > div:last-child { display: grid !important; margin: 10px 16px 0 !important; padding: 16px 0 0 !important; border-top: 1px solid #3a3529; }
+
+      [data-crm-main] { padding: 76px 16px 40px !important; }
+      [data-crm-main] h1 { font-size: 25px !important; line-height: 1.15 !important; }
+      /* Pares curtos (Situação, Finalidade, Comissão…) continuam em 2 colunas — só campos
+         realmente largos (textos, tabelas) viram 1 coluna. */
+      [data-crm-main] [style*="grid-template-columns"] { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important; }
+      [data-crm-main] [style*="1.3fr 1.2fr 1fr .9fr 1fr .8fr"],
+      [data-crm-main] [style*="1.6fr 1.4fr 1fr .8fr 1.6fr"] { display: none !important; }
+      [data-crm-main] [style*="width:600px"], [data-crm-main] [style*="width:640px"],
+      [data-crm-main] [style*="width:380px"], [data-crm-main] [style*="width:520px"] { width: 100% !important; max-width: 100% !important; }
+      [data-crm-main] input, [data-crm-main] select, [data-crm-main] textarea { max-width: 100% !important; width: 100% !important; box-sizing: border-box !important; font-size: 16px !important; }
+      [data-crm-main] button { min-height: 44px; }
+    }  </style>
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <script src="./facebook-login.js"></script>
   <script src="./google-login.js"></script>
@@ -55,9 +110,13 @@
   </sc-if>
 
   <sc-if value="{{ isLoggedIn }}" hint-placeholder-val="{{ false }}">
-  <div style="display:flex;min-height:100vh">
+  <div style="display:flex;flex-wrap:wrap;align-items:flex-start;min-height:100vh">
 
-  <aside style="width:230px;background:#1d1a15;color:#f6f3ec;padding:26px 0;display:flex;flex-direction:column;flex-shrink:0;height:100vh;overflow-y:auto;position:sticky;top:0">
+  <button data-crm-menu-btn="true" onClick="{{ toggleMobileMenu }}" aria-label="{{ menuBtnLabel }}" style="display:none;position:fixed;top:12px;right:14px;z-index:110;background:#1d1a15;color:#f6f3ec;border:1px solid #4a4438;width:36px;height:36px;font-size:18px;cursor:pointer;font-family:'Manrope',sans-serif">{{ menuBtnIcon }}</button>
+  <sc-if value="{{ mobileMenuOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ toggleMobileMenu }}" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:95;display:none" data-crm-scrim="true"></div>
+  </sc-if>
+  <aside data-crm-nav="true" class="{{ navClass }}" style="width:230px;background:#1d1a15;color:#f6f3ec;padding:26px 0;display:flex;flex-direction:column;flex-shrink:0;height:100vh;overflow-y:auto;position:sticky;top:0">
     <div style="padding:0 24px 22px;border-bottom:1px solid #3a3529;margin-bottom:16px">
       <a href="index.dc.html" style="font-family:'Manrope',sans-serif;font-size:21px;font-weight:600;color:#f6f3ec;text-decoration:none">Edina Oliveira</a>
       <div style="font-size:11px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-top:4px">Painel CRM</div>
@@ -68,12 +127,12 @@
         <div style="position:absolute;left:16px;right:16px;top:44px;background:#fffdf8;border:1px solid #ddd3bd;z-index:50;max-height:320px;overflow-y:auto">
           <sc-for list="{{ globalSearchResults }}" as="gr" hint-placeholder-count="4">
             <div onClick="{{ gr.goto }}" style="padding:10px 12px;border-bottom:1px solid #eee4d0;cursor:pointer;font-family:'Manrope',sans-serif">
-              <div style="font-size:12.5px;color:#1d1a15"><strong>{{ gr.label }}</strong> <span style="color:#a89a7c;font-size:11px">{{ gr.kind }}</span></div>
-              <div style="font-size:11px;color:#a89a7c">{{ gr.sub }}</div>
+              <div style="font-size:12.5px;color:#1d1a15"><strong>{{ gr.label }}</strong> <span style="color:#7d7157;font-size:11px">{{ gr.kind }}</span></div>
+              <div style="font-size:11px;color:#7d7157">{{ gr.sub }}</div>
             </div>
           </sc-for>
           <sc-if value="{{ hasNoGlobalSearchResults }}" hint-placeholder-val="{{ false }}">
-            <div style="padding:12px;color:#a89a7c;font-size:12px">Nada encontrado.</div>
+            <div style="padding:12px;color:#7d7157;font-size:12px">Nada encontrado.</div>
           </sc-if>
         </div>
       </sc-if>
@@ -83,8 +142,8 @@
     </sc-for>
     <sc-if value="{{ isMasterViewAs }}" hint-placeholder-val="{{ false }}">
       <div style="padding:14px 16px 0">
-        <div style="font-size:10px;color:#a89a7c;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Ver como (visualização)</div>
-        <select value="{{ viewAsUsername }}" onChange="{{ onViewAsChange }}" style="width:100%;padding:8px 9px;border:1px solid #3a3529;background:#241f18;color:#f6f3ec;font-family:'Manrope',sans-serif;font-size:12px">
+        <div style="font-size:10px;color:#7d7157;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Ver como (visualização)</div>
+        <select value="{{ viewAsUsername }}" onChange="{{ onViewAsChange }}" aria-label="Ver o painel como outro usuário" style="width:100%;padding:8px 9px;border:1px solid #3a3529;background:#241f18;color:#f6f3ec;font-family:'Manrope',sans-serif;font-size:12px">
           <option value="">Eu mesmo (Master)</option>
           <sc-for list="{{ viewAsOptions }}" as="va" hint-placeholder-count="4">
             <option value="{{ va.username }}">{{ va.label }}</option>
@@ -96,13 +155,13 @@
       </div>
     </sc-if>
     <div style="margin-top:16px;padding:16px 24px 0;display:grid;gap:10px">
-      <div style="font-size:11.5px;color:#a89a7c">Logado como <strong style="color:#dba98a">{{ sessionName }}</strong><br/><span style="{{ roleBadgeStyle }}">{{ roleLabel }}</span></div>
+      <div style="font-size:11.5px;color:#7d7157">Logado como <strong style="color:#dba98a">{{ sessionName }}</strong><br/><span style="{{ roleBadgeStyle }}">{{ roleLabel }}</span></div>
       <button onClick="{{ doLogout }}" style="background:none;border:1px solid #4a4438;color:#c9beac;padding:9px;font-size:12.5px;cursor:pointer;font-family:'Manrope',sans-serif">Sair</button>
-      <a href="index.dc.html" style="color:#a89a7c;text-decoration:none;font-size:13px">← Voltar ao site</a>
+      <a href="index.dc.html" style="color:#7d7157;text-decoration:none;font-size:13px">← Voltar ao site</a>
     </div>
   </aside>
 
-  <main style="flex:1;padding:40px 44px;overflow-x:hidden;min-width:0">
+  <main data-crm-main="true" style="flex:1;padding:40px 44px;overflow-x:hidden;min-width:0">
 
     <sc-if value="{{ isViewingAs }}" hint-placeholder-val="{{ false }}">
       <div style="position:sticky;top:0;z-index:80;background:#b4432f;color:#fff;padding:11px 18px;font-size:13px;font-weight:600;text-align:center;margin:-40px -44px 24px;letter-spacing:.02em">⚠ Você está visualizando com o acesso de {{ viewAsLabel }} — clique em "Eu mesmo (Master)" para sair deste modo</div>
@@ -165,7 +224,7 @@
                 </div>
               </sc-for>
               <sc-if value="{{ leadDetail.hasNoTimeline }}" hint-placeholder-val="{{ true }}">
-                <div style="color:#a89a7c;font-size:13px">Nenhum registro ainda.</div>
+                <div style="color:#7d7157;font-size:13px">Nenhum registro ainda.</div>
               </sc-if>
             </div>
           </div>
@@ -231,7 +290,7 @@
 
             <div style="background:#fffdf8;border:1px solid #ddd3bd;padding:20px">
               <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:6px">Imóveis Oferecidos</div>
-              <div style="font-size:11.5px;color:#a89a7c;margin-bottom:14px">Vincular o primeiro imóvel preenche automaticamente o interesse e o valor do lead (útil para leads importados sem preço).</div>
+              <div style="font-size:11.5px;color:#7d7157;margin-bottom:14px">Vincular o primeiro imóvel preenche automaticamente o interesse e o valor do lead (útil para leads importados sem preço).</div>
               <div style="display:grid;gap:8px;margin-bottom:12px">
                 <sc-for list="{{ leadDetail.offeredProperties }}" as="op" hint-placeholder-count="1">
                   <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;gap:8px">
@@ -241,7 +300,7 @@
                   </div>
                 </sc-for>
                 <sc-if value="{{ leadDetail.hasNoOffered }}" hint-placeholder-val="{{ true }}">
-                  <div style="color:#a89a7c;font-size:13px">Nenhum imóvel oferecido.</div>
+                  <div style="color:#7d7157;font-size:13px">Nenhum imóvel oferecido.</div>
                 </sc-if>
               </div>
               <select onChange="{{ leadDetail.addOffered }}" value="" style="width:100%;padding:9px 10px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:12.5px">
@@ -262,11 +321,11 @@
                   </div>
                 </sc-for>
                 <sc-if value="{{ leadDetail.hasNoAttachments }}" hint-placeholder-val="{{ true }}">
-                  <div style="color:#a89a7c;font-size:13px">Nenhum anexo.</div>
+                  <div style="color:#7d7157;font-size:13px">Nenhum anexo.</div>
                 </sc-if>
               </div>
               <input type="file" multiple="{{ true }}" onChange="{{ leadDetail.onAttachmentFile }}" style="font-size:12.5px" />
-              <div style="font-size:11px;color:#a89a7c;margin-top:6px">Máx. 20 MB por arquivo — pode selecionar vários de uma vez.</div>
+              <div style="font-size:11px;color:#7d7157;margin-top:6px">Máx. 20 MB por arquivo — pode selecionar vários de uma vez.</div>
             </div>
 
             <div style="background:#fffdf8;border:1px solid #ddd3bd;padding:20px">
@@ -281,12 +340,29 @@
       </div>
     </sc-if>
 
+    <sc-if value="{{ showResetPasswordModal }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;inset:0;background:rgba(20,17,10,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:20px">
+        <div style="background:#fffdf8;max-width:400px;width:100%;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+          <div style="font-size:16px;font-weight:700;margin-bottom:8px;color:#b4432f">Confirme com a senha do Master</div>
+          <div style="font-size:12.5px;color:#746b5c;margin-bottom:16px;line-height:1.5">Esta ação apaga tudo e não pode ser desfeita. Digite a senha de login do Master para continuar.</div>
+          <input type="password" value="{{ resetPasswordInput }}" onChange="{{ onResetPasswordInput }}" placeholder="Senha do Master" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:14px;margin-bottom:10px" />
+          <sc-if value="{{ resetPasswordError }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:12px;color:#b4432f;margin-bottom:10px;font-weight:600">{{ resetPasswordError }}</div>
+          </sc-if>
+          <div style="display:flex;gap:10px;justify-content:flex-end">
+            <button onClick="{{ closeResetPassword }}" style="background:none;border:1px solid #ddd3bd;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Cancelar</button>
+            <button onClick="{{ confirmFactoryReset }}" style="background:#b4432f;color:#fff;border:none;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Confirmar e zerar</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
     <sc-if value="{{ showLeadEditModal }}" hint-placeholder-val="{{ false }}">
       <div style="position:fixed;inset:0;background:rgba(20,17,10,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px">
         <div style="background:#fff;border-radius:6px;padding:28px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
             <div style="font-size:19px;font-weight:700">Dados do cliente</div>
-            <button onClick="{{ closeLeadEditModal }}" style="background:none;border:none;font-size:20px;cursor:pointer;color:#a89a7c">✕</button>
+            <button onClick="{{ closeLeadEditModal }}" style="background:none;border:none;font-size:20px;cursor:pointer;color:#7d7157">✕</button>
           </div>
           <div style="display:grid;gap:14px">
             <div>
@@ -296,7 +372,7 @@
             <div>
               <div style="font-size:12.5px;color:#4a4438;margin-bottom:6px;font-weight:600">Telefone</div>
               <input value="{{ leadEditDraft.phone }}" onChange="{{ onLeadEditPhone }}" style="width:100%;padding:12px 14px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:14px;box-sizing:border-box" />
-              <div style="font-size:11.5px;color:#a89a7c;margin-top:5px">Com DDD. É por ele que o sistema reconhece o cliente quando ele volta a entrar em contato.</div>
+              <div style="font-size:11.5px;color:#7d7157;margin-top:5px">Com DDD. É por ele que o sistema reconhece o cliente quando ele volta a entrar em contato.</div>
             </div>
             <div>
               <div style="font-size:12.5px;color:#4a4438;margin-bottom:6px;font-weight:600">E-mail</div>
@@ -310,7 +386,7 @@
                   <option value="{{ lpo }}">{{ lpo }}</option>
                 </sc-for>
               </select>
-              <div style="font-size:11.5px;color:#a89a7c;margin-top:5px">Escolha um imóvel cadastrado no site — o valor é preenchido automaticamente.</div>
+              <div style="font-size:11.5px;color:#7d7157;margin-top:5px">Escolha um imóvel cadastrado no site — o valor é preenchido automaticamente.</div>
             </div>
             <div>
               <div style="font-size:12.5px;color:#4a4438;margin-bottom:6px;font-weight:600">Valor da negociação (R$)</div>
@@ -394,7 +470,7 @@
             <div onClick="{{ m.onClick }}" style="background:#fffdf8;border:1px solid #ddd3bd;border-top:3px solid {{ m.accent }};padding:22px;cursor:pointer;transition:transform .15s">
               <div style="font-size:12px;color:#746b5c;margin-bottom:8px">{{ m.label }}</div>
               <div style="font-family:'Manrope',sans-serif;font-size:28px;font-weight:700;color:{{ m.accent }}">{{ m.value }}</div>
-              <div style="font-size:11.5px;color:#a89a7c;margin-top:8px">Ver detalhes →</div>
+              <div style="font-size:11.5px;color:#7d7157;margin-top:8px">Ver detalhes →</div>
             </div>
           </sc-for>
         </div>
@@ -407,7 +483,7 @@
                 <button onClick="{{ rp.onClick }}" style="{{ rp.style }}">{{ rp.label }}</button>
               </sc-for>
               <input type="date" value="{{ rangeFrom }}" onChange="{{ onRangeFrom }}" style="padding:7px 8px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:12px" />
-              <span style="color:#a89a7c;font-size:12px">até</span>
+              <span style="color:#7d7157;font-size:12px">até</span>
               <input type="date" value="{{ rangeTo }}" onChange="{{ onRangeTo }}" style="padding:7px 8px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:12px" />
             </div>
           </div>
@@ -442,7 +518,7 @@
                   </div>
                 </sc-for>
                 <sc-if value="{{ analytics.noTopProperties }}" hint-placeholder-val="{{ false }}">
-                  <div style="color:#a89a7c;font-size:13px">Sem acessos registrados neste período.</div>
+                  <div style="color:#7d7157;font-size:13px">Sem acessos registrados neste período.</div>
                 </sc-if>
               </div>
             </div>
@@ -456,7 +532,7 @@
                   </div>
                 </sc-for>
                 <sc-if value="{{ analytics.noSources }}" hint-placeholder-val="{{ false }}">
-                  <div style="color:#a89a7c;font-size:13px">Sem acessos registrados neste período.</div>
+                  <div style="color:#7d7157;font-size:13px">Sem acessos registrados neste período.</div>
                 </sc-if>
               </div>
             </div>
@@ -469,9 +545,9 @@
                 <div title="{{ hb.title }}" style="{{ hb.style }}"></div>
               </sc-for>
             </div>
-            <div style="display:flex;justify-content:space-between;font-size:9.5px;color:#a89a7c;margin-top:4px"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>23h</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:9.5px;color:#7d7157;margin-top:4px"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>23h</span></div>
           </div>
-          <div style="font-size:11px;color:#a89a7c;margin-top:16px;line-height:1.5">{{ analyticsFootnote }}</div>
+          <div style="font-size:11px;color:#7d7157;margin-top:16px;line-height:1.5">{{ analyticsFootnote }}</div>
         </div>
 
 
@@ -481,14 +557,14 @@
             <div style="font-size:15px;font-weight:700">✅ Total Vendido (negócios fechados)</div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <sc-if value="{{ hasSalesScopeOptions }}" hint-placeholder-val="{{ false }}">
-                <select value="{{ salesScope }}" onChange="{{ onSalesScopeChange }}" style="padding:7px 8px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:12px">
+                <select value="{{ salesScope }}" onChange="{{ onSalesScopeChange }}" aria-label="Filtrar por carteira" style="padding:7px 8px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:12px">
                   <sc-for list="{{ salesScopeOptions }}" as="sso" hint-placeholder-count="4">
                     <option value="{{ sso.key }}">{{ sso.label }}</option>
                   </sc-for>
                 </select>
               </sc-if>
               <input type="date" value="{{ salesFrom }}" onChange="{{ onSalesFrom }}" style="padding:7px 8px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:12px" />
-              <span style="color:#a89a7c;font-size:12px">até</span>
+              <span style="color:#7d7157;font-size:12px">até</span>
               <input type="date" value="{{ salesTo }}" onChange="{{ onSalesTo }}" style="padding:7px 8px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:12px" />
             </div>
           </div>
@@ -582,7 +658,7 @@
               </div>
             </sc-for>
             <sc-if value="{{ hasNoUpcomingVisits }}" hint-placeholder-val="{{ true }}">
-              <div style="color:#a89a7c;font-size:13px">Nenhuma visita agendada.</div>
+              <div style="color:#7d7157;font-size:13px">Nenhuma visita agendada.</div>
             </sc-if>
           </div>
         </div>
@@ -595,7 +671,7 @@
         <div style="color:#746b5c;font-size:14px;margin-bottom:26px">Arraste os cards entre as colunas para mudar de etapa, ou clique num card para abrir o registro completo do lead.</div>
         <div style="overflow-x:auto;padding-bottom:10px">
         <input placeholder="🔍 Buscar lead por nome, telefone, email…" value="{{ kanbanSearch }}" onChange="{{ onKanbanSearch }}" style="width:100%;box-sizing:border-box;margin-bottom:14px;padding:10px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13px" />
-        <select value="{{ kanbanStageFilter }}" onChange="{{ onKanbanStageFilter }}" style="width:260px;box-sizing:border-box;margin-bottom:14px;padding:10px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13px">
+        <select value="{{ kanbanStageFilter }}" onChange="{{ onKanbanStageFilter }}" aria-label="Filtrar por etapa" style="width:260px;box-sizing:border-box;margin-bottom:14px;padding:10px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13px">
           <option value="">Mostrar todas as etapas</option>
           <sc-for list="{{ kanbanStageOptions }}" as="kso" hint-placeholder-count="7">
             <option value="{{ kso.key }}">{{ kso.label }}</option>
@@ -825,7 +901,7 @@
                     </sc-for>
                   </datalist>
                   <input type="number" min="0" placeholder="Tamanho" value="{{ propertyDraft.unitOptionSize }}" onChange="{{ propertyDraft.onUnitOptionSize }}" style="width:110px;padding:9px 10px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13px" />
-                  <span style="font-size:12.5px;color:#a89a7c">m²</span>
+                  <span style="font-size:12.5px;color:#7d7157">m²</span>
                   <button onClick="{{ propertyDraft.addUnitOption }}" style="background:none;border:1px solid #ddd3bd;padding:9px 14px;font-size:12px;cursor:pointer;font-family:'Manrope',sans-serif">+ Adicionar</button>
                 </div>
               </div>
@@ -1228,7 +1304,7 @@
               <div style="margin-bottom:10px">
                 <div style="font-size:11px;color:#746b5c;margin-bottom:4px">ID da conta de anúncios (já sei o número — sem precisar logar)</div>
                 <input value="{{ fbManualAccountId }}" onChange="{{ onFbManualAccountId }}" placeholder="ex: 6351913390301" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13px" />
-                <div style="font-size:11px;color:#a89a7c;margin-top:4px">Encontra em Gerenciador de Anúncios → Configurações → Identificação da conta de anúncios.</div>
+                <div style="font-size:11px;color:#7d7157;margin-top:4px">Encontra em Gerenciador de Anúncios → Configurações → Identificação da conta de anúncios.</div>
                 <button onClick="{{ saveFbManualAccount }}" style="margin-top:8px;padding:8px 14px;font-size:12px;border:1px solid #ddd3bd;background:#fff;cursor:pointer;font-family:'Manrope',sans-serif">Salvar conta manualmente</button>
               </div>
               <div style="margin-bottom:10px">
@@ -1313,22 +1389,35 @@
         <div style="background:#fffdf8;border:1px solid var(--accent);padding:26px;margin-bottom:24px">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
             <div>
-              <div style="font-size:15px;font-weight:700;margin-bottom:6px">🔄 Sincronizar com o site</div>
-              <div style="font-size:12.5px;color:#746b5c;max-width:480px;line-height:1.55">Envia tudo o que está cadastrado aqui (imóveis, fotos, blog, depoimentos) para a hospedagem, de uma vez. Salvar um imóvel já sincroniza sozinho — use o botão se quiser forçar agora ou depois de várias mudanças seguidas.</div>
+              <div style="font-size:15px;font-weight:700;margin-bottom:6px">🗄️ Banco de dados do site (sincronização automática)</div>
+              <div style="font-size:12.5px;color:#746b5c;max-width:520px;line-height:1.55">Com isto conectado, tudo que você salvar aqui (imóveis, fotos, blog, depoimentos) fica gravado num banco de dados real na hora — qualquer visitante, em qualquer aparelho, já vê a versão atual. Não depende de GitHub nem de subir arquivo: os arquivos do site (HTML) ficam parados na hospedagem (Hostgator/onde for), só os dados mudam.</div>
             </div>
-            <button onClick="{{ publishGh }}" style="background:var(--accent);color:#fff;border:none;padding:14px 26px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:'Manrope',sans-serif;white-space:nowrap">🔄 Sincronizar tudo</button>
           </div>
-          <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <button onClick="{{ publishGhProperties }}" style="background:none;border:1px solid var(--accent);color:var(--accent);padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Sincronizar só imóveis</button>
-            <button onClick="{{ publishGhContent }}" style="background:none;border:1px solid var(--accent);color:var(--accent);padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Sincronizar textos e imagens (blog/capas)</button>
-            <button onClick="{{ openSyncHistory }}" style="background:none;border:1px solid #ddd3bd;color:#4a4438;padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">🕘 Histórico e reverter</button>
-          </div>
-          <div style="font-size:11px;color:#a89a7c;margin-top:6px">"Só imóveis" e "textos e imagens" servem se o "Sincronizar tudo" falhar — cada um envia só a parte indicada. A cada 24h o site também sincroniza sozinho.</div>
-          <sc-if value="{{ publishMsg }}" hint-placeholder-val="{{ false }}">
-            <div style="font-size:12.5px;color:#3e7a4f;margin-top:14px;font-weight:600;line-height:1.5">{{ publishMsg }}</div>
+          <sc-if value="{{ firebaseOn }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:12.5px;color:#3e7a4f;margin-top:14px;font-weight:600">✓ Conectado — as mudanças já ficam visíveis para todos os visitantes assim que você salva.</div>
+          </sc-if>
+          <sc-if value="{{ !firebaseOn }}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top:16px;padding-top:16px;border-top:1px solid #eee4d0">
+              <div style="font-size:12px;color:#746b5c;margin-bottom:10px;line-height:1.55">Ainda não conectado — o site está usando só o navegador de cada visitante (não sincroniza sozinho). Para ativar: crie um projeto grátis em <strong>console.firebase.google.com</strong> → Firestore Database + Storage → ⚙️ Configurações do projeto → seus apps → "Configuração do SDK" → copie o objeto e cole abaixo.</div>
+              <textarea value="{{ firebaseConfigText }}" onChange="{{ onFirebaseConfigText }}" placeholder='{"apiKey":"...", "authDomain":"...", "projectId":"...", ...}' style="width:100%;box-sizing:border-box;min-height:90px;padding:10px 12px;border:1px solid #ddd3bd;font-family:monospace;font-size:12px;resize:vertical"></textarea>
+              <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+                <button onClick="{{ saveFirebaseConfig }}" style="background:#1d1a15;color:#fff;border:none;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Salvar e conectar</button>
+              </div>
+              <sc-if value="{{ firebaseConfigMsg }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:12px;margin-top:10px;font-weight:600;color:{{ firebaseConfigColor }}">{{ firebaseConfigMsg }}</div>
+              </sc-if>
+            </div>
           </sc-if>
           <sc-if value="{{ firebaseOn }}" hint-placeholder-val="{{ false }}">
-            <div style="font-size:11.5px;color:#3e7a4f;margin-top:12px">🗄️ Banco de dados conectado — as mudanças também já ficam gravadas na hora, direto.</div>
+            <div style="margin-top:12px">
+              <button onClick="{{ testFirebase }}" style="background:none;border:1px solid #ddd3bd;color:#4a4438;padding:9px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">{{ testFirebaseLabel }}</button>
+              <sc-if value="{{ firebaseTestMsg }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:12px;margin-top:10px;font-weight:600;color:{{ firebaseTestColor }}">{{ firebaseTestMsg }}</div>
+              </sc-if>
+            </div>
+          </sc-if>
+          <sc-if value="{{ publishMsg }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:12.5px;color:#3e7a4f;margin-top:14px;font-weight:600;line-height:1.5">{{ publishMsg }}</div>
           </sc-if>
 
           <div style="margin-top:20px;padding-top:18px;border-top:1px solid #eee4d0">
@@ -1346,23 +1435,14 @@
           </div>
 
           <div style="margin-top:20px;padding-top:18px;border-top:1px solid #eee4d0">
-            <div style="font-size:12.5px;font-weight:700;color:#4a4438;margin-bottom:10px">Configuração da sincronização (uma vez só)</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-              <div>
-                <div style="font-size:11px;color:#746b5c;margin-bottom:4px">Repositório (usuário/nome)</div>
-                <input value="{{ ghRepo }}" onChange="{{ onGhRepo }}" placeholder="elisonc/site-edina" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13px" />
-              </div>
-              <div>
-                <div style="font-size:11px;color:#746b5c;margin-bottom:4px">Pasta do site no repositório</div>
-                <input value="{{ ghPath }}" onChange="{{ onGhPath }}" placeholder="SITE EDINA final/deploy" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13px" />
-              </div>
-              <div style="grid-column:span 2">
-                <div style="font-size:11px;color:#746b5c;margin-bottom:4px">Token de acesso do GitHub (fica só neste navegador)</div>
-                <input type="password" value="{{ ghToken }}" onChange="{{ onGhToken }}" placeholder="ghp_..." style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13px" />
-              </div>
-            </div>
-            <button onClick="{{ testGh }}" style="background:none;border:1px solid #ddd3bd;padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Testar conexão</button>
-            <div style="font-size:11px;color:#746b5c;margin-top:10px;line-height:1.5">Para criar o token: GitHub → Settings → Developer settings → Personal access tokens → Fine-grained → selecione o repositório → permissão <strong>Contents: Read and write</strong>.</div>
+            <div style="font-size:12.5px;font-weight:700;color:#b4432f;margin-bottom:6px">⚠️ Zerar tudo</div>
+            <div style="font-size:12px;color:#746b5c;max-width:560px;line-height:1.55;margin-bottom:12px">Apaga imóveis, leads, visitas, vendas, histórico, favoritos e todas as fotos/mídias deste navegador. Use antes de subir o conteúdo real. Fica registrado permanentemente quem fez isso e quando.</div>
+            <sc-if value="{{ canFactoryReset }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ openResetPassword }}" style="background:#fff;color:#b4432f;border:1px solid #b4432f;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Zerar tudo agora</button>
+            </sc-if>
+            <sc-if value="{{ !canFactoryReset }}" hint-placeholder-val="{{ true }}">
+              <div style="font-size:12px;color:#a89a7c;font-style:italic">Só o usuário Master pode zerar o site.</div>
+            </sc-if>
           </div>
         </div>
 
@@ -1540,7 +1620,7 @@
               </div>
             </div>
           </sc-if>
-          <div style="font-size:11px;color:#a89a7c;line-height:1.5">Sem valor customizado, usa a comissão padrão acima. Aqui você só visualiza — edite as comissões na aba Imóveis se precisar alterar.</div>
+          <div style="font-size:11px;color:#7d7157;line-height:1.5">Sem valor customizado, usa a comissão padrão acima. Aqui você só visualiza — edite as comissões na aba Imóveis se precisar alterar.</div>
         </div>
 
         <div style="background:#eef4ea;border:1px solid #c9dfc9;padding:28px">
@@ -1548,7 +1628,7 @@
             <div style="font-size:15px;font-weight:700;color:#2f6b3f">✅ Total Vendido (Negócios Fechados)</div>
             <div style="display:flex;gap:10px">
               <input type="date" value="{{ valueStats.soldFrom }}" onChange="{{ onSoldFrom }}" style="padding:8px;border:1px solid #c9dfc9;font-family:'Manrope',sans-serif;font-size:12px" />
-              <span style="color:#a89a7c">até</span>
+              <span style="color:#7d7157">até</span>
               <input type="date" value="{{ valueStats.soldTo }}" onChange="{{ onSoldTo }}" style="padding:8px;border:1px solid #c9dfc9;font-family:'Manrope',sans-serif;font-size:12px" />
             </div>
           </div>
@@ -1569,7 +1649,7 @@
                 <div onClick="{{ sd.openLead }}" style="cursor:pointer;flex:1;min-width:180px">
                   <div style="font-size:16px;font-weight:700">{{ sd.name }}</div>
                   <div style="font-size:12px;color:#8a9a7c">{{ sd.propRef }} — {{ sd.propTitle }}</div>
-                  <div style="font-size:12px;color:#a89a7c">{{ sd.phone }}</div>
+                  <div style="font-size:12px;color:#7d7157">{{ sd.phone }}</div>
                   <div style="font-size:11.5px;color:#5c7a5c;font-weight:600;margin-top:2px">👤 {{ sd.respLabel }}</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:16px">
@@ -1610,7 +1690,7 @@
           </sc-for>
         </div>
         <sc-if value="{{ hasNoVisits }}" hint-placeholder-val="{{ false }}">
-          <div style="color:#a89a7c;font-size:13.5px">Nenhuma visita agendada.</div>
+          <div style="color:#7d7157;font-size:13.5px">Nenhuma visita agendada.</div>
         </sc-if>
       </div>
     </sc-if>
@@ -1619,6 +1699,20 @@
       <div>
         <h1 style="font-family:'Manrope',sans-serif;font-size:34px;font-weight:600;margin:0 0 6px">Conteúdo do Site</h1>
         <div style="color:#746b5c;font-size:14px;margin-bottom:28px">Edite a capa da Home, palavras-chave de SEO e a logo exibida no site.</div>
+
+        <div style="background:#fff8f0;border:1px solid #e0b0a0;padding:20px 24px;margin-bottom:26px">
+          <div style="font-weight:700;font-size:14px;color:#b4432f;margin-bottom:6px">⚠️ Zerar site (deixar como template)</div>
+          <div style="font-size:12.5px;color:#8a5040;max-width:600px;line-height:1.55;margin-bottom:12px">Apaga TUDO que é editável: imóveis, leads, visitas, vendas, histórico, favoritos, blog, depoimentos, textos do site e todas as fotos/mídias deste navegador. O site volta a ser um template em branco, pronto para começar do zero. Fica registrado permanentemente quem fez isso e quando — esse registro não pode ser apagado.</div>
+          <sc-if value="{{ canFactoryReset }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ openResetPassword }}" style="background:#b4432f;color:#fff;border:none;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Zerar site agora</button>
+          </sc-if>
+          <sc-if value="{{ !canFactoryReset }}" hint-placeholder-val="{{ true }}">
+            <div style="font-size:12px;color:#8a5040;font-style:italic">Só o usuário Master pode zerar o site.</div>
+          </sc-if>
+          <sc-if value="{{ resetMsg }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:12px;margin-top:10px;font-weight:600;color:#3e7a4f">{{ resetMsg }}</div>
+          </sc-if>
+        </div>
 
         <div style="background:#fffdf8;border:1px solid #ddd3bd;padding:26px;margin-bottom:20px">
           <div style="font-size:15px;font-weight:700;margin-bottom:6px">Qualidade das fotos</div>
@@ -1847,7 +1941,7 @@
             <div>
               <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Velocidade da transição ({{ transitionSpeedLabel }})</div>
               <input type="range" min="150" max="900" step="10" value="{{ transitionSpeedMs }}" onChange="{{ onTransitionSpeedMs }}" style="width:100%;max-width:320px" />
-              <div style="display:flex;justify-content:space-between;max-width:320px;font-size:11px;color:#a89a7c"><span>Rápida</span><span>Lenta</span></div>
+              <div style="display:flex;justify-content:space-between;max-width:320px;font-size:11px;color:#7d7157"><span>Rápida</span><span>Lenta</span></div>
             </div>
           </div>
         </div>
@@ -2127,7 +2221,7 @@
             <div style="background:#fffdf8;padding:28px;width:640px;max-height:86vh;overflow-y:auto" onClick="{{ stopPropagation }}">
               <div style="font-size:16px;font-weight:700;margin-bottom:18px">Editar {{ userEdit.name }}</div>
 
-              <div style="font-size:10.5px;color:#a89a7c;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Dados de acesso</div>
+              <div style="font-size:10.5px;color:#7d7157;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Dados de acesso</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
                 <input placeholder="Nome" value="{{ userEdit.name }}" onChange="{{ userEdit.onName }}" style="padding:10px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13.5px" />
                 <input placeholder="E-mail" value="{{ userEdit.email }}" onChange="{{ userEdit.onEmail }}" style="padding:10px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13.5px" />
@@ -2151,7 +2245,7 @@
               </div>
               <input type="password" placeholder="Nova senha (deixe em branco para manter)" value="{{ userEdit.newPassword }}" onChange="{{ userEdit.onNewPassword }}" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13.5px;margin-bottom:18px" />
 
-              <div style="font-size:10.5px;color:#a89a7c;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;border-top:1px solid #eee4d0;padding-top:16px">Dados complementares</div>
+              <div style="font-size:10.5px;color:#7d7157;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;border-top:1px solid #eee4d0;padding-top:16px">Dados complementares</div>
               <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
                 <input placeholder="Apelido" value="{{ userEdit.nickname }}" onChange="{{ userEdit.onNickname }}" style="padding:10px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13px" />
                 <input placeholder="CRECI" value="{{ userEdit.creci }}" onChange="{{ userEdit.onCreci }}" style="padding:10px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13px" />
@@ -2198,15 +2292,15 @@
           <div style="font-size:12.5px;color:#746b5c;margin-bottom:16px;line-height:1.5">Registra configurações alteradas, sincronizações e quem fez cada ação. Visível só para Master. Apaga sozinho depois de 180 dias; apagar manualmente pede sua senha.</div>
           <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end">
             <div>
-              <div style="font-size:10.5px;color:#a89a7c;margin-bottom:4px">De</div>
+              <div style="font-size:10.5px;color:#7d7157;margin-bottom:4px">De</div>
               <input type="date" value="{{ historyFrom }}" onChange="{{ onHistoryFrom }}" style="padding:8px 10px;font-size:12.5px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif" />
             </div>
             <div>
-              <div style="font-size:10.5px;color:#a89a7c;margin-bottom:4px">Até</div>
+              <div style="font-size:10.5px;color:#7d7157;margin-bottom:4px">Até</div>
               <input type="date" value="{{ historyTo }}" onChange="{{ onHistoryTo }}" style="padding:8px 10px;font-size:12.5px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif" />
             </div>
             <div>
-              <div style="font-size:10.5px;color:#a89a7c;margin-bottom:4px">Quem</div>
+              <div style="font-size:10.5px;color:#7d7157;margin-bottom:4px">Quem</div>
               <select value="{{ historyActor }}" onChange="{{ onHistoryActor }}" style="padding:8px 10px;font-size:12.5px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif">
                 <option value="">Todos</option>
                 <sc-for list="{{ historyActors }}" as="ha" hint-placeholder-count="3">
@@ -2228,14 +2322,14 @@
             <sc-for list="{{ historyRows }}" as="hr" hint-placeholder-count="5">
               <div style="padding:10px 14px;border-bottom:1px solid #f0ead9;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;gap:10px">
                 <div>
-                  <div><strong>{{ hr.action }}</strong> <span style="color:#a89a7c">— {{ hr.actor }}</span></div>
-                  <div style="color:#a89a7c;font-size:11.5px">{{ hr.when }} <span>{{ hr.detail }}</span></div>
+                  <div><strong>{{ hr.action }}</strong> <span style="color:#7d7157">— {{ hr.actor }}</span></div>
+                  <div style="color:#7d7157;font-size:11.5px">{{ hr.when }} <span>{{ hr.detail }}</span></div>
                 </div>
                 <button onClick="{{ hr.remove }}" style="background:none;border:none;color:#b4432f;cursor:pointer;font-size:14px;flex-shrink:0">✕</button>
               </div>
             </sc-for>
             <sc-if value="{{ hasNoHistory }}" hint-placeholder-val="{{ true }}">
-              <div style="padding:16px;color:#a89a7c;font-size:13px">Nenhuma ação registrada para esse filtro.</div>
+              <div style="padding:16px;color:#7d7157;font-size:13px">Nenhuma ação registrada para esse filtro.</div>
             </sc-if>
           </div>
         </div>
@@ -2289,22 +2383,22 @@
         <div style="background:#fffdf8;padding:28px;width:600px;max-height:80vh;overflow-y:auto" onClick="{{ stopPropagation }}">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
             <div style="font-size:17px;font-weight:700">Histórico de Sincronizações</div>
-            <button onClick="{{ closeSyncHistory }}" style="background:none;border:none;font-size:20px;cursor:pointer;color:#a89a7c">✕</button>
+            <button onClick="{{ closeSyncHistory }}" style="background:none;border:none;font-size:20px;cursor:pointer;color:#7d7157">✕</button>
           </div>
           <div style="font-size:12px;color:#746b5c;margin-bottom:16px;line-height:1.5">Cada sincronização "tudo" bem-sucedida fica registrada aqui com data, hora e o que foi enviado. Se algo saiu errado, reverta para uma versão anterior.</div>
           <sc-for list="{{ syncHistoryRows }}" as="sh" hint-placeholder-count="5">
             <div style="border:1px solid #eee4d0;padding:12px 14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px">
               <div>
                 <div style="font-size:12.5px;font-weight:600">{{ sh.when }} — {{ sh.kind }}</div>
-                <div style="font-size:11.5px;color:#a89a7c">{{ sh.summary }}</div>
+                <div style="font-size:11.5px;color:#7d7157">{{ sh.summary }}</div>
               </div>
               <button onClick="{{ sh.download }}" style="padding:7px 12px;font-size:11.5px;border:1px solid #ddd3bd;color:#4a4438;background:#fff;cursor:pointer;font-family:'Manrope',sans-serif;white-space:nowrap">Baixar</button>
               <button onClick="{{ sh.revert }}" style="padding:7px 12px;font-size:11.5px;border:1px solid #b4432f;color:#b4432f;background:#fff;cursor:pointer;font-family:'Manrope',sans-serif;white-space:nowrap">Reverter</button>
-              <button onClick="{{ sh.remove }}" title="Apagar este registro do histórico" style="padding:7px 10px;font-size:11.5px;border:1px solid #ddd3bd;color:#a89a7c;background:#fff;cursor:pointer;font-family:'Manrope',sans-serif">Apagar</button>
+              <button onClick="{{ sh.remove }}" title="Apagar este registro do histórico" style="padding:7px 10px;font-size:11.5px;border:1px solid #ddd3bd;color:#7d7157;background:#fff;cursor:pointer;font-family:'Manrope',sans-serif">Apagar</button>
             </div>
           </sc-for>
           <sc-if value="{{ hasNoSyncHistory }}" hint-placeholder-val="{{ true }}">
-            <div style="color:#a89a7c;font-size:13px">Nenhuma sincronização registrada ainda.</div>
+            <div style="color:#7d7157;font-size:13px">Nenhuma sincronização registrada ainda.</div>
           </sc-if>
         </div>
       </div>
@@ -3670,6 +3764,110 @@ Responda em JSON puro, um array de 2 objetos: [{"text": "...", "hashtags": "#tag
   // Publica sozinho, em segundo plano, sempre que um imóvel é salvo — a cliente não precisa
   // clicar em nada. Silencioso quando não configurado (fica só como aviso discreto), e nunca
   // trava a tela: a publicação roda depois do salvamento já ter concluído localmente.
+  onFirebaseConfigText = (e) => this.setState({ firebaseConfigText: e.target.value });
+  saveFirebaseConfig = () => {
+    let obj;
+    try { obj = JSON.parse(this.state.firebaseConfigText || ''); }
+    catch (e) {
+      // Aceita também colar o trecho "const firebaseConfig = {...}" direto do console do Firebase.
+      const m = (this.state.firebaseConfigText || '').match(/\{[\s\S]*\}/);
+      try { obj = m ? Function('"use strict";return (' + m[0] + ')')() : null; } catch (e2) { obj = null; }
+    }
+    if (!obj || !obj.projectId || !obj.apiKey) {
+      this.setState({ firebaseConfigMsg: '✗ Não reconheci um objeto de configuração válido — precisa ter pelo menos apiKey e projectId.', firebaseConfigColor: '#b4432f' });
+      return;
+    }
+    try { localStorage.setItem('edina_firebase_config', JSON.stringify(obj)); } catch (e) {}
+    this.setState({ firebaseConfigMsg: 'Conectando e salvando o conteúdo atual…', firebaseConfigColor: '#4a4438' });
+    window.EDINA_FIREBASE_CONFIG = obj;
+    delete window.FirebaseDB;
+    const s2 = document.createElement('script');
+    s2.src = './firebase-db.js';
+    s2.onload = () => {
+      window.FirebaseDB.ready.then(ok => {
+        if (!ok) { this.setState({ firebaseConfigMsg: '✗ Configuração salva, mas a conexão falhou — confira se copiou o objeto certo.', firebaseConfigColor: '#b4432f' }); return; }
+        // Primeira conexão: sobe o que já está neste navegador para o banco, para não começar vazio.
+        Promise.all([
+          window.FirebaseDB.saveProperties(window.CRMData.getPropertiesRaw()),
+          window.FirebaseDB.saveSite(window.CRMData.getSiteContentRaw()),
+          window.FirebaseDB.savePosts(window.CRMData.getPostsRaw ? window.CRMData.getPostsRaw() : window.CRMData.getPosts()),
+          window.FirebaseDB.saveTestimonials(window.CRMData.getTestimonialsRaw ? window.CRMData.getTestimonialsRaw() : window.CRMData.getTestimonials())
+        ]).then(() => this.setState({ firebaseConfigMsg: '✓ Conectado! Recarregando…', firebaseConfigColor: '#3e7a4f' }))
+          .then(() => setTimeout(() => location.reload(), 1200))
+          .catch(err => this.setState({ firebaseConfigMsg: '✗ Conectou, mas falhou ao enviar o conteúdo: ' + (err.message || err), firebaseConfigColor: '#b4432f' }));
+      });
+    };
+    document.head.appendChild(s2);
+  };
+  toggleMobileMenu = () => this.setState({ mobileMenuOpen: !this.state.mobileMenuOpen });
+  openResetPassword = () => this.setState({ showResetPasswordModal: true, resetPasswordInput: '', resetPasswordError: '' });
+  closeResetPassword = () => this.setState({ showResetPasswordModal: false, resetPasswordInput: '', resetPasswordError: '' });
+  onResetPasswordInput = (e) => this.setState({ resetPasswordInput: e.target.value });
+  confirmFactoryReset = () => {
+    const D = window.CRMData;
+    const masterUser = (D.getUsers() || []).find(u => u.role === 'master') || {};
+    const pwd = this.state.resetPasswordInput || '';
+    const verified = D.verifyLogin(masterUser.username || 'master', pwd);
+    if (!verified || verified.role !== 'master') {
+      D.addAuditEntry(this.state.session ? (this.state.session.name || this.state.session.username) : 'Desconhecido', 'Tentativa de zerar o site — SENHA INCORRETA');
+      this.setState({ resetPasswordError: 'Senha incorreta. Esta tentativa ficou registrada.' });
+      return;
+    }
+    this.setState({ showResetPasswordModal: false });
+    this.factoryReset(verified.name || verified.username);
+  };
+  factoryReset = (actorName) => {
+    const D = window.CRMData;
+    D.addAuditEntry(actorName || (this.state.session && (this.state.session.name || this.state.session.username)) || 'Master', 'ZEROU O SITE INTEIRO', `${D.getPropertiesRaw().length} imóveis, ${D.getLeads().length} leads apagados`);
+    const site = D.getSiteContentRaw() || {};
+    Object.keys(site).forEach(k => {
+      const v = site[k];
+      if (typeof v === 'string' && (v.startsWith('idb') || v.startsWith('data:') || (v.startsWith('./') && /\.(png|jpe?g|webp|gif|svg)$/i.test(v)))) site[k] = '';
+      if (Array.isArray(v)) site[k] = v.map(x => (typeof x === 'string' && (x.startsWith('idb') || x.startsWith('data:'))) ? '' : x);
+    });
+    D.saveSiteContent(site);
+    D.saveProperties([]);
+    D.saveLeads([]);
+    D.saveVisits([]);
+    if (D.saveSales) D.saveSales([]);
+    if (D.clearSyncHistory) D.clearSyncHistory();
+    D.savePosts((D.getPostsRaw ? D.getPostsRaw() : D.getPosts()).map(p => ({ ...p, image: '' })));
+    D.saveTestimonials((D.getTestimonialsRaw ? D.getTestimonialsRaw() : D.getTestimonials()).map(t => ({ ...t, image: '', audioUrl: '' })));
+    ['edina_db_history_v1', 'edina_db_analytics_v1'].forEach(k => { try { localStorage.setItem(k, '[]'); } catch (e) {} });
+    try { localStorage.setItem('edina_favorites', '{}'); localStorage.setItem('edina_pub_cache_v1', '{}'); } catch (e) {}
+    localStorage.removeItem('edina_gh_config');
+    D._openMediaDB().then(db => {
+      const tx = db.transaction('media', 'readwrite');
+      const store = tx.objectStore('media');
+      const req = store.openCursor();
+      let n = 0;
+      req.onsuccess = () => {
+        const c = req.result;
+        if (!c) {
+          D._photoCache = {};
+          const msg = `✓ Site zerado (${n} arquivo(s) de mídia apagado(s)). Recarregando…`;
+          this.setState({ backupMsg: msg, resetMsg: msg });
+          setTimeout(() => location.reload(), 1200);
+          return;
+        }
+        store.delete(c.key); n++; c.continue();
+      };
+    });
+  };
+  testFirebase = () => {
+    if (!window.FirebaseDB || !window.FirebaseDB.enabled) {
+      this.setState({ firebaseTestMsg: '✗ Não conectado.', firebaseTestColor: '#b4432f' });
+      return;
+    }
+    this.setState({ firebaseTesting: true, firebaseTestMsg: '' });
+    window.FirebaseDB.ready.then(ok => {
+      if (!ok) { this.setState({ firebaseTesting: false, firebaseTestMsg: '✗ Falha ao conectar ao banco — confira a configuração.', firebaseTestColor: '#b4432f' }); return; }
+      return window.FirebaseDB.fetchAll().then(data => {
+        const props = (data && data.properties) || [];
+        this.setState({ firebaseTesting: false, firebaseTestMsg: `✓ Conectado — leu ${props.length} imóvel(is) do banco em tempo real.`, firebaseTestColor: '#3e7a4f' });
+      });
+    }).catch(err => this.setState({ firebaseTesting: false, firebaseTestMsg: '✗ Falha: ' + (err.message || err), firebaseTestColor: '#b4432f' }));
+  };
   autoPublish = (label) => {
     // Com o banco de dados (Firebase) configurado, o salvamento já foi replicado direto —
     // não precisa de commit no GitHub nem de republicar o site.
@@ -4906,6 +5104,13 @@ Responda em JSON puro, um array de 2 objetos: [{"text": "...", "hashtags": "#tag
       onGhRepo: this.updateGh('repo'), onGhPath: this.updateGh('path'), onGhToken: this.updateGh('token'),
       testGh: this.testGh, publishGh: this.publishGh, publishGhProperties: this.publishGhProperties,
       publishGhContent: this.publishGhContent, openSyncHistory: this.openSyncHistory, closeSyncHistory: this.closeSyncHistory,
+      mobileMenuOpen: !!s.mobileMenuOpen, toggleMobileMenu: this.toggleMobileMenu,
+      menuBtnIcon: s.mobileMenuOpen ? '✕' : '☰', menuBtnLabel: s.mobileMenuOpen ? 'Fechar menu' : 'Abrir menu',
+      navClass: s.mobileMenuOpen ? 'crm-drawer-open' : '',
+      firebaseConfigText: s.firebaseConfigText || '', onFirebaseConfigText: this.onFirebaseConfigText, saveFirebaseConfig: this.saveFirebaseConfig,
+      testFirebase: this.testFirebase, testFirebaseLabel: s.firebaseTesting ? 'Testando…' : 'Testar conexão',
+      firebaseTestMsg: s.firebaseTestMsg || '', firebaseTestColor: s.firebaseTestColor || '#4a4438',
+      firebaseConfigMsg: s.firebaseConfigMsg || '', firebaseConfigColor: s.firebaseConfigColor || '#4a4438',
       showSyncHistory: !!s.showSyncHistory, stopPropagation: this.stopPropagation,
       showCloseDealModal: !!s.showCloseDealModal, closeDealValue: s.closeDealValue || '', onCloseDealValue: this.onCloseDealValue,
       closeDealValueDisplay: s.closeDealValue ? Number(s.closeDealValue).toLocaleString('pt-BR') : '',
@@ -4918,7 +5123,12 @@ Responda em JSON puro, um array de 2 objetos: [{"text": "...", "hashtags": "#tag
         download: this.downloadSyncVersion(h),
         remove: this.deleteSyncRecord(h)
       })),
-      downloadBackup: this.downloadBackup, onRestoreBackup: this.onRestoreBackup,
+      downloadBackup: this.downloadBackup, onRestoreBackup: this.onRestoreBackup, resetMsg: s.resetMsg || '',
+      canFactoryReset: effectiveRole === 'master',
+      openResetPassword: this.openResetPassword, closeResetPassword: this.closeResetPassword,
+      showResetPasswordModal: !!s.showResetPasswordModal, resetPasswordInput: s.resetPasswordInput || '',
+      onResetPasswordInput: this.onResetPasswordInput, resetPasswordError: s.resetPasswordError || '',
+      confirmFactoryReset: this.confirmFactoryReset,
       backupButtonLabel: s.backingUp ? 'Preparando…' : 'Baixar backup completo',
       backupMsg: s.backupMsg || '', backupMsgColor: s.backupMsgColor || '#4a4438',
       hasNoSyncHistory: !(window.CRMData ? window.CRMData.getSyncHistory() : []).length,
