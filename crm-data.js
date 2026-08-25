@@ -31,58 +31,23 @@
   const STORAGE_BUDGET_PRO = 5 * 1024 * 1024 * 1024;
   const PRO_UNLOCK_CODE = 'EDINA-PRO-100';
 
-  const handPicked = [
-    { id: 1, title: "Apartamento Amores do Mar", location: "Praia Brava — Itajaí", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 1900000, area: 101, suites: 3, baths: 3, garage: 3, condo: "Edifício Amores do Mar", featured: true, tone: 0, tour: false, status: "ativo", image: "media/amores-do-mar-1.jpg", images: ["media/amores-do-mar-1.jpg","media/amores-do-mar-2.jpg","media/amores-do-mar-3.jpg","media/amores-do-mar-4.jpg","media/amores-do-mar-5.jpg","media/amores-do-mar-6.jpg"], videoUrl: "", videoFile: "", descProvisional: true, desc: "[Texto provisório — aguardando descritivo definitivo] Apartamento no Edifício Amores do Mar, próximo à praia, com acabamento de alto padrão e vista privilegiada. Substitua este texto pelo descritivo oficial do imóvel assim que disponível.", amenities: ["Frente para o mar", "Acabamento de alto padrão", "3 suítes"] },
-    { id: 2, title: "Casa Ressacada", location: "Ressacada — Itajaí", region: "itajai", type: "Casa", purpose: "venda", price: 1900000, area: 350, suites: 3, baths: 4, garage: 4, condo: "Residencial Ressacada", featured: true, tone: 1, tour: false, status: "ativo", image: "media/ressacada-1.jpg", images: ["media/ressacada-1.jpg","media/ressacada-2.jpg","media/ressacada-3.jpg","media/ressacada-4.jpg","media/ressacada-5.jpg","media/ressacada-6.jpg","media/ressacada-7.jpg","media/ressacada-8.jpg"], videoUrl: "", videoFile: "", descProvisional: true, desc: "[Texto provisório — aguardando descritivo definitivo] Casa térrea no bairro Ressacada, com piscina, área gourmet e amplo quintal gramado. Substitua este texto pelo descritivo oficial do imóvel assim que disponível.", amenities: ["Piscina", "Área gourmet", "Quintal amplo"] },
-    { id: 3, title: "Apartamento Life Residence", location: "Balneário Camboriú", region: "camboriu", type: "Apartamento", purpose: "venda", price: 1650000, area: 101, suites: 3, baths: 3, garage: 3, condo: "Life Residence", featured: true, tone: 2, tour: false, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "media/life-residence-video.mp4", descProvisional: false, desc: "Apartamento de 101m² no Life Residence, com 3 quartos (originalmente 3 suítes — hoje uma suíte master e 2 demi-suítes), localizado no 23º andar, apto final 01. 3 vagas de garagem no andar térreo. 100% mobiliado de verdade: todos os quartos e a sala possuem ar condicionado inverter.", amenities: ["100% mobiliado", "Ar condicionado inverter em todos os ambientes", "23º andar", "3 vagas de garagem"] },
-    { id: 4, title: "Casa Condomínio Aririba", location: "Praia Brava — Itajaí", region: "praia-brava", type: "Casa", purpose: "venda", price: 0, area: 0, suites: 0, baths: 0, garage: 0, condo: "Condomínio Aririba", featured: false, tone: 0, tour: false, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: true, desc: "[Texto provisório — aguardando fotos e descritivo definitivo] Casa em condomínio fechado no Aririba. Cadastro criado apenas para referência visual; substitua por dados e fotos reais.", amenities: [] },
-    { id: 5, title: "Amores da Brava", location: "Praia Brava — Itajaí", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 0, area: 0, suites: 0, baths: 0, garage: 0, condo: "Edifício Amores da Brava", featured: false, tone: 1, tour: false, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: true, desc: "[Texto provisório — aguardando fotos e descritivo definitivo] Apartamento no Edifício Amores da Brava. Cadastro criado apenas para referência visual; substitua por dados e fotos reais.", amenities: [] },
-    { id: 6, title: "Porto Madeiro", location: "Itajaí", region: "itajai", type: "Apartamento", purpose: "venda", price: 0, area: 0, suites: 0, baths: 0, garage: 0, condo: "Porto Madeiro", featured: false, tone: 2, tour: false, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: true, desc: "[Texto provisório — aguardando fotos e descritivo definitivo] Unidade no empreendimento Porto Madeiro. Cadastro criado apenas para referência visual; substitua por dados e fotos reais.", amenities: [] },
-    { id: 7, title: "Casa de Praia Assinada", location: "Praia Brava — Itajaí", region: "praia-brava", type: "Casa", purpose: "venda", price: 7900000, area: 500, suites: 5, baths: 6, garage: 6, condo: "Condomínio Costa Brava", featured: true, tone: 1, tour: true, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", desc: "Residência de arquitetura autoral a beira-mar, com spa, adega e cinema privativo.", amenities: ["Spa privativo", "Cinema", "Adega climatizada", "Arquitetura assinada", "6 vagas"] },
-    { id: 8, title: "Flat Mobiliado", location: "Balneário Camboriú", region: "camboriu", type: "Flat", purpose: "aluguel", price: 980000, area: 48, suites: 1, baths: 1, garage: 1, condo: "Edifício Central Flat", featured: false, tone: 0, tour: false, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", desc: "Flat totalmente mobiliado, ideal para temporada ou investimento.", amenities: ["Mobiliado", "Serviço de limpeza", "Recepção 24h"] }
+  const seedProperties = [
+    { id: 1, title: "AURA", location: "Praia Brava - Itajai", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 2600000, area: 168, suites: 3, baths: 3, garage: 2, condo: "AURA", featured: true, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: false, desc: "Empreendimento AURA em Praia Brava", amenities: [] },
+    { id: 2, title: "BRAVA CONCETTO", location: "Praia Brava - Itajai", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 2700000, area: 200, suites: 3, baths: 3, garage: 2, condo: "BRAVA CONCETTO", featured: true, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: false, desc: "Empreendimento BRAVA CONCETTO", amenities: [] },
+    { id: 3, title: "BRAVA PARK", location: "Praia Brava - Itajai", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 2800000, area: 200, suites: 3, baths: 3, garage: 2, condo: "BRAVA PARK", featured: true, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: false, desc: "Empreendimento BRAVA PARK", amenities: [] },
+    { id: 4, title: "COLLETION BRAVA", location: "Praia Brava - Itajai", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 2900000, area: 200, suites: 3, baths: 3, garage: 2, condo: "COLLETION BRAVA", featured: true, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: false, desc: "Empreendimento COLLETION BRAVA", amenities: [] },
+    { id: 5, title: "D6 OCEAN", location: "Praia Brava - Itajai", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 3000000, area: 200, suites: 3, baths: 3, garage: 2, condo: "D6 OCEAN", featured: true, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: false, desc: "Empreendimento D6 OCEAN", amenities: [] },
+    { id: 6, title: "LOTISA DOWNTOWN", location: "Praia Brava - Itajai", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 3100000, area: 200, suites: 3, baths: 3, garage: 2, condo: "LOTISA DOWNTOWN", featured: true, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: false, desc: "Empreendimento LOTISA DOWNTOWN", amenities: [] },
+    { id: 7, title: "LOTISA SUN PARK", location: "Praia Brava - Itajai", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 3200000, area: 200, suites: 3, baths: 3, garage: 2, condo: "LOTISA SUN PARK", featured: true, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: false, desc: "Empreendimento LOTISA SUN PARK", amenities: [] },
+    { id: 8, title: "MALBEC", location: "Praia Brava - Itajai", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 3300000, area: 200, suites: 3, baths: 3, garage: 2, condo: "MALBEC", featured: true, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: false, desc: "Empreendimento MALBEC", amenities: [] },
+    { id: 9, title: "NF RARO", location: "Praia Brava - Itajai", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 3400000, area: 200, suites: 3, baths: 3, garage: 2, condo: "NF RARO", featured: true, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: false, desc: "Empreendimento NF RARO", amenities: [] },
+    { id: 10, title: "NOW RESIDENCE", location: "Praia Brava - Itajai", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 3500000, area: 35, suites: 3, baths: 3, garage: 2, condo: "NOW RESIDENCE", featured: true, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: false, desc: "Empreendimento NOW RESIDENCE", amenities: [] },
+    { id: 11, title: "PRAIA BRAVA COBERTURA", location: "Praia Brava - Itajai", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 3600000, area: 430, suites: 3, baths: 3, garage: 2, condo: "PRAIA BRAVA COBERTURA", featured: true, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: false, desc: "Empreendimento PRAIA BRAVA COBERTURA", amenities: [] },
+    { id: 12, title: "URBAN", location: "Praia Brava - Itajai", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 3700000, area: 200, suites: 3, baths: 3, garage: 2, condo: "URBAN", featured: true, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: false, desc: "Empreendimento URBAN", amenities: [] },
+    { id: 13, title: "VEDA", location: "Praia Brava - Itajai", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 3800000, area: 200, suites: 3, baths: 3, garage: 2, condo: "VEDA", featured: true, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: false, desc: "Empreendimento VEDA", amenities: [] },
+    { id: 14, title: "VEREDAS", location: "Praia Brava - Itajai", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 3900000, area: 200, suites: 3, baths: 3, garage: 2, condo: "VEREDAS", featured: true, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: false, desc: "Empreendimento VEREDAS", amenities: [] },
+    { id: 15, title: "ZAYA BRAVA", location: "Praia Brava - Itajai", region: "praia-brava", type: "Apartamento", purpose: "venda", price: 4000000, area: 200, suites: 3, baths: 3, garage: 2, condo: "ZAYA BRAVA", featured: true, status: "ativo", image: "", images: [], videoUrl: "", videoFile: "", descProvisional: false, desc: "Empreendimento ZAYA BRAVA", amenities: [] }
   ];
-
-  // Generate additional fictitious properties up to MAX_PROPERTIES so the portfolio has
-  // a realistic volume of listings to browse and filter.
-  function generateMore(count) {
-    const locs = [
-      { location: "Praia Brava — Itajaí", region: "praia-brava" },
-      { location: "Balneário Camboriú", region: "camboriu" },
-      { location: "Navegantes", region: "navegantes" },
-      { location: "Itajaí", region: "itajai" }
-    ];
-    const types = ["Cobertura", "Apartamento", "Casa", "Studio", "Flat"];
-    const condos = ["Residencial Vista Azul", "Condomínio Solar das Águas", "Edifício Horizonte", "Residencial Vento Sul", "Torre Aurora", "Condomínio Baía Verde", "Edifício Costa Norte", "Residencial Mirante do Mar", "Condomínio Areia Branca", "Edifício Brisa do Mar"];
-    const adjectives = ["Vista Mar", "Frente Mar", "Alto Padrão", "Panorâmico", "Exclusivo", "Design Autoral", "Vista Livre", "Beira-Mar", "Vista Rio", "Premium"];
-    const amenitiesPool = ["Piscina", "Academia", "Espaço gourmet", "Portaria 24h", "Salão de festas", "Playground", "Sauna", "Quadra poliesportiva", "Elevador privativo", "Vista panorâmica", "Segurança 24h", "Varanda gourmet"];
-    const list = [];
-    for (let i = 0; i < count; i++) {
-      const id = handPicked.length + i + 1;
-      const loc = locs[i % locs.length];
-      const type = types[(i + 1) % types.length];
-      const condo = condos[i % condos.length];
-      const adj = adjectives[i % adjectives.length];
-      const area = 60 + ((i * 17) % 440);
-      const suites = 1 + (i % 5);
-      const baths = suites + (i % 2);
-      const garage = 1 + (i % 6);
-      const basePrice = 850000 + area * (9000 + (i % 5) * 2500);
-      const status = i % 11 === 0 ? "vendido" : (i % 7 === 0 ? "reservado" : "ativo");
-      const purpose = i % 6 === 0 ? "aluguel" : "venda";
-      const tone = i % 3;
-      const amenities = [amenitiesPool[i % amenitiesPool.length], amenitiesPool[(i + 3) % amenitiesPool.length], amenitiesPool[(i + 6) % amenitiesPool.length]];
-      list.push({
-        id, title: `${type} ${adj} ${id}`, location: loc.location, region: loc.region, type, purpose,
-        price: Math.round(basePrice / 1000) * 1000, area, suites, baths, garage, condo,
-        featured: false, tone, tour: false, status, image: "", images: [], videoUrl: "", videoFile: "",
-        desc: `${type} com ${suites} suítes em ${loc.location}, no ${condo}. Acabamento de alto padrão e infraestrutura de lazer completa.`,
-        amenities
-      });
-    }
-    return list;
-  }
-
-  const seedProperties = handPicked.concat(generateMore(20 - handPicked.length));
 
   const seedLeads = [
     { id: 1, name: "Ricardo Bastos", phone: "(11) 98888-1010", email: "ricardo.b@email.com", interest: "Cobertura Duplex Vista Mar", stage: "proposta", value: 6800000, channel: "Instagram", date: "18 Jun 2026", status: "aberto", assignedTo: "Elisoncf", timeline: [], attachments: [], offeredProperties: [] },
