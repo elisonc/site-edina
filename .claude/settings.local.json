@@ -22,7 +22,10 @@
       "Bash(git rm *)",
       "Bash(rm -f \"C:UserstecblOneDriveDesktopSITE EDINAimoveis_fix.html\")",
       "Bash(rm -f imoveis_reais.json)",
-      "Bash(git commit -q -m 'CORRIGIR RAIZ DO PROBLEMA: cache local vencia o arquivo novo *)"
+      "Bash(git commit -q -m 'CORRIGIR RAIZ DO PROBLEMA: cache local vencia o arquivo novo *)",
+      "mcp__4375b7ec-b3bc-4a30-8af8-f045dd7c541f__list_deployments",
+      "Bash(curl -s \"https://www.edinaoliveiraimoveis.com.br/crm-data.js?p=$\\(date +%s\\)\")",
+      "Bash(git commit -q -m 'Conteudo do site: completar campos novos pelo padrao *)"
     ]
   }
 }

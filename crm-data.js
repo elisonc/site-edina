@@ -126,6 +126,18 @@
     }
   };
 
+  // O conteúdo do site guardado no navegador foi gravado por uma versão anterior e não conhece
+  // os campos criados depois. Sem completar o que falta pelo padrão, todo campo novo nasce
+  // vazio para quem já usou o site — foi o que fazia a assinatura sumir. Só preenche buraco:
+  // o que a Edina escreveu continua valendo.
+  function withSiteDefaults(saved) {
+    const sc = { ...seedSiteContent, ...(saved || {}) };
+    sc.theme = { ...seedSiteContent.theme, ...((saved || {}).theme || {}) };
+    // Imagem de marca em branco significa "usa a que vem com o site", não "não mostra nada".
+    ['signatureUrl'].forEach(k => { if (!sc[k]) sc[k] = seedSiteContent[k]; });
+    return sc;
+  }
+
   const seedVisits = [
     { id: 1, lead: "Camila Fontoura", property: "Apartamento Beira-Mar", date: "2026-07-02", time: "10:00", done: false },
     { id: 2, lead: "Bruno Castilho", property: "Cobertura Duplex Vista Mar", date: "2026-07-02", time: "15:30", done: false },
@@ -1062,11 +1074,7 @@
     getIntegrations: () => get(LS.integrations, { facebook: false, googleAds: false, apiKey: "eo_live_9f3a1c7d2b4e6f80", webhook: "", commission: 6 }),
     saveIntegrations: (obj) => set(LS.integrations, obj),
     getSiteContent: function () {
-      const sc = get(LS.site, seedSiteContent);
-      if (!sc.theme) sc.theme = { ...seedSiteContent.theme };
-      else sc.theme = { ...seedSiteContent.theme, ...sc.theme };
-      if (sc.servicesEyebrow == null) sc.servicesEyebrow = seedSiteContent.servicesEyebrow;
-      if (sc.servicesTitle == null) sc.servicesTitle = seedSiteContent.servicesTitle;
+      const sc = withSiteDefaults(get(LS.site, seedSiteContent));
       const self = this;
       ['logoUrl', 'signatureUrl', 'heroImage', 'spotlightImage', 'aboutImage', 'watermarkLogoUrl', 'footerLogoUrl'].forEach(k => {
         if (sc[k]) sc[k] = self.photoURL(sc[k]);
@@ -1074,14 +1082,7 @@
       if (Array.isArray(sc.heroSlides)) sc.heroSlides = sc.heroSlides.map(i => i ? self.photoURL(i) : i);
       return sc;
     },
-    getSiteContentRaw: () => {
-      const sc = get(LS.site, seedSiteContent);
-      if (!sc.theme) sc.theme = { ...seedSiteContent.theme };
-      else sc.theme = { ...seedSiteContent.theme, ...sc.theme };
-      if (sc.servicesEyebrow == null) sc.servicesEyebrow = seedSiteContent.servicesEyebrow;
-      if (sc.servicesTitle == null) sc.servicesTitle = seedSiteContent.servicesTitle;
-      return sc;
-    },
+    getSiteContentRaw: () => withSiteDefaults(get(LS.site, seedSiteContent)),
     saveSiteContent: (obj) => { markEdited(); window.FirebaseDB && window.FirebaseDB.enabled && window.FirebaseDB.saveSite(obj).catch(() => {}); return set(LS.site, obj); },
     applyTheme: (theme) => {
       if (!theme) return;

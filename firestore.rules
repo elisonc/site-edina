@@ -1,0 +1,65 @@
+rules_version = '2';
+
+// Regras de segurança do Firestore do projeto site-edina-final.
+//
+// COMO APLICAR (leva 1 minuto, só você pode fazer — exige login no Firebase):
+//   1. https://console.firebase.google.com/project/site-edina-final/firestore/rules
+//   2. Apague o conteúdo da caixa e cole este arquivo inteiro.
+//   3. Clique em "Publicar".
+//
+// SEM ISSO o site responde "Missing or insufficient permissions" e NADA fica salvo
+// entre navegadores: os imóveis do CRM e os contatos do formulário ficam apenas no
+// navegador de quem digitou.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Conteúdo público do site (imóveis, textos, blog, depoimentos).
+    // Qualquer visitante lê; a escrita vem do painel CRM.
+    match /edina/{doc} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Registros de visita usados pelo painel de analytics.
+    match /edina_analytics/{doc} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // Avisos de lead novo para o CRM mostrar na hora.
+    match /edina_notifications/{doc} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // Nada fora do que está descrito acima.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// SOBRE O `allow write: if true` EM /edina/{doc}
+//
+// Ele é necessário porque hoje o CRM entra com login próprio (guardado no
+// navegador) e não com o Firebase Authentication — do ponto de vista do banco,
+// o painel é um visitante comum. Enquanto for assim, quem conhecer o endereço do
+// projeto consegue, em tese, gravar por fora.
+//
+// A chave `apiKey` do firebase-config.js NÃO é um segredo (ela vai no HTML de
+// todo site Firebase e serve só para identificar o projeto) — quem protege o
+// banco são estas regras.
+//
+// Para fechar isso de vez, o caminho é ligar o Firebase Authentication no painel
+// e trocar a linha por:
+//
+//     allow read: if true;
+//     allow write: if request.auth != null;
+//
+// É uma alteração de uma linha aqui, mas exige antes fazer o CRM entrar no
+// Firebase Auth. Vale fazer assim que o site estiver no ar e estável.
+// ────────────────────────────────────────────────────────────────────────────
