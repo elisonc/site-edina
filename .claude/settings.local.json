@@ -8,7 +8,8 @@
       "Bash(cd \"C:\\\\Users\\\\tecbl\\\\OneDrive\\\\Desktop\\\\SITE EDINA\" && rm -rf .git && git init && git config user.email \"elisoncrestanimkt@gmail.com\" && git config user.name \"Elison Crestani\" && git config core.autocrlf false)",
       "Bash(git add *)",
       "Bash(git commit -m 'Atualizar crm.dc.html - remover 20 imóveis fictícios e integrar Firebase *)",
-      "Bash(git commit -m 'Deploy final: atualizar imoveis.dc.html, blog.dc.html e favoritos.dc.html com dados zerados *)"
+      "Bash(git commit -m 'Deploy final: atualizar imoveis.dc.html, blog.dc.html e favoritos.dc.html com dados zerados *)",
+      "Bash(git commit -m 'Remover mensagem fictícia do footer - imoveis.dc.html *)"
     ]
   }
 }
