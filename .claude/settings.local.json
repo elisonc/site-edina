@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__4375b7ec-b3bc-4a30-8af8-f045dd7c541f__deploy_to_vercel",
+      "mcp__4375b7ec-b3bc-4a30-8af8-f045dd7c541f__get_deployment",
+      "Bash(git init *)",
+      "Bash(git config *)",
+      "Bash(cd \"C:\\\\Users\\\\tecbl\\\\OneDrive\\\\Desktop\\\\SITE EDINA\" && rm -rf .git && git init && git config user.email \"elisoncrestanimkt@gmail.com\" && git config user.name \"Elison Crestani\" && git config core.autocrlf false)"
+    ]
+  }
+}
