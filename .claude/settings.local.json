@@ -16,7 +16,13 @@
       "Bash(git checkout *)",
       "Bash(python3)",
       "Bash(sed -i '34,85d' crm-data.js)",
-      "Bash(sed -i '33r /tmp/imoveis_js.txt' crm-data.js)"
+      "Bash(sed -i '33r /tmp/imoveis_js.txt' crm-data.js)",
+      "Bash(node -e \"require\\('./crm-data.js'\\)\")",
+      "Bash(node --check crm-data.js)",
+      "Bash(git rm *)",
+      "Bash(rm -f \"C:UserstecblOneDriveDesktopSITE EDINAimoveis_fix.html\")",
+      "Bash(rm -f imoveis_reais.json)",
+      "Bash(git commit -q -m 'CORRIGIR RAIZ DO PROBLEMA: cache local vencia o arquivo novo *)"
     ]
   }
 }

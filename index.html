@@ -318,7 +318,9 @@
     </div>
     <div style="border-top:1px solid #ddd3bd;padding-top:24px;font-size:12.5px;color:#746b5c;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px">
       <div>© 2026 {{ brandName }}. {{ creci }}. Todos os direitos reservados.</div>
-      <div style="font-family:monospace">Todos os direitos reservados.</div>
+      <sc-if value="{{ hasFooterNote }}" hint-placeholder-val="{{ false }}">
+        <div>{{ footerNote }}</div>
+      </sc-if>
     </div>
   </footer>
 
@@ -556,6 +558,7 @@ class Component extends DCLogic {
       testimonials,
       address: site.address || d.address, phone: site.phone || d.phone, email: site.email || d.email, creci: site.creci || d.creci,
       brandName: site.brandName || d.brand, footerTagline: site.footerTagline || 'Os melhores imóveis de alto padrão no litoral de Santa Catarina, em um só lugar.',
+      footerNote: site.footerNote || '', hasFooterNote: !!(site.footerNote || '').trim(),
       aboutLabel: site.aboutLabel || 'Sua Especialista',
       aboutQuote: site.aboutQuote || 'Bem-vindos ao litoral de alto padrão.',
       aboutP1: site.aboutP1 || 'Especialista em imóveis de alto padrão, Edina Oliveira atua na venda e locação de propriedades exclusivas em Navegantes, Itajaí, Balneário Camboriú e Praia Brava.',

@@ -2077,6 +2077,10 @@
             <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Texto do rodapé (abaixo do nome da marca)</div>
             <textarea rows="2" value="{{ site.footerTagline }}" onChange="{{ onSiteField_footerTagline }}" style="width:100%;padding:12px 14px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:14px;box-sizing:border-box;resize:vertical"></textarea>
           </div>
+          <div>
+            <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Observação do rodapé (canto direito, ao lado do © — deixe vazio para não exibir nada)</div>
+            <input type="text" value="{{ site.footerNote }}" onChange="{{ onSiteField_footerNote }}" placeholder="Ex.: Fotos meramente ilustrativas." style="width:100%;padding:12px 14px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:14px;box-sizing:border-box" />
+          </div>
         </div>
 
         <div style="background:#fffdf8;border:1px solid #ddd3bd;padding:26px;margin-bottom:20px">
@@ -4773,6 +4777,7 @@ Responda em JSON puro, um array de 2 objetos: [{"text": "...", "hashtags": "#tag
         metaTitle: site.metaTitle, metaDescription: site.metaDescription, metaKeywords: site.metaKeywords,
         brandName: site.brandName, creci: site.creci, phone: site.phone, whatsapp: site.whatsapp,
         email: site.email, address: site.address, footerTagline: site.footerTagline,
+        footerNote: site.footerNote || '',
         logoWidth: site.logoWidth || 210,
         hasLogo: !!site.logoUrl, hasNoLogo: !site.logoUrl,
         logoImgStyle: site.logoUrl ? `height:44px;width:140px;background-size:contain;background-repeat:no-repeat;background-position:left center` : `height:0;width:0`,
@@ -4921,6 +4926,7 @@ Responda em JSON puro, um array de 2 objetos: [{"text": "...", "hashtags": "#tag
       onSiteField_email: this.updateSiteField('email'),
       onSiteField_address: this.updateSiteField('address'),
       onSiteField_footerTagline: this.updateSiteField('footerTagline'),
+      onSiteField_footerNote: this.updateSiteField('footerNote'),
       onLogoWidth: this.updateSiteField('logoWidth'),
       applyReferencePalette: this.applyReferencePalette,
       themeSwatches: [

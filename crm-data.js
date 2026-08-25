@@ -9,7 +9,10 @@
   // cache de fotos já carregado do banco de mídia era perdido, deixando as imagens vazias.
   if (window.CRMData) return;
   const LS = {
-    properties: 'edina_db_properties_v6',
+    // v7: os 20 imóveis de exemplo saíram do ar e deram lugar ao portfólio real. A versão da
+    // chave sobe junto para que navegadores que já tinham o catálogo antigo salvo o descartem
+    // sozinhos — sem isso o localStorage vence o arquivo novo e a lista velha nunca sai.
+    properties: 'edina_db_properties_v7',
     leads: 'edina_db_leads_v2',
     posts: 'edina_db_posts',
     testimonials: 'edina_db_testimonials_v3',
@@ -83,7 +86,9 @@
   const seedSiteContent = {
     logoUrl: "",
     faviconUrl: "",
-    signatureUrl: "",
+    // Arquivo versionado junto com o site: a assinatura aparece para qualquer visitante desde
+    // a primeira visita, sem depender do que estiver salvo no navegador de quem administra.
+    signatureUrl: "assinatura-ink.png",
     heroLabel: "Navegantes · Itajaí · Camboriú · Praia Brava",
     heroTitle: "Bem-vindos ao litoral de alto padrão",
     heroSubtitle: "Os melhores imóveis de alto padrão em Navegantes, Itajaí, Camboriú e Praia Brava, selecionados para quem busca vista, exclusividade e conforto.",
@@ -105,6 +110,8 @@
     servicesEyebrow: "Como Podemos Ajudar", servicesTitle: "Serviços Especializados",
     watermarkOpacity: 0.32,
     footerTagline: "Os melhores imóveis de alto padrão no litoral de Santa Catarina, em um só lugar.",
+    // Texto livre do canto direito do rodapé, editável em Conteúdo do Site. Vazio = nada aparece.
+    footerNote: "",
     theme: {
       accent: "#c1664a",
       tan: "#c4a886",
@@ -166,7 +173,7 @@
   // Cache local do conteúdo publicado. Na primeira visita o site precisa esperar a rede; nas
   // seguintes ele pinta na hora com a última versão conhecida e só depois confere no servidor
   // se saiu coisa nova (e aí atualiza a tela). É o que faz o carregamento parecer instantâneo.
-  const PUB_CACHE = 'edina_pub_cache_v1';
+  const PUB_CACHE = 'edina_pub_cache_v2';
   let revalidating = false;
 
   function primeFromCache() {
