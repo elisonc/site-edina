@@ -9,7 +9,8 @@
       "Bash(git add *)",
       "Bash(git commit -m 'Atualizar crm.dc.html - remover 20 imóveis fictícios e integrar Firebase *)",
       "Bash(git commit -m 'Deploy final: atualizar imoveis.dc.html, blog.dc.html e favoritos.dc.html com dados zerados *)",
-      "Bash(git commit -m 'Remover mensagem fictícia do footer - imoveis.dc.html *)"
+      "Bash(git commit -m 'Remover mensagem fictícia do footer - imoveis.dc.html *)",
+      "Bash(git commit -m 'FINAL: Remover completamente todos os 20 imóveis - imoveis.dc.html *)"
     ]
   }
 }
