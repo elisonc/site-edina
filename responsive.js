@@ -13,7 +13,9 @@
     /* Cabeçalho: logo em cima, menu numa linha própria, botão inteiro embaixo */
     '  header{flex-wrap:wrap !important;height:auto !important;row-gap:12px !important;padding-top:14px !important;padding-bottom:14px !important}',
     '  header nav{flex-wrap:wrap !important;justify-content:center !important;align-items:center !important;width:100% !important;row-gap:10px !important;column-gap:18px !important}',
-    '  header nav a{white-space:nowrap !important;font-size:12px !important;letter-spacing:.08em !important}',
+    /* Links do menu com 15px de altura eram alvo pequeno demais para o dedo: o recheio
+       vertical leva cada um perto dos 44px recomendados, sem mudar o desenho. */
+    '  header nav a{white-space:nowrap !important;font-size:12px !important;letter-spacing:.08em !important;display:inline-flex !important;align-items:center !important;min-height:40px !important;padding:0 2px !important}',
     /* O "Agendar Visita" é o último item do menu. Sem margens automáticas: elas consomem o
        espaço livre e anulam o justify-content:center do menu. */
     '  header nav > a:last-child{box-sizing:border-box !important;flex:0 0 auto !important;margin:2px 0 0 !important;padding:11px 22px !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;min-height:44px !important}',
