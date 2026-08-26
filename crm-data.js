@@ -426,7 +426,10 @@
   // marcar vários imóveis — geravam uma gravação para cada passo. Agrupar o que acontece
   // na mesma meia-segunda reduz muito o vaivém com o servidor sem atrasar nada que se
   // perceba: a tela já mostrou a alteração, o que espera é só o envio.
-  const AGRUPAR_MS = 500;
+  // 220ms ainda junta os passos de uma mesma ação (arrastar cards, ajustar campos em
+  // sequência), mas some da percepção: metade do tempo que a alteração levava para
+  // aparecer em outro aparelho era esta espera.
+  const AGRUPAR_MS = 220;
   const pendentesDeEnvio = {};
   const temporizadores = {};
 
