@@ -60,25 +60,6 @@
     '  [style*="gap:60px"],[style*="gap: 60px"]{gap:30px !important}',
     '}',
 
-    /* ---------- Painel CRM no celular ----------
-       A regra geral acima joga todo grid para uma coluna. Nos cartões de número isso
-       desperdiça a largura da tela e obriga a rolar muito: eles voltam a dividir a linha,
-       enquanto formulários e botões ganham o toque confortável que faltava. */
-    '@media (max-width:980px){',
-    '  [data-crm-main] [style*="grid-template-columns:repeat(3"],',
-    '  [data-crm-main] [style*="grid-template-columns:repeat(4"],',
-    '  [data-crm-main] [style*="grid-template-columns: repeat(3"],',
-    '  [data-crm-main] [style*="grid-template-columns: repeat(4"]{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:12px !important}',
-    '  [data-crm-main] [style*="font-size:34px"],[data-crm-main] [style*="font-size:32px"]{font-size:clamp(20px,6vw,28px) !important;line-height:1.15 !important;overflow-wrap:anywhere}',
-    /* Campos e botões: altura de toque e largura inteira, sem ficarem espremidos lado a lado */
-    '  [data-crm-main] input,[data-crm-main] select,[data-crm-main] textarea{min-height:46px !important;font-size:16px !important;padding:12px 14px !important}',
-    '  [data-crm-main] button{min-height:46px !important;padding:12px 18px !important}',
-    /* Barras de ação (ex.: "Descartar tudo" / "Publicar selecionados") empilham e ocupam a linha */
-    '  [data-crm-actions]{flex-direction:column !important;align-items:stretch !important;gap:10px !important}',
-    '  [data-crm-actions] > *{width:100% !important}',
-    '  [data-crm-main] > div{margin-bottom:16px !important}',
-    '}',
-
     /* ---------- Celular estreito ---------- */
     '@media (max-width:520px){',
     '  section,header,footer{padding-left:18px !important;padding-right:18px !important}',

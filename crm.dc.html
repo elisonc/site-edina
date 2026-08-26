@@ -70,6 +70,32 @@
       [data-crm-main] [style*="width:380px"], [data-crm-main] [style*="width:520px"] { width: 100% !important; max-width: 100% !important; }
       [data-crm-main] input, [data-crm-main] select, [data-crm-main] textarea { max-width: 100% !important; width: 100% !important; box-sizing: border-box !important; font-size: 16px !important; }
       [data-crm-main] button { min-height: 44px; }
+
+      /* Campos com altura de dedo. O padrão de 7px de recheio dava 39px de altura — dava
+         para tocar, mas errando muito. O texto em 16px também impede o iPhone de dar zoom
+         sozinho ao focar um campo, o que jogava a tela fora de lugar. */
+      input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),
+      select, textarea {
+        box-sizing: border-box !important; min-height: 46px !important;
+        font-size: 16px !important; padding: 12px 14px !important;
+      }
+      textarea { min-height: 96px !important; }
+      /* Rótulos de 11px são pequenos demais numa tela de celular. */
+      [style*="font-size:11px"], [style*="font-size:11.5px"], [style*="font-size:12px"] { font-size: 13px !important; }
+
+      /* Cartões de número (Total da Carteira, Dashboard): duas colunas aproveitam a largura
+         em vez de virar uma pilha alta que obriga a rolar. */
+      [data-crm-main] [style*="grid-template-columns"] { gap: 12px !important; }
+      [data-crm-main] [style*="font-size:34px"], [data-crm-main] [style*="font-size:32px"],
+      [data-crm-main] [style*="font-size:30px"] { font-size: clamp(19px, 5.6vw, 26px) !important; line-height: 1.15 !important; overflow-wrap: anywhere; }
+
+      /* Botões de ação lado a lado não cabem: empilham ocupando a linha inteira. */
+      [data-crm-actions] { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; }
+      [data-crm-actions] > * { width: 100% !important; }
+      [data-crm-actions] button { justify-content: center !important; }
+
+      /* Cartões do importador: a miniatura sai da linha do formulário e os campos respiram. */
+      [data-crm-main] [style*="align-items:center"][style*="gap:14px"] { align-items: flex-start !important; }
     }  </style>
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <script src="./facebook-login.js"></script>
