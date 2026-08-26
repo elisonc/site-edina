@@ -34,12 +34,12 @@
   // publicar o imóvel sem foto a deixar o cadastro inteiro esperando por ela.
   // Seis segundos bastam para um envio que vai dar certo. Vinte só faziam a pessoa esperar
   // quando o Storage estava fora — e era a maior parte do tempo que uma gravação levava.
-  const UPLOAD_TIMEOUT_MS = 6000;
+  const UPLOAD_TIMEOUT_MS = 2500;
 
-  // Storage fora não é notícia de um instante só. Guardar essa constatação por alguns
-  // minutos evita cobrar o tempo de espera de novo a cada gravação: a partir da segunda,
-  // a imagem vai direto para dentro do documento, sem parada.
-  const LEMBRAR_FORA_MS = 10 * 60 * 1000;
+  // Storage fora não é notícia de um instante só. Guardar essa constatação por horas evita
+  // cobrar a espera de novo a cada gravação — eram segundos de tela parada em toda edição,
+  // e a impressão de que nada tinha sido salvo.
+  const LEMBRAR_FORA_MS = 6 * 60 * 60 * 1000;
   const CHAVE_FORA = 'edina_storage_fora_ate';
   function storageMarcadoFora() {
     try { return Number(localStorage.getItem(CHAVE_FORA) || 0) > Date.now(); } catch (e) { return false; }
@@ -209,8 +209,8 @@
     if (!validas.length) return null;
 
     // Galeria grande pede foto mais leve; o piso mantém a imagem apresentável na página.
-    const cota = validas.length > 12 ? 90 * 1024 : 130 * 1024;
-    const etapas = [[1400, 0.72], [1100, 0.66], [900, 0.6], [700, 0.52], [560, 0.46]];
+    const cota = validas.length > 12 ? 110 * 1024 : 160 * 1024;
+    const etapas = [[1600, 0.82], [1300, 0.76], [1000, 0.7], [800, 0.62], [640, 0.55]];
 
     const blocos = [[]];
     let usadoNoBloco = 0;

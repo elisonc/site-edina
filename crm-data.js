@@ -578,7 +578,11 @@
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
           try {
-            resolve(format === 'png' ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', quality));
+            if (format === 'png') { resolve(canvas.toDataURL('image/png')); return; }
+          const jpeg = canvas.toDataURL('image/jpeg', quality);
+          let webp = '';
+          try { webp = canvas.toDataURL('image/webp', Math.min(0.92, quality + 0.06)); } catch (e) {}
+          resolve((webp.indexOf('data:image/webp') === 0 && webp.length < jpeg.length) ? webp : jpeg);
           } catch (e) {
             reject(new Error('encode-failed'));
           }
@@ -609,7 +613,15 @@
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
         try {
-          resolve(format === 'png' ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', quality));
+          if (format === 'png') { resolve(canvas.toDataURL('image/png')); return; }
+          const jpeg = canvas.toDataURL('image/jpeg', quality);
+          // WebP entrega a mesma imagem com bem menos peso. Só é adotado quando o navegador
+          // realmente gera o formato (o cabeçalho confirma) e quando o arquivo sai menor —
+          // caso contrário fica o JPEG, sem risco de piorar.
+          let webp = '';
+          try { webp = canvas.toDataURL('image/webp', Math.min(0.92, quality + 0.06)); } catch (e) {}
+          const valeAPena = webp.indexOf('data:image/webp') === 0 && webp.length < jpeg.length;
+          resolve(valeAPena ? webp : jpeg);
         } catch (e) {
           reject(new Error('encode-failed'));
         }
