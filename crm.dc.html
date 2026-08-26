@@ -2546,6 +2546,8 @@ class Component extends DCLogic {
     // O painel também precisa acompanhar o banco: sem escutar estas mudanças, uma edição
     // feita em outro aparelho só aparecia aqui quando alguém recarregava a página.
     this._aoAtualizar = () => {
+      // O espaço acompanha cada mudança de conteúdo, aqui e nos outros aparelhos.
+      setTimeout(this.refreshStorage, 300);
       this.setState({
         properties: window.CRMData.getPropertiesRaw(),
         leads: window.CRMData.getLeads(),
@@ -2971,21 +2973,50 @@ class Component extends DCLogic {
       .then(key => this.setState({ siteContent: { ...this.state.siteContent, ogImage: key }, siteSaved: false }))
       .catch(() => window.alert('Não foi possível ler essa imagem.'));
   };
+  // Conta as fotos que o site realmente tem — percorrendo imóveis, blog, depoimentos e
+  // conteúdo do site. O registro do banco sozinho ignorava as fotos que são arquivo do
+  // próprio site e não passam por ele, e por isso mostrava um punhado quando havia
+  // centenas.
+  contarFotosDoSite = () => {
+    const D = window.CRMData;
+    let doBanco = 0, deArquivo = 0;
+    const conta = (v) => {
+      if (typeof v !== 'string' || !v) return;
+      if (v.indexOf('fotodoc:') === 0 || v.indexOf('data:') === 0 || /^idb/.test(v)) doBanco++;
+      else deArquivo++;
+    };
+    try {
+      (D.getPropertiesRaw() || []).forEach(p => {
+        conta(p.image);
+        (p.images || []).forEach(conta);
+        (p.plantas || []).forEach(conta);
+      });
+      (D.getPosts() || []).forEach(p => conta(p.image));
+      const sc = D.getSiteContentRaw() || {};
+      ['logoUrl','signatureUrl','watermarkLogoUrl','faviconUrl','heroImage','aboutImage',
+       'spotlightImage','footerLogoUrl','ogImage'].forEach(k => conta(sc[k]));
+      (sc.heroSlides || []).forEach(conta);
+    } catch (e) {}
+    return { doBanco, deArquivo, total: doBanco + deArquivo };
+  };
+
   refreshStorage = () => {
-    // O número que interessa é o do site, não o deste navegador: a estimativa local só
-    // conhece as fotos que passaram por aqui, e mostrava um valor diferente em cada
-    // aparelho. O uso real vem do banco.
+    const contagem = this.contarFotosDoSite();
+    const teto = (window.CRMData && window.CRMData.getStorageBudget)
+      ? window.CRMData.getStorageBudget() : 2 * 1024 * 1024 * 1024;
+
     if (window.FirebaseDB && window.FirebaseDB.enabled && window.FirebaseDB.usoDeFotos) {
       window.FirebaseDB.usoDeFotos().then(u => {
-        if (!u) return;
-        const teto = window.CRMData.getStorageBudget ? window.CRMData.getStorageBudget()
-                                                     : 2 * 1024 * 1024 * 1024;
-        this.setState({ storage: { used: u.bytes, quota: teto, fotos: u.fotos, doSite: true } });
-      }).catch(() => {});
+        this.setState({ storage: { used: (u && u.bytes) || 0, quota: teto,
+                                   fotos: contagem.total, noBanco: contagem.doBanco,
+                                   deArquivo: contagem.deArquivo, doSite: true } });
+      }).catch(() => {
+        this.setState({ storage: { used: 0, quota: teto, fotos: contagem.total, doSite: true } });
+      });
+      return;
     }
     if (!window.CRMData || !window.CRMData.storageEstimate) return;
     window.CRMData.storageEstimate().then(s => {
-      // Só usa a estimativa local enquanto o número do site não chegou.
       if (s && !(this.state.storage && this.state.storage.doSite)) this.setState({ storage: s });
     });
   };
@@ -5136,9 +5167,13 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
         if (!st || !st.quota) return 'Calculando o espaço disponível…';
         const fmt = (n) => n >= 1073741824 ? (n / 1073741824).toFixed(1) + ' GB' : (n / 1048576).toFixed(0) + ' MB';
         const pct = Math.min(100, Math.round(st.used / st.quota * 100));
-        const quantas = st.fotos != null ? `${st.fotos} foto(s) · ` : '';
-        const onde = st.doSite ? ' no site (vale para todos os aparelhos)' : ' neste navegador';
-        const base = `${quantas}${fmt(st.used)} usados de ${fmt(st.quota)}${onde} (${pct}%).`;
+        if (st.doSite) {
+          const detalhe = st.deArquivo
+            ? ` (${st.noBanco} no banco · ${st.deArquivo} servidas pelo site)` : '';
+          return `${st.fotos} foto(s)${detalhe} · ${fmt(st.used)} de ${fmt(st.quota)} usados no banco (${pct}%). Vale para todos os aparelhos.`
+            + (pct > 85 ? ' Espaço quase cheio — mude a qualidade para "Leve".' : '');
+        }
+        const base = `${fmt(st.used)} usados de ${fmt(st.quota)} neste navegador (${pct}%).`;
         if (pct > 85) return base + ' Espaço quase cheio — troque a qualidade para "Leve" ou remova fotos que não usa.';
         return base;
       })(),

@@ -881,8 +881,20 @@
     publishedAt: function () { return published && published.publishedAt ? published.publishedAt : ''; },
     photoURL: function (v) {
       if (!v) return '';
-      if (typeof v !== 'string' || !/^idb(photo|audio|doc):/.test(v)) return v;
+      if (typeof v !== 'string') return v;
+      // 'fotodoc:' aponta para uma imagem guardada no banco. O dado salvo guarda só esta
+      // referência, curta; a imagem em si fica no cache de memória. É o que impede tanto o
+      // armazenamento do navegador de encher quanto a foto de ser apagada quando outro
+      // aparelho grava por cima.
+      if (v.indexOf('fotodoc:') === 0) return this._photoCache[v] || '';
+      if (!/^idb(photo|audio|doc):/.test(v)) return v;
       return this._photoCache[v] || '';
+    },
+    // Guarda no cache as imagens que vieram do banco.
+    registrarImagensDoBanco: function (rotulo, imagens) {
+      (imagens || []).forEach((img, i) => {
+        if (img) this._photoCache['fotodoc:' + rotulo + ':' + i] = img;
+      });
     },
     // Carrega no cache APENAS as chaves pedidas. Nada de varrer o banco inteiro: com 50
     // empreendimentos x 50 fotos isso seriam centenas de MB residentes em memória.

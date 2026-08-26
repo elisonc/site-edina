@@ -309,48 +309,39 @@
   }
 
   // Troca as referências 'fotodoc:' pelas imagens de verdade, para quem for exibir.
-  // Resolve as referências de um conjunto (site, posts) para as imagens de verdade.
-  async function hidratarConjunto(alvo, campos, rotulo) {
-    const refDe = (v) => (typeof v === 'string' && v.indexOf('fotodoc:' + rotulo + ':') === 0)
-      ? parseInt(v.split(':')[2], 10) : -1;
-    const precisa = campos.some(c => refDe(alvo[c]) >= 0) ||
-      (Array.isArray(alvo.heroSlides) && alvo.heroSlides.some(v => refDe(v) >= 0));
-    if (!precisa) return alvo;
+  // As imagens do banco entram no cache de memória; os dados continuam guardando apenas a
+  // referência 'fotodoc:'. Antes a referência era trocada pela imagem dentro do próprio
+  // dado — e essa versão inchada acabava gravada no navegador (enchendo o armazenamento) e
+  // reenviada ao banco por quem não conseguia lê-la (apagando a foto). Guardando só a
+  // referência, nenhum dos dois acontece.
+  async function carregarParaCache(rotulo) {
+    if (!window.CRMData || !window.CRMData.registrarImagensDoBanco) return [];
     const imgs = await lerImagens(rotulo);
-    if (!imgs.length) return alvo;
-    campos.forEach(c => { const i = refDe(alvo[c]); if (i >= 0 && imgs[i]) alvo[c] = imgs[i]; });
-    if (Array.isArray(alvo.heroSlides)) {
-      alvo.heroSlides = alvo.heroSlides.map(v => { const i = refDe(v); return (i >= 0 && imgs[i]) ? imgs[i] : v; });
-    }
+    if (imgs.length) window.CRMData.registrarImagensDoBanco(rotulo, imgs);
+    return imgs;
+  }
+
+  function usaReferencia(v, rotulo) {
+    return typeof v === 'string' && v.indexOf('fotodoc:' + rotulo + ':') === 0;
+  }
+
+  async function hidratarFotos(props) {
+    const comRef = (props || []).filter(p =>
+      usaReferencia(p.image, p.id) || (p.images || []).some(i => usaReferencia(i, p.id)));
+    await Promise.all(comRef.map(p => carregarParaCache(p.id)));
+    return props;
+  }
+
+  async function hidratarConjunto(alvo, campos, rotulo) {
+    const precisa = campos.some(c => usaReferencia(alvo[c], rotulo)) ||
+      (Array.isArray(alvo.heroSlides) && alvo.heroSlides.some(v => usaReferencia(v, rotulo)));
+    if (precisa) await carregarParaCache(rotulo);
     return alvo;
   }
 
   async function hidratarLista(lista, campo, rotulo) {
-    const precisa = (lista || []).some(x => typeof x[campo] === 'string' && x[campo].indexOf('fotodoc:' + rotulo + ':') === 0);
-    if (!precisa) return lista;
-    const imgs = await lerImagens(rotulo);
-    if (!imgs.length) return lista;
-    lista.forEach(x => {
-      if (typeof x[campo] === 'string' && x[campo].indexOf('fotodoc:' + rotulo + ':') === 0) {
-        const i = parseInt(x[campo].split(':')[2], 10);
-        if (imgs[i]) x[campo] = imgs[i];
-      }
-    });
+    if ((lista || []).some(x => usaReferencia(x[campo], rotulo))) await carregarParaCache(rotulo);
     return lista;
-  }
-
-  async function hidratarFotos(props) {
-    const precisam = (props || []).filter(p =>
-      String(p.image || '').indexOf('fotodoc:') === 0 ||
-      (p.images || []).some(i => String(i).indexOf('fotodoc:') === 0));
-    if (!precisam.length) return props;
-    await Promise.all(precisam.map(async p => {
-      const fotos = await lerImagens(p.id);
-      if (!fotos.length) return;
-      p.images = fotos.slice();
-      p.image = fotos[0];
-    }));
-    return props;
   }
 
   async function externalizeProperties(props) {
