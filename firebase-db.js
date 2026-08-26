@@ -161,6 +161,65 @@
   // pessoa achar que as fotos subiram.
   const mediaErrors = [];
 
+  // ---- Fotos de imóvel em documento próprio ----
+  // Um documento do Firestore vai até 1 MB, e o catálogo inteiro mora num só. As fotos de
+  // uma ficha (uma dúzia, às vezes) não cabem ali junto com todos os outros imóveis — era
+  // por isso que uma importação com sete fotos chegava ao banco sem nenhuma. Cada imóvel
+  // passa a ter o seu próprio documento de fotos, e a ficha guarda apenas a referência.
+  const PASTA_FOTOS = 'edina_fotos';
+  const TETO_DOC_FOTOS = 900 * 1024;
+
+  // Resolve uma referência local (idb:) para a imagem em si; data: já vem pronta.
+  async function paraDataUrl(valor) {
+    const v = String(valor || '');
+    if (v.indexOf('data:') === 0) return v;
+    if (!/^idb/.test(v)) return '';
+    try {
+      await window.CRMData.warm([v]);
+      return window.CRMData.photoURL(v) || await window.CRMData.getMediaRaw(v) || '';
+    } catch (e) { return ''; }
+  }
+
+  async function guardarFotosDoImovel(id, fotos) {
+    await ready;
+    if (!firebase.apps.length) return null;
+    const cabem = [];
+    let usado = 0;
+    for (const f of fotos) {
+      if (!f || f.indexOf('data:') !== 0) continue;
+      if (usado + f.length > TETO_DOC_FOTOS) break;
+      usado += f.length;
+      cabem.push(f);
+    }
+    if (!cabem.length) return null;
+    await firebase.firestore().collection(PASTA_FOTOS).doc(String(id))
+      .set({ data: cabem, updatedAt: Date.now() });
+    return cabem.length;
+  }
+
+  async function lerFotosDoImovel(id) {
+    await ready;
+    if (!firebase.apps.length) return [];
+    return firebase.firestore().collection(PASTA_FOTOS).doc(String(id)).get()
+      .then(s => (s.exists ? (s.data().data || []) : []))
+      .catch(() => []);
+  }
+
+  // Troca as referências 'fotodoc:' pelas imagens de verdade, para quem for exibir.
+  async function hidratarFotos(props) {
+    const precisam = (props || []).filter(p =>
+      String(p.image || '').indexOf('fotodoc:') === 0 ||
+      (p.images || []).some(i => String(i).indexOf('fotodoc:') === 0));
+    if (!precisam.length) return props;
+    await Promise.all(precisam.map(async p => {
+      const fotos = await lerFotosDoImovel(p.id);
+      if (!fotos.length) return;
+      p.images = fotos.slice();
+      p.image = fotos[0];
+    }));
+    return props;
+  }
+
   async function externalizeProperties(props) {
     mediaErrors.length = 0;
     storageIndisponivel = false;
@@ -169,6 +228,28 @@
     const out = [];
     for (const p of props) {
       const q = { ...p };
+      const originais = [q.image].concat(Array.isArray(q.images) ? q.images : []).filter(Boolean);
+      const precisamSubir = originais.some(v => /^idb/.test(String(v)) || String(v).indexOf('data:') === 0);
+
+      // Com o Storage fora, as fotos da ficha vão para o documento do próprio imóvel, onde
+      // cabem. A ficha guarda só a referência — assim o catálogo continua leve e nenhuma
+      // foto se perde por falta de espaço, que era o que acontecia na importação.
+      if (precisamSubir && (storageIndisponivel || storageMarcadoFora())) {
+        const dados = [];
+        for (const v of originais) {
+          const d = await paraDataUrl(v);
+          if (d) dados.push(d);
+        }
+        const gravadas = await guardarFotosDoImovel(q.id, dados);
+        if (gravadas) {
+          q.images = Array.from({ length: gravadas }, (_, i) => 'fotodoc:' + q.id + ':' + i);
+          q.image = q.images[0];
+          if (q.videoFile) q.videoFile = await externalizeMedia(q.videoFile, 'videos', cache);
+          out.push(q);
+          continue;
+        }
+      }
+
       if (q.image) q.image = await externalizeMedia(q.image, 'fotos', cache);
       if (Array.isArray(q.images)) {
         const arr = [];
@@ -249,6 +330,11 @@
     await Promise.all(DOCS.map(name => DOC(name).get().then(snap => {
       out[name] = snap.exists ? snap.data().data : undefined;
     }).catch(() => {})));
+    // Fichas que apontam para o documento de fotos recebem as imagens de volta aqui, para
+    // quem lê não precisar saber onde elas ficaram guardadas.
+    if (Array.isArray(out.properties)) {
+      try { await hidratarFotos(out.properties); } catch (e) {}
+    }
     return out;
   }
 
@@ -258,7 +344,13 @@
     ready.then(ok => {
       if (!ok || !firebase.apps.length) return;
       DOCS.forEach(name => DOC(name).onSnapshot(snap => {
-        if (snap.exists) onChange(name, snap.data().data);
+        if (!snap.exists) return;
+        const dados = snap.data().data;
+        if (name === 'properties' && Array.isArray(dados)) {
+          hidratarFotos(dados).then(() => onChange(name, dados)).catch(() => onChange(name, dados));
+          return;
+        }
+        onChange(name, dados);
       }, () => {}));
     });
   }
@@ -299,6 +391,9 @@
     // Gravação genérica, para as chaves que não precisam de tratamento de mídia.
     saveDoc: (nome, dados) => save(nome, dados),
     mediaErrors: () => mediaErrors.slice(),
+    guardarFotosDoImovel: guardarFotosDoImovel,
+    lerFotosDoImovel: lerFotosDoImovel,
+    hidratarFotos: hidratarFotos,
     fetchAll: fetchAll,
     watch: watch,
     logPageview: logPageview,
