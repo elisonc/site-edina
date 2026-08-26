@@ -284,7 +284,7 @@
     } catch (e) {}
   }
   function storeCache(d) {
-    try { localStorage.setItem(PUB_CACHE, JSON.stringify(d)); } catch (e) {}
+    try { localStorage.setItem(PUB_CACHE, JSON.stringify(semImagensPesadas(d))); } catch (e) {}
   }
 
   function fetchPublished() {
@@ -343,7 +343,7 @@
       const chaveLocal = Object.keys(CHAVES_COMPARTILHADAS).find(k => CHAVES_COMPARTILHADAS[k] === nome);
       if (chaveLocal) {
         aplicandoDoServidor = true;
-        try { localStorage.setItem(chaveLocal, JSON.stringify(dados)); } catch (e) {}
+        try { localStorage.setItem(chaveLocal, JSON.stringify(semImagensPesadas(dados))); } catch (e) {}
         aplicandoDoServidor = false;
       }
       // Chegou versão nova do servidor: o que este navegador tinha guardado deixa de ser
@@ -482,10 +482,46 @@
     enviarAgrupado(doc, val);
   }
 
+  // O armazenamento do navegador tem poucos megabytes. Uma imagem embutida ocupa centenas
+  // de KB, e o catálogo inteiro com fotos passava de 11 MB — daí o "armazenamento cheio".
+  // As imagens vivem no banco e em memória; o que fica guardado aqui é a estrutura, sem elas.
+  const TETO_GUARDADO = 8 * 1024;
+  function semImagensPesadas(valor) {
+    if (typeof valor === 'string') {
+      return (valor.indexOf('data:') === 0 && valor.length > TETO_GUARDADO) ? '' : valor;
+    }
+    if (Array.isArray(valor)) return valor.map(semImagensPesadas);
+    if (valor && typeof valor === 'object') {
+      const out = {};
+      Object.keys(valor).forEach(k => { out[k] = semImagensPesadas(valor[k]); });
+      return out;
+    }
+    return valor;
+  }
+
+  // Navegadores que já guardaram imagens antes desta mudança continuam com o armazenamento
+  // entupido e recusando qualquer gravação nova. Uma passagem no início devolve o espaço.
+  (function faxinaInicial() {
+    try {
+      let usado = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        usado += (localStorage.getItem(localStorage.key(i)) || '').length;
+      }
+      if (usado < 3 * 1024 * 1024) return;
+      [PUB_CACHE, LS.properties, LS.site, LS.posts, LS.testimonials].forEach(k => {
+        try {
+          const bruto = localStorage.getItem(k);
+          if (!bruto || bruto.length < 100 * 1024) return;
+          localStorage.setItem(k, JSON.stringify(semImagensPesadas(JSON.parse(bruto))));
+        } catch (e) { try { localStorage.removeItem(k); } catch (e2) {} }
+      });
+    } catch (e) {}
+  })();
+
   function set(key, val) {
     sincronizar(key, val);
     try {
-      localStorage.setItem(key, JSON.stringify(val));
+      localStorage.setItem(key, JSON.stringify(semImagensPesadas(val)));
       return true;
     } catch (e) {
       console.warn('CRMData: falha ao salvar "' + key + '" (provável limite de armazenamento do navegador excedido).', e);
