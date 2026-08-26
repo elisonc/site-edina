@@ -2516,10 +2516,32 @@ class Component extends DCLogic {
     propFilterRef: '', propFilterTitle: '', propFilterRegion: '', propFilterPublished: '', propFilterStatus: ''
   };
 
+  componentWillUnmount() {
+    if (this._aoAtualizar) window.removeEventListener('edina:published-updated', this._aoAtualizar);
+    if (this._aoAtualizarVisitas) window.removeEventListener('edina:analytics-updated', this._aoAtualizarVisitas);
+  }
+
   componentDidMount() {
     window.CRMData.applyTheme(this.state.siteContent.theme);
     // Contatos enviados pelo site chegam no banco, não neste navegador — busca os que
     // faltam antes de montar a lista, senão o painel mostra só o que foi digitado aqui.
+    // O painel também precisa acompanhar o banco: sem escutar estas mudanças, uma edição
+    // feita em outro aparelho só aparecia aqui quando alguém recarregava a página.
+    this._aoAtualizar = () => {
+      this.setState({
+        properties: window.CRMData.getPropertiesRaw(),
+        leads: window.CRMData.getLeads(),
+        posts: window.CRMData.getPosts(),
+        testimonials: window.CRMData.getTestimonials(),
+        visits: window.CRMData.getVisits(),
+        integrations: window.CRMData.getIntegrations(),
+        siteContent: window.CRMData.getSiteContentRaw()
+      });
+    };
+    window.addEventListener('edina:published-updated', this._aoAtualizar);
+    this._aoAtualizarVisitas = () => this.setState({ analyticsTick: Date.now() });
+    window.addEventListener('edina:analytics-updated', this._aoAtualizarVisitas);
+
     // Alinha o catálogo com o que está no ar antes de editar, senão salvar daqui devolve
     // ao banco a versão que este navegador tinha guardada.
     if (window.CRMData.syncProperties) {

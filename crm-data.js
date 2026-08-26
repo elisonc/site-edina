@@ -318,6 +318,14 @@
   // Escuta o banco em tempo real: publicou de um aparelho, as abas abertas em qualquer outro
   // se atualizam sozinhas. Sem isso a tela só mudava quando a pessoa recarregava a página, e
   // dois painéis abertos mostravam versões diferentes do mesmo conteúdo.
+  // Visualizações: mantém o número em dia sem depender de recarregar o painel.
+  if (window.FirebaseDB && window.FirebaseDB.enabled && window.FirebaseDB.watchAnalytics) {
+    window.FirebaseDB.watchAnalytics(function (registros) {
+      try { localStorage.setItem(LS.analytics, JSON.stringify(registros)); } catch (e) {}
+      try { window.dispatchEvent(new CustomEvent('edina:analytics-updated')); } catch (e) {}
+    });
+  }
+
   if (window.FirebaseDB && window.FirebaseDB.enabled && window.FirebaseDB.watch) {
     window.FirebaseDB.watch(function (nome, dados) {
       if (dados === undefined) return;

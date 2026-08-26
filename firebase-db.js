@@ -32,7 +32,24 @@
 
   // Prazo máximo de um envio ao Storage. Passou disso, seguimos sem a imagem: é preferível
   // publicar o imóvel sem foto a deixar o cadastro inteiro esperando por ela.
-  const UPLOAD_TIMEOUT_MS = 20000;
+  // Seis segundos bastam para um envio que vai dar certo. Vinte só faziam a pessoa esperar
+  // quando o Storage estava fora — e era a maior parte do tempo que uma gravação levava.
+  const UPLOAD_TIMEOUT_MS = 6000;
+
+  // Storage fora não é notícia de um instante só. Guardar essa constatação por alguns
+  // minutos evita cobrar o tempo de espera de novo a cada gravação: a partir da segunda,
+  // a imagem vai direto para dentro do documento, sem parada.
+  const LEMBRAR_FORA_MS = 10 * 60 * 1000;
+  const CHAVE_FORA = 'edina_storage_fora_ate';
+  function storageMarcadoFora() {
+    try { return Number(localStorage.getItem(CHAVE_FORA) || 0) > Date.now(); } catch (e) { return false; }
+  }
+  function marcarStorageFora() {
+    try { localStorage.setItem(CHAVE_FORA, String(Date.now() + LEMBRAR_FORA_MS)); } catch (e) {}
+  }
+  function limparMarcaStorage() {
+    try { localStorage.removeItem(CHAVE_FORA); } catch (e) {}
+  }
 
   // Depois da primeira recusa não vale insistir nas outras imagens: com 19 fotos numa
   // ficha, esperar o prazo de cada uma deixaria a pessoa olhando para um botão travado
@@ -114,7 +131,7 @@
     const blob = dataUrlToBlob(dataUrl);
     const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
     const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    if (storageIndisponivel) {
+    if (storageIndisponivel || storageMarcadoFora()) {
       mediaErrors.push({ path: path, code: 'storage-indisponivel' });
       return await guardarNoDocumento(value, dataUrl, cache);
     }
@@ -126,6 +143,7 @@
       await comPrazo(ref.put(blob), UPLOAD_TIMEOUT_MS, 'upload');
       const url = await comPrazo(ref.getDownloadURL(), UPLOAD_TIMEOUT_MS, 'url');
       cache[value] = url;
+      limparMarcaStorage();
       return url;
     } catch (e) {
       // Storage indisponível não pode levar o cadastro junto: sem este resgate, uma foto
@@ -133,6 +151,7 @@
       // Melhor o imóvel no ar sem imagem do que imóvel nenhum — a foto continua guardada
       // neste navegador e sobe assim que o Storage voltar.
       storageIndisponivel = true;
+      marcarStorageFora();
       mediaErrors.push({ path: path, code: e && (e.code || e.message) });
       return await guardarNoDocumento(value, dataUrl, cache);
     }
@@ -213,6 +232,16 @@
       .catch(() => []);
   }
 
+  // Visualizações chegam de visitantes, não do painel: sem ficar de olho, o número só mudava
+  // quando alguém recarregava a página do CRM.
+  function watchAnalytics(onChange) {
+    ready.then(ok => {
+      if (!ok || !firebase.apps.length) return;
+      firebase.firestore().collection('edina_analytics').limit(20000)
+        .onSnapshot(snap => { onChange(snap.docs.map(d => d.data())); }, () => {});
+    });
+  }
+
   async function fetchAll() {
     const ok = await ready;
     if (!ok || !firebase.apps.length) return null;
@@ -273,6 +302,7 @@
     fetchAll: fetchAll,
     watch: watch,
     logPageview: logPageview,
-    fetchAnalytics: fetchAnalytics
+    fetchAnalytics: fetchAnalytics,
+    watchAnalytics: watchAnalytics
   };
 })();
