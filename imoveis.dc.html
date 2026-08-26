@@ -212,15 +212,16 @@
 // Sem isso, abrir o portfólio baixava as quinze fotos grandes de uma vez.
 window.__lazyFoto = (function () {
   const pendentes = new WeakMap();
+  let contador = 0;
   const aplicar = (el) => {
     const src = pendentes.get(el);
     if (!src) return;
     pendentes.delete(el);
-    // Arquivo do site tem miniatura; foto enviada pelo painel (data:) usa o que veio.
     const mini = /^media\/[^/]+-1\.jpg$/.test(src) ? src.replace('media/', 'media/mini/') : src;
+    const pintar = (url) => { el.style.backgroundImage = `url('${url}')`; el.style.opacity = '1'; };
     const img = new Image();
-    img.onload = () => { el.style.backgroundImage = `url('${mini}')`; el.style.opacity = '1'; };
-    img.onerror = () => { el.style.backgroundImage = `url('${src}')`; el.style.opacity = '1'; };
+    img.onload = () => pintar(mini);
+    img.onerror = () => pintar(src);
     img.src = mini;
   };
   const obs = ('IntersectionObserver' in window)
@@ -231,9 +232,17 @@ window.__lazyFoto = (function () {
   return function (el, src) {
     if (!el || !src) return;
     pendentes.set(el, src);
+    const ordem = contador++;
+    // Os primeiros cards entram sem esperar: são os que já estão à vista, e adiar a foto
+    // deles só atrasaria o que a pessoa vê primeiro.
+    if (ordem < 4 || !obs) { aplicar(el); return; }
     el.style.transition = 'opacity .35s ease';
     el.style.opacity = '0';
-    if (obs) obs.observe(el); else aplicar(el);
+    obs.observe(el);
+    // Rede de segurança: se o observador não disparar (aba em segundo plano, navegador que
+    // não compõe a página, layout sem rolagem), a foto entra assim mesmo. Um card invisível
+    // seria pior do que um card pesado.
+    setTimeout(() => { if (pendentes.has(el)) { try { obs.unobserve(el); } catch (e) {} aplicar(el); } }, 2500);
   };
 })();
 
