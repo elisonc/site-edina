@@ -1,0 +1,5 @@
+# Arquivos de trabalho — ficam no repositório, mas não vão para o site publicado.
+*.md
+firestore.rules
+imoveis_reais.json
+SITE EDINA final/
