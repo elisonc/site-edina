@@ -185,10 +185,31 @@
   async function guardarFotosDoImovel(id, fotos) {
     await ready;
     if (!firebase.apps.length) return null;
+    // Reduz antes de guardar, para que a ficha inteira caiba. Sem isso, uma ficha com sete
+    // fotos entregava cinco e as duas últimas se perdiam em silêncio.
+    const reduzir = async (f, larg, q) => {
+      if (!(window.CRMData && window.CRMData.resizeDataUrl)) return f;
+      try {
+        const menor = await window.CRMData.resizeDataUrl(f, larg, q);
+        return (menor && menor.indexOf('data:') === 0 && menor.length < f.length) ? menor : f;
+      } catch (e) { return f; }
+    };
+
+    const validas = (fotos || []).filter(f => f && f.indexOf('data:') === 0);
+    if (!validas.length) return null;
+
+    // Orçamento por foto, a partir do que há para guardar; nunca abaixo do que ainda
+    // rende uma imagem apresentável na página do imóvel.
+    const cota = Math.max(60 * 1024, Math.floor(TETO_DOC_FOTOS / validas.length));
+    const etapas = [[1400, 0.72], [1100, 0.66], [900, 0.6], [700, 0.52]];
+
     const cabem = [];
     let usado = 0;
-    for (const f of fotos) {
-      if (!f || f.indexOf('data:') !== 0) continue;
+    for (const original of validas) {
+      let f = original;
+      for (let i = 0; i < etapas.length && f.length > cota; i++) {
+        f = await reduzir(f, etapas[i][0], etapas[i][1]);
+      }
       if (usado + f.length > TETO_DOC_FOTOS) break;
       usado += f.length;
       cabem.push(f);
