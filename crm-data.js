@@ -229,6 +229,13 @@
       if (JSON.stringify(published[nome]) === JSON.stringify(dados)) return;
       published[nome] = dados;
       storeCache(published);
+      // Espelha no armazenamento local sem reenviar ao servidor.
+      const chaveLocal = Object.keys(CHAVES_COMPARTILHADAS).find(k => CHAVES_COMPARTILHADAS[k] === nome);
+      if (chaveLocal) {
+        aplicandoDoServidor = true;
+        try { localStorage.setItem(chaveLocal, JSON.stringify(dados)); } catch (e) {}
+        aplicandoDoServidor = false;
+      }
       // Chegou versão nova do servidor: o que este navegador tinha guardado deixa de ser
       // "mais novo" e a tela volta a seguir o banco.
       try { localStorage.removeItem('edina_local_edits'); } catch (e) {}
@@ -250,6 +257,9 @@
     if (key === LS.site) return published.site;
     if (key === LS.posts) return published.posts;
     if (key === LS.testimonials) return published.testimonials;
+    if (key === LS.leads) return published.leads;
+    if (key === LS.visits) return published.visits;
+    if (key === LS.integrations) return published.integrations;
     return undefined;
   }
 
@@ -285,7 +295,39 @@
     try { localStorage.setItem(key, JSON.stringify(seed)); } catch (e) {}
     return JSON.parse(JSON.stringify(seed));
   }
+  // Chaves que valem para a operação inteira, não para um navegador só. Mandar a cópia ao
+  // banco aqui dentro cobre toda escrita de uma vez: os contatos, por exemplo, eram alterados
+  // em nove pontos diferentes do código e só dois avisavam o servidor — por isso o quadro de
+  // leads ficava diferente em cada aparelho.
+  const CHAVES_COMPARTILHADAS = {};
+  CHAVES_COMPARTILHADAS[LS.properties] = 'properties';
+  CHAVES_COMPARTILHADAS[LS.site] = 'site';
+  CHAVES_COMPARTILHADAS[LS.posts] = 'posts';
+  CHAVES_COMPARTILHADAS[LS.testimonials] = 'testimonials';
+  CHAVES_COMPARTILHADAS[LS.leads] = 'leads';
+  CHAVES_COMPARTILHADAS[LS.visits] = 'visits';
+  CHAVES_COMPARTILHADAS[LS.integrations] = 'integrations';
+  // LS.auth fica fora: as senhas estão em texto e este banco é de leitura pública.
+
+  // Quando o dado chega pelo watch não há o que devolver — sem esta trava a atualização
+  // recebida seria reenviada ao servidor, e dois aparelhos abertos ficariam se respondendo.
+  let aplicandoDoServidor = false;
+
+  function sincronizar(key, val) {
+    if (aplicandoDoServidor) return;
+    const doc = CHAVES_COMPARTILHADAS[key];
+    if (!doc) return;
+    if (!(window.FirebaseDB && window.FirebaseDB.enabled)) return;
+    const envio = doc === 'properties' ? window.FirebaseDB.saveProperties(val)
+                : doc === 'site' ? window.FirebaseDB.saveSite(val)
+                : doc === 'posts' ? window.FirebaseDB.savePosts(val)
+                : doc === 'testimonials' ? window.FirebaseDB.saveTestimonials(val)
+                : window.FirebaseDB.saveDoc(doc, val);
+    clearEditedIfSynced(envio);
+  }
+
   function set(key, val) {
+    sincronizar(key, val);
     try {
       localStorage.setItem(key, JSON.stringify(val));
       return true;
@@ -910,7 +952,7 @@
       });
     },
     getPropertiesRaw: () => get(LS.properties, seedProperties),
-    saveProperties: (arr) => { markEdited(); if (window.FirebaseDB && window.FirebaseDB.enabled) clearEditedIfSynced(window.FirebaseDB.saveProperties(arr)); return set(LS.properties, arr); },
+    saveProperties: (arr) => { markEdited(); return set(LS.properties, arr); },
     getLeads: () => get(LS.leads, seedLeads),
     saveLeads: (arr) => set(LS.leads, arr),
     addLead: (lead) => {
@@ -923,11 +965,6 @@
       const full = { id: nextId, stage: "novo", value: 0, date: dateLabel, time: timeLabel, createdAt: today.toISOString(), status: "aberto", assignedTo: "", timeline: [], attachments: [], offeredProperties: [], ...lead };
       leads.unshift(full);
       set(LS.leads, leads);
-      // O contato precisa chegar ao CRM mesmo tendo sido preenchido no celular de um
-      // visitante: a cópia local acima é só o retorno imediato da tela.
-      if (window.FirebaseDB && window.FirebaseDB.enabled) {
-        window.FirebaseDB.appendLead(full).catch(() => {});
-      }
       return full;
     },
     updateLead: (leadId, patch) => {
@@ -935,9 +972,6 @@
       const idx = leads.findIndex(l => l.id === leadId);
       if (idx === -1) return false;
       leads[idx] = { ...leads[idx], ...patch };
-      if (window.FirebaseDB && window.FirebaseDB.enabled) {
-        window.FirebaseDB.saveLeads(leads).catch(() => {});
-      }
       return set(LS.leads, leads);
     },
     // Alinha este navegador com o catálogo que está no ar antes de qualquer edição. Sem
@@ -1008,7 +1042,7 @@
       return arr.map(p => p.image ? { ...p, image: self.photoURL(p.image) } : p);
     },
     getPostsRaw: () => get(LS.posts, seedPosts),
-    savePosts: (arr) => { markEdited(); if (window.FirebaseDB && window.FirebaseDB.enabled) clearEditedIfSynced(window.FirebaseDB.savePosts(arr)); return set(LS.posts, arr); },
+    savePosts: (arr) => { markEdited(); return set(LS.posts, arr); },
     getVisits: () => get(LS.visits, seedVisits),
     saveVisits: (arr) => set(LS.visits, arr),
 
@@ -1118,7 +1152,7 @@
       });
     },
     getTestimonialsRaw: () => get(LS.testimonials, seedTestimonials),
-    saveTestimonials: (arr) => { markEdited(); if (window.FirebaseDB && window.FirebaseDB.enabled) clearEditedIfSynced(window.FirebaseDB.saveTestimonials(arr)); return set(LS.testimonials, arr); },
+    saveTestimonials: (arr) => { markEdited(); return set(LS.testimonials, arr); },
     getIntegrations: () => get(LS.integrations, { facebook: false, googleAds: false, apiKey: "eo_live_9f3a1c7d2b4e6f80", webhook: "", commission: 6 }),
     saveIntegrations: (obj) => set(LS.integrations, obj),
     getSiteContent: function () {
@@ -1131,7 +1165,7 @@
       return sc;
     },
     getSiteContentRaw: () => withSiteDefaults(get(LS.site, seedSiteContent)),
-    saveSiteContent: (obj) => { markEdited(); if (window.FirebaseDB && window.FirebaseDB.enabled) clearEditedIfSynced(window.FirebaseDB.saveSite(obj)); return set(LS.site, obj); },
+    saveSiteContent: (obj) => { markEdited(); return set(LS.site, obj); },
     applyTheme: (theme) => {
       if (!theme) return;
       const r = document.documentElement.style;

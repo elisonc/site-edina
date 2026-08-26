@@ -49,7 +49,11 @@
   }
 
   const DOC = (name) => firebase.firestore().collection('edina').doc(name);
-  const DOCS = ['properties', 'site', 'posts', 'testimonials'];
+  // Tudo que precisa ser igual em qualquer aparelho. Contatos, agenda e integrações
+  // ficavam de fora e por isso divergiam de um navegador para o outro.
+  // 'auth' não entra de propósito: as senhas são guardadas em texto e este banco é de
+  // leitura pública — sincronizá-las seria publicá-las.
+  const DOCS = ['properties', 'site', 'posts', 'testimonials', 'leads', 'visits', 'integrations'];
 
   function dataUrlToBlob(dataUrl) {
     const comma = dataUrl.indexOf(',');
@@ -222,6 +226,8 @@
     saveSite: (obj) => externalizeSite(obj).then(out => save('site', out)),
     savePosts: (arr) => externalizeList(arr, 'image').then(out => save('posts', out)),
     saveTestimonials: (arr) => externalizeList(arr, 'audioUrl').then(out => save('testimonials', out)),
+    // Gravação genérica, para as chaves que não precisam de tratamento de mídia.
+    saveDoc: (nome, dados) => save(nome, dados),
     mediaErrors: () => mediaErrors.slice(),
     fetchAll: fetchAll,
     watch: watch,
