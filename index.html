@@ -22,6 +22,9 @@
   <!-- O arquivo da fonte vem de outro servidor: sem esta linha, a conexão só começa
        depois que o CSS chega, e o texto fica esperando por isso. -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- A capa é a maior imagem da página e determina quando ela parece pronta: o download
+       começa junto com o HTML, sem esperar o JavaScript decidir qual foto usar. -->
+  <link rel="preload" as="image" href="./media/capa/aura-1.jpg" fetchpriority="high">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
   <style>
     html { scroll-behavior: smooth; }
@@ -645,7 +648,16 @@ class Component extends DCLogic {
       style: `position:absolute;inset:0;background-size:cover;background-position:center;opacity:${i === hIdx ? 1 : 0};transition:opacity .8s ease;z-index:0`,
       ref: (el) => {
         if (!el || !img) return;
-        if (i === hIdx) { el.style.backgroundImage = `url('${img}')`; return; }
+        // Versão de 1400px para a capa: basta para qualquer tela e evita baixar o arquivo
+        // cheio, que é a maior imagem da página e define quando ela parece pronta.
+        const leve = /^media\/[^/]+\.jpg$/.test(img) ? img.replace('media/', 'media/capa/') : img;
+        if (i === hIdx) {
+          const teste = new Image();
+          teste.onload = () => { el.style.backgroundImage = `url('${leve}')`; };
+          teste.onerror = () => { el.style.backgroundImage = `url('${img}')`; };
+          teste.src = leve;
+          return;
+        }
         if (el.dataset.adiado === img) return;
         el.dataset.adiado = img;
         const põe = () => { el.style.backgroundImage = `url('${img}')`; };
