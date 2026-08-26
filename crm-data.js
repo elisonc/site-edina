@@ -422,6 +422,43 @@
   // recebida seria reenviada ao servidor, e dois aparelhos abertos ficariam se respondendo.
   let aplicandoDoServidor = false;
 
+  // Ações em sequência — arrastar três cards no quadro, ajustar comissão campo a campo,
+  // marcar vários imóveis — geravam uma gravação para cada passo. Agrupar o que acontece
+  // na mesma meia-segunda reduz muito o vaivém com o servidor sem atrasar nada que se
+  // perceba: a tela já mostrou a alteração, o que espera é só o envio.
+  const AGRUPAR_MS = 500;
+  const pendentesDeEnvio = {};
+  const temporizadores = {};
+
+  function enviarAgrupado(doc, val) {
+    pendentesDeEnvio[doc] = val;
+    if (temporizadores[doc]) clearTimeout(temporizadores[doc]);
+    temporizadores[doc] = setTimeout(() => {
+      const dados = pendentesDeEnvio[doc];
+      delete pendentesDeEnvio[doc];
+      delete temporizadores[doc];
+      if (!(window.FirebaseDB && window.FirebaseDB.enabled)) return;
+      const envio = doc === 'properties' ? window.FirebaseDB.saveProperties(dados)
+                  : doc === 'site' ? window.FirebaseDB.saveSite(dados)
+                  : doc === 'posts' ? window.FirebaseDB.savePosts(dados)
+                  : doc === 'testimonials' ? window.FirebaseDB.saveTestimonials(dados)
+                  : window.FirebaseDB.saveDoc(doc, dados);
+      clearEditedIfSynced(envio);
+    }, AGRUPAR_MS);
+  }
+
+  // Fechar a aba no meio do intervalo não pode custar a alteração: o que estiver esperando
+  // é despachado na saída.
+  window.addEventListener('beforeunload', function () {
+    Object.keys(temporizadores).forEach(doc => {
+      clearTimeout(temporizadores[doc]);
+      const dados = pendentesDeEnvio[doc];
+      if (dados !== undefined && window.FirebaseDB && window.FirebaseDB.enabled && window.FirebaseDB.saveDoc) {
+        try { window.FirebaseDB.saveDoc(doc, dados); } catch (e) {}
+      }
+    });
+  });
+
   function sincronizar(key, val) {
     if (aplicandoDoServidor) return;
     const doc = CHAVES_COMPARTILHADAS[key];
@@ -433,12 +470,7 @@
     published[doc] = JSON.parse(JSON.stringify(val));
     storeCache(published);
     if (!(window.FirebaseDB && window.FirebaseDB.enabled)) return;
-    const envio = doc === 'properties' ? window.FirebaseDB.saveProperties(val)
-                : doc === 'site' ? window.FirebaseDB.saveSite(val)
-                : doc === 'posts' ? window.FirebaseDB.savePosts(val)
-                : doc === 'testimonials' ? window.FirebaseDB.saveTestimonials(val)
-                : window.FirebaseDB.saveDoc(doc, val);
-    clearEditedIfSynced(envio);
+    enviarAgrupado(doc, val);
   }
 
   function set(key, val) {
