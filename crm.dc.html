@@ -3339,7 +3339,15 @@ class Component extends DCLogic {
   generateAiDescriptions = () => {
     const d = this.state.propertyDraft;
     const size = d.aiSize || 'medio';
-    const sizeSpec = { pequeno: '3 parágrafos curtos, cerca de 350 caracteres no total', medio: '2-3 parágrafos, entre 600 e 1000 caracteres no total', grande: 'vários parágrafos, entre 1000 e 3000 caracteres no total' }[size];
+    // Quantos blocos cada tamanho entrega. Antes a medida era em caracteres, o que produzia
+    // textos de comprimento imprevisível; contar blocos dá um resultado sempre com a mesma
+    // forma, que é o que se espera de um anúncio.
+    const receita = {
+      pequeno: { blocos: 2, detalhe: 'abertura + fechamento com chamada. Sem seções.' },
+      medio:   { blocos: 4, detalhe: 'abertura, Destaques, Condomínio e fechamento com chamada.' },
+      grande:  { blocos: 5, detalhe: 'abertura, Destaques, Condomínio, um parágrafo sobre a região e fechamento com chamada.' }
+    }[size];
+    const sizeSpec = `${receita.blocos} blocos — ${receita.detalhe}`;
     const amenities = (d.amenities || '').split(',').map(s => s.trim()).filter(Boolean);
     const facts = [
       d.title && `Título: ${d.title}`,
@@ -3356,26 +3364,96 @@ class Component extends DCLogic {
 
     this.setState({ propertyDraft: { ...this.state.propertyDraft, aiBusy: true, aiError: '' } });
 
-    const prompt = `Você é copywriter imobiliário especialista em SEO. Com os dados abaixo, escreva 2 versões DIFERENTES de descrição de imóvel de alto padrão em português do Brasil, tamanho: ${sizeSpec} cada.
-Dados do imóvel:
+    const prompt = `Você é copywriter de imóveis de alto padrão no litoral de Santa Catarina. Escreva 2 versões DIFERENTES de anúncio em português do Brasil.
+
+DADOS DO IMÓVEL
 ${facts}
-Regras de formatação (siga exatamente, sem usar markdown/asteriscos/##): a descrição é dividida em blocos separados por UMA linha em branco. Um bloco pode ser:
-1) Um parágrafo comum de texto corrido.
-2) Um título de seção curto (até 8 palavras, sem ponto final) — ex: "Infraestrutura Completa de Lazer e Conforto".
-3) Uma linha "Rótulo: descrição" (rótulo curto seguido de dois pontos e o texto) — ex: "Conforto Privativo: 2 suítes, 3 banheiros...".
-Estruture cada versão assim: parágrafo de abertura → título de seção → 2-4 linhas "Rótulo: descrição" com as características → título de seção de localização → parágrafo sobre a região → título "Agende Sua Visita" → parágrafo de chamada para ação.
-Regras de conteúdo: tom sofisticado e direto, sem inventar características não listadas, sem emojis. Para cada versão, gere também 6 hashtags de SEO relevantes (imóveis, localização, características).
-Responda em JSON puro, um array de 2 objetos: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada além do JSON.`;
+
+TAMANHO: ${sizeSpec}
+
+FORMA (siga à risca — sem markdown, sem asteriscos, sem #, sem emojis):
+Bloco 1 — Título do anúncio numa linha (nome do empreendimento + bairro/cidade + tipo, ex: "AURA Praia Brava — Apartamento de Alto Padrão"), seguido de UMA linha de impacto e de um parágrafo apresentando o imóvel com os números principais.
+Bloco 2 — A palavra "Destaques" sozinha numa linha e, abaixo, um item por linha começando com "- " (metragem, suítes, banheiros, vagas e o que houver de diferencial).
+Bloco 3 — A palavra "Condomínio" sozinha numa linha e, abaixo, uma única linha com as áreas comuns separadas por " · ".
+Bloco 4 (só nos tamanhos médio e grande) — parágrafo sobre a região e o estilo de vida do bairro.
+Bloco 5 — preço numa linha, localização na linha seguinte, e uma frase final convidando a agendar a visita.
+Use exatamente ${receita.blocos} blocos: ${receita.detalhe} Separe cada bloco por UMA linha em branco.
+
+LINGUAGEM:
+- Verbo forte no começo das frases; evite "é", "possui", "conta com" repetidos.
+- Escolha palavras que vendem sem exagerar: exclusivo, privilegiado, sob medida, refúgio, assinatura, vista franca, metragem generosa, acabamento impecável, endereço valorizado.
+- Proibido inventar o que não está nos dados. Nada de "vista para o mar" se não estiver listado.
+- Nada de superlativo vazio ("o melhor", "imperdível", "único no mundo").
+- As DUAS versões precisam ter vocabulário e ângulo diferentes: uma mais racional (números, potencial de valorização, localização), outra mais sensorial (rotina, conforto, bem-estar). Não repita as mesmas aberturas nem os mesmos adjetivos entre elas.
+
+Para cada versão gere 6 hashtags de SEO (imóvel, bairro, cidade, categoria).
+Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada além do JSON.`;
 
     const finish = (options) => this.setState({ propertyDraft: { ...this.state.propertyDraft, aiBusy: false, aiOptions: options } });
 
     const fallback = () => {
-      // Gerador local (sem IA) — garante que a função nunca fique sem resultado.
-      const base = facts.replace(/\n/g, ' · ');
-      const opts = [1, 2, 3].map(n => ({
-        text: `${d.title || 'Imóvel'} em ${d.location || 'localização privilegiada'}. ${amenities.length ? 'Conta com ' + amenities.slice(0, 5).join(', ') + '.' : ''} ${base}. Uma oportunidade ${n === 1 ? 'única' : n === 2 ? 'rara' : 'exclusiva'} para quem busca qualidade de vida.`.trim(),
-        hashtags: `#imoveis #${(d.location || '').toLowerCase().replace(/[^a-z0-9]+/g, '')} #altopadrao #imoveisdeluxo #investimento #edinaoliveira`
-      }));
+      // Escrito aqui mesmo, para quando a IA não responder. Segue a mesma forma do anúncio e
+      // varia o vocabulário: sem isso todo imóvel do site sairia com o texto idêntico.
+      const NL = String.fromCharCode(10);
+      const local = d.location || 'localização privilegiada';
+      const tipo = d.type || 'Imóvel';
+      const nome = d.title || d.condo || 'Imóvel';
+      const numeros = [d.area && (d.area + ' m²'), d.suites && (d.suites + ' suítes'),
+                       d.baths && (d.baths + ' banheiros'), d.garage && (d.garage + ' vagas')].filter(Boolean);
+
+      const aberturas = [
+        'Descubra o ' + nome + ', em ' + local + '.',
+        'Conheça o ' + nome + ', endereço valorizado em ' + local + '.',
+        'Viva em ' + local + ': este é o ' + nome + '.',
+        'O ' + nome + ' redefine o morar bem em ' + local + '.'
+      ];
+      const impactos = [
+        'Sofisticação, conforto e uma rotina em que tudo fica por perto.',
+        'Metragem generosa, acabamento impecável e endereço de primeira linha.',
+        'O equilíbrio entre exclusividade e praticidade no litoral catarinense.',
+        'Um refúgio sob medida para quem escolhe morar com qualidade.'
+      ];
+      const fechamentos = [
+        'Agende sua visita e conheça o imóvel de perto.',
+        'Marque uma visita e sinta o padrão do empreendimento.',
+        'Fale com a nossa equipe e agende a sua visita.',
+        'Entre em contato para conhecer este endereço pessoalmente.'
+      ];
+
+      // O ponto de partida varia por imóvel; a segunda versão anda uma posição em cada
+      // lista, o que garante vocabulário diferente da primeira em vez de repeti-la.
+      const base = Math.abs(nome.length * 3 + (parseInt(d.area, 10) || 0));
+      const escolher = (arr, desloc, i) => arr[(base + desloc + i) % arr.length];
+
+      const opts = [0, 1].map(i => {
+        const blocos = [];
+        const titulo = nome + (d.type ? ' — ' + tipo : '') + (d.location ? ' em ' + d.location : '');
+        const corpo = escolher(aberturas, 0, i) + (numeros.length ? ' São ' + numeros.join(', ') + '.' : '');
+        blocos.push([titulo, escolher(impactos, 1, i), corpo].join(NL));
+
+        if (receita.blocos >= 4 && numeros.length) {
+          const itens = numeros.concat(amenities.slice(0, 4)).map(x => '- ' + x);
+          blocos.push('Destaques' + NL + itens.join(NL));
+        }
+        if (receita.blocos >= 4 && amenities.length) {
+          blocos.push('Condomínio' + NL + amenities.join(' · '));
+        }
+        if (receita.blocos >= 5) {
+          blocos.push(local + ' reúne o que se espera de um endereço valorizado: comércio, serviços e lazer a poucos minutos, num trecho procurado do litoral catarinense.');
+        }
+
+        const fecho = [];
+        if (d.price) fecho.push(this.money(parseFloat(d.price)));
+        if (d.location) fecho.push(d.location);
+        fecho.push(escolher(fechamentos, 2, i));
+        blocos.push(fecho.join(NL));
+
+        const bairro = (d.location || '').toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '');
+        return {
+          text: blocos.join(NL + NL),
+          hashtags: '#imoveis' + (bairro ? ' #' + bairro : '') + ' #altopadrao #imoveisdeluxo #investimento #edinaoliveira'
+        };
+      });
       finish(opts);
     };
 
