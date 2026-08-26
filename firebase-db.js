@@ -190,7 +190,9 @@
   // só, a gravação era recusada inteira e a ficha acabava com as poucas fotos que coubessem
   // embutidas — que era o motivo de as imagens sumirem logo depois de salvar.
   const TETO_BLOCO = 600 * 1024;
-  const MAX_BLOCOS = 12;
+  // 20 blocos de 600 KB cobrem 50 fotos por imóvel mesmo na qualidade alta (que pede ~16).
+  // Com 12, as últimas fotos de uma ficha cheia ficavam de fora.
+  const MAX_BLOCOS = 20;
   const nomeBloco = (chave, n) => 'fotos_' + chave + '_' + n;
 
   async function guardarImagens(chave, fotos) {
@@ -208,9 +210,19 @@
     const validas = (fotos || []).filter(f => f && f.indexOf('data:') === 0);
     if (!validas.length) return null;
 
-    // Galeria grande pede foto mais leve; o piso mantém a imagem apresentável na página.
-    const cota = validas.length > 12 ? 110 * 1024 : 160 * 1024;
-    const etapas = [[1600, 0.82], [1300, 0.76], [1000, 0.7], [800, 0.62], [640, 0.55]];
+    // A escolha de "Qualidade das fotos" no painel manda no tamanho com que elas são
+    // guardadas. Antes o valor era fixo e a opção não mudava nada de fato.
+    let qualidade = 'equilibrada';
+    try { qualidade = (window.CRMData.getSiteContentRaw() || {}).photoQuality || 'equilibrada'; } catch (e) {}
+    const perfis = {
+      leve:         { cota: 70 * 1024,  etapas: [[900, 0.78], [760, 0.72], [640, 0.66], [520, 0.58]] },
+      equilibrada:  { cota: 120 * 1024, etapas: [[1400, 0.82], [1100, 0.76], [900, 0.68], [720, 0.6]] },
+      alta:         { cota: 190 * 1024, etapas: [[1920, 0.86], [1600, 0.8], [1300, 0.74], [1000, 0.66]] }
+    };
+    const perfil = perfis[qualidade] || perfis.equilibrada;
+    // Galeria grande aperta um pouco a cota, para a ficha inteira caber.
+    const cota = validas.length > 20 ? Math.round(perfil.cota * 0.7) : perfil.cota;
+    const etapas = perfil.etapas;
 
     const blocos = [[]];
     let usadoNoBloco = 0;
