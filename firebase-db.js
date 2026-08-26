@@ -473,12 +473,22 @@
     if (!ok || !firebase.apps.length) return false;
     return firebase.firestore().collection('edina_analytics').add(entry).then(() => true).catch(() => false);
   }
+  // O Firestore recusa limit(20000) com invalid-argument: o erro era engolido, a leitura
+  // devolvia lista vazia e o painel caía na copia local — que tem as visitas de um
+  // navegador só. Era por isso que o total de acessos aparecia como 1 com centenas
+  // registradas no banco.
+  const TETO_VISITAS = 3000;
+
   async function fetchAnalytics() {
     const ok = await ready;
     if (!ok || !firebase.apps.length) return [];
-    return firebase.firestore().collection('edina_analytics').limit(20000).get()
+    const col = firebase.firestore().collection('edina_analytics');
+    // Mais recentes primeiro, para que o teto corte o que já é histórico antigo.
+    return col.orderBy('ts', 'desc').limit(TETO_VISITAS).get()
       .then(snap => snap.docs.map(d => d.data()))
-      .catch(() => []);
+      .catch(() => col.limit(TETO_VISITAS).get()
+        .then(snap => snap.docs.map(d => d.data()))
+        .catch(() => []));
   }
 
   // Visualizações chegam de visitantes, não do painel: sem ficar de olho, o número só mudava
@@ -486,7 +496,7 @@
   function watchAnalytics(onChange) {
     ready.then(ok => {
       if (!ok || !firebase.apps.length) return;
-      firebase.firestore().collection('edina_analytics').limit(20000)
+      firebase.firestore().collection('edina_analytics').limit(TETO_VISITAS)
         .onSnapshot(snap => { onChange(snap.docs.map(d => d.data())); }, () => {});
     });
   }
