@@ -988,6 +988,18 @@
     diagnosticar: function (corrigir) {
       const eu = this;
       const itens = [];
+      // O banco devolve os campos em outra ordem que a gravada aqui. Comparar o texto cru
+      // acusaria diferença em dados idênticos, então normalizamos antes de comparar.
+      const normalizar = (v) => {
+        if (Array.isArray(v)) return v.map(normalizar);
+        if (v && typeof v === 'object') {
+          const out = {};
+          Object.keys(v).sort().forEach(k => { out[k] = normalizar(v[k]); });
+          return out;
+        }
+        return v;
+      };
+      const iguais = (a, b) => JSON.stringify(normalizar(a)) === JSON.stringify(normalizar(b));
       const registrar = (o, s, d, a) => itens.push({ area: o, situacao: s, detalhe: d, acao: a || '' });
 
       if (!(window.FirebaseDB && window.FirebaseDB.enabled)) {
@@ -1020,7 +1032,7 @@
             if (corrigir) { sincronizar(chaveLocal, local); corrigidos++; }
             return;
           }
-          if (JSON.stringify(local) === JSON.stringify(noAr)) {
+          if (iguais(local, noAr)) {
             const n = Array.isArray(noAr) ? noAr.length + ' registro(s)' : 'configurado';
             registrar(rotulo, 'ok', 'Igual ao que está no ar — ' + n + '.');
             return;
