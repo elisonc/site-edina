@@ -236,7 +236,9 @@ class Component extends DCLogic {
     const params = new URLSearchParams(window.location.search);
     const r = params.get('regiao');
     if (r) this.setState({ region: r });
-    this._onPub = () => { this._photosPreloaded = false; this.setState({ properties: [] }, this.loadData); };
+    // Recarrega sem esvaziar a lista antes: o estado intermediário vazio apagava os
+    // cards por um instante a cada atualização vinda do banco — era isso que piscava.
+    this._onPub = () => { this._photosPreloaded = false; this.loadData(); };
     window.addEventListener('edina:published-updated', this._onPub);
     this.loadData();
   }

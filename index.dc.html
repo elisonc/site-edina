@@ -341,7 +341,9 @@ class Component extends DCLogic {
       this.setState({ favorites: fav });
     } catch (e) {}
     if (window.CRMData) this.setState({ fontScale: window.CRMData.applyFontScale() });
-    this._onPub = () => { this._photosPreloaded = false; this.setState({ properties: [] }, this.loadData); };
+    // Recarrega sem esvaziar a lista antes: o estado intermediário vazio apagava os
+    // cards por um instante a cada atualização vinda do banco — era isso que piscava.
+    this._onPub = () => { this._photosPreloaded = false; this.loadData(); };
     window.addEventListener('edina:published-updated', this._onPub);
     this.loadData();
     this._heroTick = () => {

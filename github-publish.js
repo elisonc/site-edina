@@ -102,6 +102,17 @@
     const headSha = ref.object.sha;
     const headCommit = await api(cfg, `/git/commits/${headSha}`);
 
+    // Só dá para apagar o que existe: pedir a remoção de um caminho que já saiu do
+    // repositório faz o GitHub responder 422 GitRPC::BadObjectState e a publicação inteira
+    // falhar. Conferimos a árvore atual antes de montar a lista de exclusões.
+    let existentes = null;
+    if (toDelete.length) {
+      try {
+        const atual = await api(cfg, `/git/trees/${headCommit.tree.sha}?recursive=1`);
+        existentes = new Set((atual.tree || []).filter(t => t.type === 'blob').map(t => t.path));
+      } catch (e) { existentes = null; }
+    }
+
     const tree = [];
     for (let i = 0; i < toUpload.length; i++) {
       const { f, fullPath } = toUpload[i];
@@ -112,7 +123,16 @@
       });
       tree.push({ path: fullPath, mode: '100644', type: 'blob', sha: blob.sha });
     }
-    for (const p of toDelete) tree.push({ path: p, mode: '100644', type: 'blob', sha: null });
+    for (const p of toDelete) {
+      if (existentes && !existentes.has(p)) continue;
+      tree.push({ path: p, mode: '100644', type: 'blob', sha: null });
+    }
+
+    // Sem nenhuma mudança não há o que commitar — e uma árvore vazia também é recusada.
+    if (!tree.length) {
+      report('Nada mudou desde a última publicação.');
+      return { commit: headSha.slice(0, 7), commitFull: headSha, files: 0, semMudancas: true };
+    }
 
     report('Criando o commit…');
     const newTree = await api(cfg, '/git/trees', {
