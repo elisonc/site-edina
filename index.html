@@ -420,14 +420,26 @@ class Component extends DCLogic {
     };
     window.addEventListener('edina:published-updated', this._onPub);
     this.loadData();
+    // Quais capas usar — uma resposta só, para o ciclo e para a pintura. Antes cada um
+    // decidia por conta própria: a pintura já caía para as fotos do portfólio quando a
+    // lista vinha vazia, mas o ciclo continuava olhando a lista original e concluía que
+    // não havia o que passar. A capa aparecia parada.
+    this._capas = () => {
+      const site = this.state.siteContent || {};
+      const lista = (site.heroSlides || []).filter(Boolean);
+      if (lista.length) return lista;
+      if (site.heroImage) return [site.heroImage];
+      return (this.state.properties || []).map(p => p.image).filter(Boolean).slice(0, 3);
+    };
+
     // O próximo passo é agendado no finally: qualquer erro no meio interrompia a cadeia de
     // vez, e a capa parava de passar até alguém recarregar a página.
     this._heroTick = () => {
       let secs = 4;
       try {
         const site = this.state.siteContent || {};
-        const slides = (site.heroSlides || []).filter(Boolean);
-        secs = Math.max(1, Math.min(10, parseFloat(site.heroSlideInterval) || 4));
+        const slides = this._capas();
+        secs = Math.max(2, Math.min(10, parseFloat(site.heroSlideInterval) || 5));
         if (slides.length > 1) {
           this.setState(s => {
             const atual = Number.isFinite(s.heroSlideIndex) ? s.heroSlideIndex : 0;
@@ -624,12 +636,7 @@ class Component extends DCLogic {
     const heroBase = `position:relative;height:calc(100vh - 180px);min-height:480px;max-height:680px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden`;
     // A capa não pode ficar vazia: sem slides configurados, usa a imagem única e, na falta
     // dela, uma foto do próprio portfólio — melhor um imóvel real do que um retângulo escuro.
-    let heroSlides = (site.heroSlides || []).filter(Boolean);
-    if (!heroSlides.length) {
-      const doPortfolio = (this.state.properties || []).map(p => p.image).filter(Boolean).slice(0, 3);
-      if (site.heroImage) heroSlides = [site.heroImage];
-      else if (doPortfolio.length) heroSlides = doPortfolio;
-    }
+    const heroSlides = this._capas ? this._capas() : (site.heroSlides || []).filter(Boolean);
     const useSlides = heroSlides.length > 0;
     const idxBruto = Number.isFinite(this.state.heroSlideIndex) ? this.state.heroSlideIndex : 0;
     const hIdx = heroSlides.length ? (idxBruto % heroSlides.length) : 0;
