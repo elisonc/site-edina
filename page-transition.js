@@ -116,7 +116,10 @@
     // do conteúdo, e a tela parecia sumir atrás de outra.
     var alvo = new URL(href, location.href);
     var aqui = new URL(location.href);
-    if (alvo.origin === aqui.origin && alvo.pathname === aqui.pathname && alvo.search === aqui.search) {
+    // O servidor pode entregar a mesma página com e sem ".html" no endereço; comparar o
+    // texto cru faria o link do menu para a página atual parecer um destino diferente.
+    var semExt = function (u) { return u.pathname.replace(/(index)?\.(dc\.)?html$/i, '').replace(/\/$/, ''); };
+    if (alvo.origin === aqui.origin && semExt(alvo) === semExt(aqui) && alvo.search === aqui.search) {
       if (alvo.hash) location.hash = alvo.hash;
       return;
     }
