@@ -59,14 +59,28 @@
     const blob = dataUrlToBlob(dataUrl);
     const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
     const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    const ref = firebase.storage().ref(path);
-    await ref.put(blob);
-    const url = await ref.getDownloadURL();
-    cache[value] = url;
-    return url;
+    try {
+      const ref = firebase.storage().ref(path);
+      await ref.put(blob);
+      const url = await ref.getDownloadURL();
+      cache[value] = url;
+      return url;
+    } catch (e) {
+      // Storage indisponível não pode levar o cadastro junto: sem este resgate, uma foto
+      // recusada derrubava a gravação inteira e o imóvel não chegava a existir no banco.
+      // Melhor o imóvel no ar sem imagem do que imóvel nenhum — a foto continua guardada
+      // neste navegador e sobe assim que o Storage voltar.
+      mediaErrors.push({ path: path, code: e && (e.code || e.message) });
+      return '';
+    }
   }
 
+  // Falhas de upload da última gravação. O CRM lê isto para avisar em vez de deixar a
+  // pessoa achar que as fotos subiram.
+  const mediaErrors = [];
+
   async function externalizeProperties(props) {
+    mediaErrors.length = 0;
     const cache = {};
     const out = [];
     for (const p of props) {
@@ -184,6 +198,7 @@
     saveSite: (obj) => externalizeSite(obj).then(out => save('site', out)),
     savePosts: (arr) => externalizeList(arr, 'image').then(out => save('posts', out)),
     saveTestimonials: (arr) => externalizeList(arr, 'audioUrl').then(out => save('testimonials', out)),
+    mediaErrors: () => mediaErrors.slice(),
     fetchAll: fetchAll,
     watch: watch,
     logPageview: logPageview,

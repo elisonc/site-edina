@@ -1228,9 +1228,9 @@
         </div>
 
         <sc-if value="{{ hasImportQueue }}" hint-placeholder-val="{{ false }}">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div data-crm-actions="true" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;flex-wrap:wrap">
             <div style="font-size:15px;font-weight:700">{{ importQueueCount }} empreendimento(s) lido(s) — revise e publique</div>
-            <div style="display:flex;gap:10px">
+            <div data-crm-actions="true" style="display:flex;gap:10px">
               <button onClick="{{ clearImportQueue }}" style="background:none;border:1px solid #ddd3bd;padding:10px 16px;font-size:12.5px;cursor:pointer;font-family:'Manrope',sans-serif">Descartar tudo</button>
               <button onClick="{{ commitImport }}" style="background:#3e7a4f;color:#fff;border:none;padding:10px 20px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'Manrope',sans-serif">Publicar selecionados no site</button>
             </div>

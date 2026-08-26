@@ -1,0 +1,24 @@
+rules_version = '2';
+
+// Regras do Firebase Storage (fotos e vídeos dos imóveis).
+// São SEPARADAS das regras do Firestore — publicar uma não libera a outra.
+//
+// COMO APLICAR:
+//   1. https://console.firebase.google.com/project/site-edina-final/storage
+//   2. Se aparecer "Começar"/"Get started", ative o Storage primeiro.
+//   3. Vá na aba "Rules", apague o conteúdo, cole este arquivo e clique em "Publicar".
+//
+// SEM ISSO as fotos não sobem: o navegador recusa o envio ainda no preflight
+// (erro de CORS) e o imóvel fica sem imagem para quem abre o site de outro aparelho.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Fotos dos imóveis, mídia do blog e imagens do site.
+    match /{pasta}/{arquivo=**} {
+      allow read: if true;
+      allow write: if request.resource.size < 20 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*|video/.*|audio/.*');
+    }
+  }
+}

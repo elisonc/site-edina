@@ -111,9 +111,16 @@
     // Um clique só = uma transição. Sem esta trava, um segundo clique (ou um clique que
     // chega por dois caminhos) reiniciava a animação e ela aparecia abrindo e fechando 2x.
     if (navigating) return;
-    overlay.style.visibility = 'visible';
     // Link para a própria página: recarregar faria a animação tocar de novo sem motivo.
-    if (new URL(href, location.href).href === location.href) return;
+    // A checagem vem antes de exibir a cortina — ao contrário, ela ficava presa na frente
+    // do conteúdo, e a tela parecia sumir atrás de outra.
+    var alvo = new URL(href, location.href);
+    var aqui = new URL(location.href);
+    if (alvo.origin === aqui.origin && alvo.pathname === aqui.pathname && alvo.search === aqui.search) {
+      if (alvo.hash) location.hash = alvo.hash;
+      return;
+    }
+    overlay.style.visibility = 'visible';
     navigating = true;
     overlay.style.pointerEvents = 'auto';
     overlay.classList.remove('et-open');
@@ -126,6 +133,16 @@
     setTimeout(function () {
       window.location.href = href;
     }, DOOR_MS + 40);
+    // Se a navegação não acontecer (link bloqueado, download, aba que volta), a cortina
+    // não pode ficar na frente do site para sempre.
+    setTimeout(function () {
+      if (!document.hidden) {
+        navigating = false;
+        overlay.classList.add('et-open');
+        overlay.style.pointerEvents = 'none';
+        overlay.style.visibility = 'hidden';
+      }
+    }, DOOR_MS + 3000);
   }, true);
 
   // Voltar/avançar pode restaurar a página do cache com as portas fechadas: reabre sem repetir

@@ -3,8 +3,6 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "redirects": [
-    { "source": "/index.html", "destination": "/", "permanent": false },
-    { "source": "/index.dc.html", "destination": "/", "permanent": false },
     { "source": "/imoveis", "destination": "/imoveis.dc.html", "permanent": false },
     { "source": "/blog", "destination": "/blog.dc.html", "permanent": false },
     { "source": "/favoritos", "destination": "/favoritos.dc.html", "permanent": false },
