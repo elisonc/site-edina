@@ -664,7 +664,7 @@ class Component extends DCLogic {
       title: p.title,
       specs: `${p.area} m² · ${p.suites} suítes · ${p.garage} vagas`,
       priceLabel: this.money(p.price),
-      imgStyle: cardImg(p.tone, 220, p.image), imgRef: cardImgRef(p.image), hasPlaceholderText: !p.image,
+      imgStyle: cardImg(p.tone, 220, p.thumb || p.image), imgRef: cardImgRef(p.thumb || p.image), hasPlaceholderText: !p.image,
       hasStatusBadge: p.status === 'reservado' || p.status === 'vendido',
       statusLabel: p.status === 'vendido' ? 'Vendido' : 'Reservado',
       statusBadgeStyle: `position:absolute;top:12px;left:12px;z-index:2;padding:6px 14px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:${p.status === 'vendido' ? '#5c5245' : 'var(--accent)'}`
@@ -692,7 +692,7 @@ class Component extends DCLogic {
       href: `blog-post.dc.html?id=${p.id}`,
       cat: p.cat, date: p.date, title: p.title,
       imgStyle: p.image ? `height:170px;background-size:cover;background-position:center;opacity:.95` : `background:${tones[p.tone % 3]};height:170px;display:flex;align-items:center;justify-content:center;color:#8a7c5c;font-family:monospace;font-size:12px;text-align:center;padding:10px;opacity:.9`,
-      imgRef: (el) => { if (el && p.image) window.__lazyFoto(el, p.image); },
+      imgRef: (el) => { const src = p.thumb || p.image; if (el && src) window.__lazyFoto(el, src); },
       hasPlaceholderText: !p.image
     }));
 

@@ -444,7 +444,7 @@ class Component extends DCLogic {
       specs: `${p.area} m² · ${p.suites} suítes · ${p.baths} banheiros · ${p.garage} vagas`,
       priceLabel: this.money(p.price),
       imgStyle: p.image ? `height:290px;position:relative;background-size:cover;background-position:center` : `background:${tones[p.tone % 3]};height:290px;position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:16px;color:#e9e4d8bb;font-family:monospace;font-size:11px`,
-      imgRef: (el) => { if (el && p.image) window.__lazyFoto(el, p.image); },
+      imgRef: (el) => { const src = p.thumb || p.image; if (el && src) window.__lazyFoto(el, src); },
       hasPlaceholderText: !p.image,
       overlayStyle: `position:absolute;left:0;right:0;bottom:0;padding:18px 20px 16px;color:#fff;background:linear-gradient(180deg,rgba(20,17,10,0) 0%,rgba(20,17,10,.85) 70%)`,
       toggleFav: this.toggleFav(p.id),

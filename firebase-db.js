@@ -349,6 +349,15 @@
         if (gravadas) {
           q.images = Array.from({ length: gravadas }, (_, i) => 'fotodoc:' + q.id + ':' + i);
           q.image = q.images[0];
+          // Uma versão pequena da capa viaja junto com a ficha: é ela que aparece nos cards
+          // da listagem. Sem isso, cada card baixaria a foto inteira do documento de fotos e
+          // o portfólio ficaria pesado conforme os imóveis fossem cadastrados.
+          if (dados[0] && window.CRMData && window.CRMData.resizeDataUrl) {
+            try {
+              const mini = await window.CRMData.resizeDataUrl(dados[0], 420, 0.55);
+              if (mini && mini.length < 40 * 1024) q.thumb = mini;
+            } catch (e) {}
+          }
           if (q.videoFile) q.videoFile = await externalizeMedia(q.videoFile, 'videos', cache);
           out.push(q);
           continue;
