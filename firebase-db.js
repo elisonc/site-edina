@@ -95,7 +95,10 @@
   // endereço — é o que faz uma foto enviada pelo painel existir para os outros aparelhos.
   // Vale só para as pequenas: um documento do Firestore não passa de 1 MB.
   async function guardarNoDocumento(chave, dataUrl, cache) {
-    if (!dataUrl || dataUrl.indexOf('data:') !== 0) return '';
+    // Não deu para ler a imagem? Devolve o valor como está. Apagá-la seria destruir uma foto
+    // que existe — é o que acontecia quando um navegador salvava por cima de uma imagem
+    // enviada de outro aparelho, cuja referência local ele não tem como abrir.
+    if (!dataUrl || dataUrl.indexOf('data:') !== 0) return value;
     let atual = dataUrl;
     // Uma foto de capa é salva em 1920px e passa folgada do teto. Em vez de descartá-la,
     // reduz por etapas até caber — melhor a imagem um pouco menor em todos os aparelhos do
@@ -133,7 +136,7 @@
     const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
     if (storageIndisponivel || storageMarcadoFora()) {
       mediaErrors.push({ path: path, code: 'storage-indisponivel' });
-      return await guardarNoDocumento(value, dataUrl, cache);
+      return (await guardarNoDocumento(value, dataUrl, cache)) || value;
     }
     try {
       const ref = firebase.storage().ref(path);
@@ -153,7 +156,7 @@
       storageIndisponivel = true;
       marcarStorageFora();
       mediaErrors.push({ path: path, code: e && (e.code || e.message) });
-      return await guardarNoDocumento(value, dataUrl, cache);
+      return (await guardarNoDocumento(value, dataUrl, cache)) || value;
     }
   }
 
@@ -336,10 +339,14 @@
       // por falta de espaço.
       if (precisamSubir && (storageIndisponivel || storageMarcadoFora())) {
         const dados = [];
+        let algumaNaoAbriu = false;
         for (const v of originais) {
           const d = await paraDataUrl(v);
-          if (d) dados.push(d);
+          if (d) dados.push(d); else algumaNaoAbriu = true;
         }
+        // Se alguma foto da ficha não abriu neste navegador, ela veio de outro aparelho:
+        // reescrever a lista aqui apagaria justamente essa. Deixa como está.
+        if (algumaNaoAbriu && !dados.length) { out.push(q); continue; }
         // Problema ao guardar as fotos não pode levar a ficha junto: o cadastro vai para o
         // banco de qualquer forma, e as imagens seguem neste navegador para a próxima
         // tentativa. Perder o imóvel inteiro por causa de uma foto seria pior.
@@ -407,19 +414,20 @@
           const valor = alvo.campo ? out[alvo.campo] : out.heroSlides[alvo.slide];
           const d = await paraDataUrl(valor);
           dados.push(d || '');
+          alvo.original = valor;   // se a imagem não abrir aqui, o valor original fica de pé
         }
         let gravadas = 0;
         try { gravadas = await guardarImagens('site', dados.filter(Boolean)) || 0; }
         catch (e) { mediaErrors.push({ path: 'fotos_site', code: e && (e.code || e.message) }); }
         if (gravadas) {
           let idx = 0;
-          for (const alvo of pendentes) {
-            if (!dados[pendentes.indexOf(alvo)]) continue;
-            if (idx >= gravadas) break;
+          pendentes.forEach((alvo, i) => {
+            // Sem imagem legível ou sem espaço no bloco, o campo continua como estava.
+            if (!dados[i] || idx >= gravadas) return;
             const ref = 'fotodoc:site:' + idx;
             if (alvo.campo) out[alvo.campo] = ref; else out.heroSlides[alvo.slide] = ref;
             idx++;
-          }
+          });
         }
       }
     }
