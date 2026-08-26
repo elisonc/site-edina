@@ -151,10 +151,36 @@
     });
   }
 
+  // Contatos recebidos pelo site. Ficam fora de DOCS de propósito: o pacote que todo
+  // visitante baixa não precisa carregar a carteira de clientes junto.
+  async function saveLeads(arr) { return save('leads', arr); }
+  async function fetchLeads() {
+    const ok = await ready;
+    if (!ok || !firebase.apps.length) return null;
+    return DOC('leads').get().then(s => (s.exists ? (s.data().data || []) : [])).catch(() => null);
+  }
+  // Acrescenta um contato lendo a lista no instante da gravação — dois envios ao mesmo tempo
+  // não se sobrescrevem, como aconteceria se a lista viesse do navegador.
+  async function appendLead(lead) {
+    const ok = await ready;
+    if (!ok || !firebase.apps.length) return false;
+    const ref = DOC('leads');
+    return firebase.firestore().runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const cur = snap.exists ? (snap.data().data || []) : [];
+      const id = cur.reduce((m, l) => Math.max(m, Number(l.id) || 0), 0) + 1;
+      tx.set(ref, { data: [{ ...lead, id }, ...cur], updatedAt: Date.now() });
+      return true;
+    }).catch(() => false);
+  }
+
   window.FirebaseDB = {
     enabled: true,
     ready: ready,
     saveProperties: (arr) => externalizeProperties(arr).then(out => save('properties', out)),
+    saveLeads: saveLeads,
+    fetchLeads: fetchLeads,
+    appendLead: appendLead,
     saveSite: (obj) => externalizeSite(obj).then(out => save('site', out)),
     savePosts: (arr) => externalizeList(arr, 'image').then(out => save('posts', out)),
     saveTestimonials: (arr) => externalizeList(arr, 'audioUrl').then(out => save('testimonials', out)),

@@ -422,24 +422,28 @@ class Component extends DCLogic {
 
     const site = this.state.siteContent || {};
     const key = site.formAccessKey || '';
-    // Sem serviço configurado, o lead não sairia deste navegador — avisa em vez de fingir
-    // que foi enviado.
-    if (!key) {
-      this.setState({ formSending: false, formError: 'O formulário ainda não está conectado a um serviço de envio. Fale com o administrador do site — ou use o botão do WhatsApp.' });
-      return;
-    }
-    fetch('https://api.web3forms.com/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify(Object.assign({
-        access_key: key,
-        subject: `Novo contato pelo site: ${name}`,
-        from_name: 'Site Edina Oliveira'
-      }, lead))
-    })
-      .then(r => r.json())
-      .then(r => {
-        if (!r.success) throw new Error(r.message || 'envio recusado');
+
+    // O contato entra no CRM primeiro. O e-mail é aviso, não o registro: se o serviço de
+    // envio estiver fora do ar ou nem configurado, o lead já está guardado do mesmo jeito.
+    const gravar = Promise.resolve()
+      .then(() => window.CRMData && window.CRMData.addLead(lead))
+      .catch(() => null);
+
+    const avisarPorEmail = key
+      ? fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(Object.assign({
+            access_key: key,
+            subject: `Novo contato pelo site: ${name}`,
+            from_name: 'Site Edina Oliveira'
+          }, lead))
+        }).then(r => r.json()).catch(() => null)
+      : Promise.resolve(null);
+
+    Promise.all([gravar, avisarPorEmail])
+      .then(([salvo]) => {
+        if (!salvo) throw new Error('não foi possível registrar o contato');
         this.setState({ formSent: true, formSending: false });
       })
       .catch(err => this.setState({ formSending: false, formError: 'Não foi possível enviar agora (' + (err.message || err) + '). Tente pelo WhatsApp.' }));

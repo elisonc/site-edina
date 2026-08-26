@@ -907,6 +907,11 @@
       const full = { id: nextId, stage: "novo", value: 0, date: dateLabel, time: timeLabel, createdAt: today.toISOString(), status: "aberto", assignedTo: "", timeline: [], attachments: [], offeredProperties: [], ...lead };
       leads.unshift(full);
       set(LS.leads, leads);
+      // O contato precisa chegar ao CRM mesmo tendo sido preenchido no celular de um
+      // visitante: a cópia local acima é só o retorno imediato da tela.
+      if (window.FirebaseDB && window.FirebaseDB.enabled) {
+        window.FirebaseDB.appendLead(full).catch(() => {});
+      }
       return full;
     },
     updateLead: (leadId, patch) => {
@@ -914,7 +919,22 @@
       const idx = leads.findIndex(l => l.id === leadId);
       if (idx === -1) return false;
       leads[idx] = { ...leads[idx], ...patch };
+      if (window.FirebaseDB && window.FirebaseDB.enabled) {
+        window.FirebaseDB.saveLeads(leads).catch(() => {});
+      }
       return set(LS.leads, leads);
+    },
+    // Traz do banco os contatos recebidos de outros aparelhos e junta com os daqui.
+    syncLeads: function () {
+      if (!(window.FirebaseDB && window.FirebaseDB.enabled)) return Promise.resolve(null);
+      return window.FirebaseDB.fetchLeads().then(remote => {
+        if (!remote) return null;
+        const locais = get(LS.leads, seedLeads);
+        const vistos = new Set(remote.map(l => String(l.id)));
+        const merged = remote.concat(locais.filter(l => !vistos.has(String(l.id))));
+        set(LS.leads, merged);
+        return merged;
+      }).catch(() => null);
     },
     addLeadTimelineEntry: (leadId, entry) => {
       const leads = get(LS.leads, seedLeads);

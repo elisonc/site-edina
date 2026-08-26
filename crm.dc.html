@@ -2449,6 +2449,13 @@ class Component extends DCLogic {
 
   componentDidMount() {
     window.CRMData.applyTheme(this.state.siteContent.theme);
+    // Contatos enviados pelo site chegam no banco, não neste navegador — busca os que
+    // faltam antes de montar a lista, senão o painel mostra só o que foi digitado aqui.
+    if (window.CRMData.syncLeads) {
+      window.CRMData.syncLeads().then(merged => {
+        if (merged) this.setState({ leads: window.CRMData.getLeads() });
+      });
+    }
     try {
       const last = parseInt(localStorage.getItem('edina_last_autosync') || '0', 10);
       const cfg = window.GitHubPublish ? window.GitHubPublish.getConfig() : {};
