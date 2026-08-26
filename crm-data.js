@@ -291,6 +291,12 @@
     if (window.FirebaseDB && window.FirebaseDB.enabled) {
       return window.FirebaseDB.fetchAll().then(d => d || {});
     }
+    // Com o banco configurado, o arquivo publicado não é usado — e pedi-lo devolvia 404 em
+    // toda visita. A checagem olha a configuração, não o módulo, porque quem chama isto pode
+    // chegar antes de o módulo do banco terminar de subir.
+    if (window.EDINA_FIREBASE_CONFIG && window.EDINA_FIREBASE_CONFIG.projectId) {
+      return Promise.resolve({});
+    }
     return fetch('./data/site-data.json')
       .then(r => r.ok ? r.json() : null)
       .then(d => d || {})
