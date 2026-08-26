@@ -218,6 +218,23 @@
 
   function loadPublished() {
     primeFromCache();
+
+  // Escuta o banco em tempo real: publicou de um aparelho, as abas abertas em qualquer outro
+  // se atualizam sozinhas. Sem isso a tela só mudava quando a pessoa recarregava a página, e
+  // dois painéis abertos mostravam versões diferentes do mesmo conteúdo.
+  if (window.FirebaseDB && window.FirebaseDB.enabled && window.FirebaseDB.watch) {
+    window.FirebaseDB.watch(function (nome, dados) {
+      if (dados === undefined) return;
+      published = published || {};
+      if (JSON.stringify(published[nome]) === JSON.stringify(dados)) return;
+      published[nome] = dados;
+      storeCache(published);
+      // Chegou versão nova do servidor: o que este navegador tinha guardado deixa de ser
+      // "mais novo" e a tela volta a seguir o banco.
+      try { localStorage.removeItem('edina_local_edits'); } catch (e) {}
+      try { window.dispatchEvent(new CustomEvent('edina:published-updated')); } catch (e) {}
+    });
+  }
     if (published) { revalidate(); return Promise.resolve(published); }
     return fetchPublished().then(d => {
       published = d || {};
@@ -241,6 +258,17 @@
   // o conteúdo de exemplo guardado no navegador.
   function markEdited() {
     try { localStorage.setItem('edina_local_edits', '1'); } catch (e) {}
+  }
+  // A marca acima diz "o que está neste navegador é mais novo que o publicado" e existe para
+  // que uma foto recém-enviada não seja trocada pela versão antiga enquanto sobe. Assim que a
+  // gravação chega ao banco isso deixa de valer: mantê-la fazia o navegador de quem administra
+  // ficar preso à própria cópia para sempre — mostrando algo diferente do resto do mundo, sem
+  // nunca mais atualizar.
+  function clearEditedIfSynced(promessa) {
+    Promise.resolve(promessa).then(ok => {
+      if (ok === false) return;
+      try { localStorage.removeItem('edina_local_edits'); } catch (e) {}
+    }).catch(() => {});
   }
   function hasLocalEdits() {
     try { return localStorage.getItem('edina_local_edits') === '1'; } catch (e) { return false; }
@@ -882,7 +910,7 @@
       });
     },
     getPropertiesRaw: () => get(LS.properties, seedProperties),
-    saveProperties: (arr) => { markEdited(); window.FirebaseDB && window.FirebaseDB.enabled && window.FirebaseDB.saveProperties(arr).catch(() => {}); return set(LS.properties, arr); },
+    saveProperties: (arr) => { markEdited(); if (window.FirebaseDB && window.FirebaseDB.enabled) clearEditedIfSynced(window.FirebaseDB.saveProperties(arr)); return set(LS.properties, arr); },
     getLeads: () => get(LS.leads, seedLeads),
     saveLeads: (arr) => set(LS.leads, arr),
     addLead: (lead) => {
@@ -980,7 +1008,7 @@
       return arr.map(p => p.image ? { ...p, image: self.photoURL(p.image) } : p);
     },
     getPostsRaw: () => get(LS.posts, seedPosts),
-    savePosts: (arr) => { markEdited(); window.FirebaseDB && window.FirebaseDB.enabled && window.FirebaseDB.savePosts(arr).catch(() => {}); return set(LS.posts, arr); },
+    savePosts: (arr) => { markEdited(); if (window.FirebaseDB && window.FirebaseDB.enabled) clearEditedIfSynced(window.FirebaseDB.savePosts(arr)); return set(LS.posts, arr); },
     getVisits: () => get(LS.visits, seedVisits),
     saveVisits: (arr) => set(LS.visits, arr),
 
@@ -1090,7 +1118,7 @@
       });
     },
     getTestimonialsRaw: () => get(LS.testimonials, seedTestimonials),
-    saveTestimonials: (arr) => { markEdited(); window.FirebaseDB && window.FirebaseDB.enabled && window.FirebaseDB.saveTestimonials(arr).catch(() => {}); return set(LS.testimonials, arr); },
+    saveTestimonials: (arr) => { markEdited(); if (window.FirebaseDB && window.FirebaseDB.enabled) clearEditedIfSynced(window.FirebaseDB.saveTestimonials(arr)); return set(LS.testimonials, arr); },
     getIntegrations: () => get(LS.integrations, { facebook: false, googleAds: false, apiKey: "eo_live_9f3a1c7d2b4e6f80", webhook: "", commission: 6 }),
     saveIntegrations: (obj) => set(LS.integrations, obj),
     getSiteContent: function () {
@@ -1103,7 +1131,7 @@
       return sc;
     },
     getSiteContentRaw: () => withSiteDefaults(get(LS.site, seedSiteContent)),
-    saveSiteContent: (obj) => { markEdited(); window.FirebaseDB && window.FirebaseDB.enabled && window.FirebaseDB.saveSite(obj).catch(() => {}); return set(LS.site, obj); },
+    saveSiteContent: (obj) => { markEdited(); if (window.FirebaseDB && window.FirebaseDB.enabled) clearEditedIfSynced(window.FirebaseDB.saveSite(obj)); return set(LS.site, obj); },
     applyTheme: (theme) => {
       if (!theme) return;
       const r = document.documentElement.style;
