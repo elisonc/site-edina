@@ -432,16 +432,32 @@ class Component extends DCLogic {
     this.setState({ fontScale: 100 });
   };
 
+  // Só faz sentido abrir o armazenamento local de imagens quando alguma foto vem de lá
+  // (idb:). Arquivo do site e imagem embutida dispensam, e essa espera de alguns segundos
+  // era cobrada a cada atualização.
+  precisaDoBancoDeMidia = (props, site, posts, depos) => {
+    const local = (v) => typeof v === 'string' && v.indexOf('idb') === 0;
+    if ((props || []).some(p => local(p.image) || (p.images || []).some(local))) return true;
+    if ((posts || []).some(p => local(p.image))) return true;
+    if ((depos || []).some(t => local(t.audioUrl))) return true;
+    return ['logoUrl', 'signatureUrl', 'heroImage', 'spotlightImage', 'aboutImage', 'watermarkLogoUrl', 'footerLogoUrl']
+      .some(k => local((site || {})[k])) || ((site || {}).heroSlides || []).some(local);
+  };
+
   loadData = () => {
     if (window.CRMData) {
-      if (!this._photosPreloaded) {
+      const site0 = window.CRMData.getSiteContent();
+      const props0 = window.CRMData.getProperties().filter(p => p.published !== false);
+      const posts0 = window.CRMData.getPosts().filter(p => p.status === 'publicado');
+      const dep0 = window.CRMData.getTestimonials();
+      if (!this._photosPreloaded && this.precisaDoBancoDeMidia(props0, site0, posts0, dep0)) {
         this._photosPreloaded = true;
-      let warmKeys = null;
-      try { warmKeys = window.CRMData.listingKeys().concat(window.CRMData.testimonialKeys()); }
-      catch (e) { console.warn('Falha ao listar as fotos; carregando o padrão.', e); }
-      window.CRMData.preloadPhotos(warmKeys && warmKeys.length ? warmKeys : undefined)
-        .then(() => this.loadData()).catch(() => this.loadData());
-        return;
+        let warmKeys = null;
+        try { warmKeys = window.CRMData.listingKeys().concat(window.CRMData.testimonialKeys()); }
+        catch (e) { console.warn('Falha ao listar as fotos; carregando o padrão.', e); }
+        // Em segundo plano: a tela é pintada abaixo, sem esperar.
+        window.CRMData.preloadPhotos(warmKeys && warmKeys.length ? warmKeys : undefined)
+          .then(() => this.loadData()).catch(() => {});
       }
       const site = window.CRMData.getSiteContent();
       window.CRMData.applyTheme(site.theme);

@@ -308,18 +308,32 @@ class Component extends DCLogic {
     this.loadData();
   }
 
+  // Pintar primeiro, carregar o banco de mídia depois. O preloadPhotos abre o
+  // armazenamento local de imagens e leva alguns segundos; refazê-lo a cada atualização
+  // segurava a tela todo esse tempo — mesmo quando nenhuma foto vinha de lá. Ele só é
+  // necessário para imagens enviadas pelo painel (idb:); arquivo do site e imagem embutida
+  // aparecem sem ele.
+  precisaDoBancoDeMidia = (props, site) => {
+    const local = (v) => typeof v === 'string' && v.indexOf('idb') === 0;
+    if ((props || []).some(p => local(p.image) || (p.images || []).some(local))) return true;
+    return ['logoUrl', 'signatureUrl', 'heroImage', 'aboutImage', 'watermarkLogoUrl', 'footerLogoUrl']
+      .some(k => local((site || {})[k])) || ((site || {}).heroSlides || []).some(local);
+  };
+
   loadData = () => {
-    if (window.CRMData) {
-      if (!this._photosPreloaded) {
-        this._photosPreloaded = true;
-        window.CRMData.preloadPhotos().then(() => this.loadData()).catch(() => this.loadData());
-        return;
-      }
-      const site = window.CRMData.getSiteContent();
-      window.CRMData.applyTheme(site.theme);
-      this.setState({ properties: window.CRMData.getProperties().filter(p => p.published !== false), site });
-    } else {
-      setTimeout(this.loadData, 40);
+    if (!window.CRMData) { setTimeout(this.loadData, 40); return; }
+    const site = window.CRMData.getSiteContent();
+    const props = window.CRMData.getProperties().filter(p => p.published !== false);
+    window.CRMData.applyTheme(site.theme);
+    this.setState({ properties: props, site });
+
+    if (!this._photosPreloaded && this.precisaDoBancoDeMidia(props, site)) {
+      this._photosPreloaded = true;
+      // Carrega em segundo plano e repinta quando terminar: a tela não fica esperando.
+      window.CRMData.preloadPhotos()
+        .then(() => this.setState({ properties: window.CRMData.getProperties().filter(p => p.published !== false),
+                                    site: window.CRMData.getSiteContent() }))
+        .catch(() => {});
     }
   };
 
