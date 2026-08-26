@@ -77,13 +77,26 @@
   // Com o Storage fora, a imagem viaja dentro do próprio documento em vez de virar um
   // endereço — é o que faz uma foto enviada pelo painel existir para os outros aparelhos.
   // Vale só para as pequenas: um documento do Firestore não passa de 1 MB.
-  function guardarNoDocumento(chave, dataUrl, cache) {
+  async function guardarNoDocumento(chave, dataUrl, cache) {
     if (!dataUrl || dataUrl.indexOf('data:') !== 0) return '';
-    if (dataUrl.length > TETO_POR_IMAGEM) return '';
-    if (inlineUsado + dataUrl.length > TETO_INLINE) return '';
-    inlineUsado += dataUrl.length;
-    cache[chave] = dataUrl;
-    return dataUrl;
+    let atual = dataUrl;
+    // Uma foto de capa é salva em 1920px e passa folgada do teto. Em vez de descartá-la,
+    // reduz por etapas até caber — melhor a imagem um pouco menor em todos os aparelhos do
+    // que a original só no de quem enviou.
+    const etapas = [[1600, 0.72], [1200, 0.66], [900, 0.6], [700, 0.52]];
+    for (let i = 0; i < etapas.length && atual.length > TETO_POR_IMAGEM; i++) {
+      if (!(window.CRMData && window.CRMData.resizeDataUrl)) break;
+      try {
+        const menor = await window.CRMData.resizeDataUrl(atual, etapas[i][0], etapas[i][1]);
+        if (menor && menor.indexOf('data:') === 0 && menor.length < atual.length) atual = menor;
+        else break;
+      } catch (e) { break; }
+    }
+    if (atual.length > TETO_POR_IMAGEM) return '';
+    if (inlineUsado + atual.length > TETO_INLINE) return '';
+    inlineUsado += atual.length;
+    cache[chave] = atual;
+    return atual;
   }
 
   async function externalizeMedia(value, folder, cache) {
@@ -103,7 +116,7 @@
     const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
     if (storageIndisponivel) {
       mediaErrors.push({ path: path, code: 'storage-indisponivel' });
-      return guardarNoDocumento(value, dataUrl, cache);
+      return await guardarNoDocumento(value, dataUrl, cache);
     }
     try {
       const ref = firebase.storage().ref(path);
@@ -121,7 +134,7 @@
       // neste navegador e sobe assim que o Storage voltar.
       storageIndisponivel = true;
       mediaErrors.push({ path: path, code: e && (e.code || e.message) });
-      return guardarNoDocumento(value, dataUrl, cache);
+      return await guardarNoDocumento(value, dataUrl, cache);
     }
   }
 
