@@ -136,10 +136,10 @@
 
   const seedAuth = {
     users: [
-      { id: 1, name: "Elison Crestani", username: "Elisoncf", email: "elisoncrestani@gmail.com", password: "123456", role: "master", active: true },
-      { id: 2, name: "Edina Oliveira", username: "EdinaOliveira", email: "", password: "EdinaOliveira", role: "master", active: true },
-      { id: 3, name: "Gerente Geral", username: "gerente", email: "gerente@edinaoliveira.com.br", password: "123456", role: "gerente", active: true },
-      { id: 4, name: "Corretor Parceiro", username: "corretor", email: "corretor@edinaoliveira.com.br", password: "123456", role: "corretor", active: true }
+      { id: 1, name: "Elison Crestani", username: "Elisoncf", email: "elisoncrestani@gmail.com", role: "master", active: true },
+      { id: 2, name: "Edina Oliveira", username: "EdinaOliveira", email: "", role: "master", active: true },
+      { id: 3, name: "Gerente Geral", username: "gerente", email: "gerente@edinaoliveira.com.br", role: "gerente", active: true },
+      { id: 4, name: "Corretor Parceiro", username: "corretor", email: "corretor@edinaoliveira.com.br", role: "corretor", active: true }
     ]
   };
 
@@ -162,6 +162,102 @@
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     return new Blob([bytes], { type });
+  }
+
+  // ---- Senhas ----
+  // A senha nunca é guardada como texto: fica só a impressão digital dela (SHA-256 com um
+  // sal próprio de cada usuário, repetido 1000 vezes). Dá para conferir se a senha digitada
+  // confere, mas não dá para ler a original de volta a partir do que está salvo — nem no
+  // banco, nem no código, nem para quem tiver acesso ao Firestore.
+  const SENHA_PADRAO = '123456';
+
+  function sha256(msg) {
+    const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+      0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+      0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+      0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+      0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+      0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+      0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+      0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+    let H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+    // UTF-8
+    const bytes = [];
+    for (let i = 0; i < msg.length; i++) {
+      let c = msg.charCodeAt(i);
+      if (c < 0x80) bytes.push(c);
+      else if (c < 0x800) bytes.push(0xc0|(c>>6), 0x80|(c&63));
+      else if (c < 0xd800 || c >= 0xe000) bytes.push(0xe0|(c>>12), 0x80|((c>>6)&63), 0x80|(c&63));
+      else { i++; c = 0x10000 + (((c&0x3ff)<<10)|(msg.charCodeAt(i)&0x3ff));
+             bytes.push(0xf0|(c>>18), 0x80|((c>>12)&63), 0x80|((c>>6)&63), 0x80|(c&63)); }
+    }
+    const bitLen = bytes.length * 8;
+    bytes.push(0x80);
+    while (bytes.length % 64 !== 56) bytes.push(0);
+    for (let i = 7; i >= 0; i--) bytes.push((bitLen / Math.pow(2, i*8)) & 0xff);
+    const w = new Array(64);
+    const rotr = (x,n) => (x>>>n)|(x<<(32-n));
+    for (let off = 0; off < bytes.length; off += 64) {
+      for (let i = 0; i < 16; i++)
+        w[i] = (bytes[off+i*4]<<24)|(bytes[off+i*4+1]<<16)|(bytes[off+i*4+2]<<8)|bytes[off+i*4+3];
+      for (let i = 16; i < 64; i++) {
+        const s0 = rotr(w[i-15],7)^rotr(w[i-15],18)^(w[i-15]>>>3);
+        const s1 = rotr(w[i-2],17)^rotr(w[i-2],19)^(w[i-2]>>>10);
+        w[i] = (w[i-16]+s0+w[i-7]+s1)|0;
+      }
+      let [a,b,c,d,e,f,g,h] = H;
+      for (let i = 0; i < 64; i++) {
+        const S1 = rotr(e,6)^rotr(e,11)^rotr(e,25);
+        const ch = (e&f)^(~e&g);
+        const t1 = (h+S1+ch+K[i]+w[i])|0;
+        const S0 = rotr(a,2)^rotr(a,13)^rotr(a,22);
+        const maj = (a&b)^(a&c)^(b&c);
+        const t2 = (S0+maj)|0;
+        h=g; g=f; f=e; e=(d+t1)|0; d=c; c=b; b=a; a=(t1+t2)|0;
+      }
+      H = [(H[0]+a)|0,(H[1]+b)|0,(H[2]+c)|0,(H[3]+d)|0,(H[4]+e)|0,(H[5]+f)|0,(H[6]+g)|0,(H[7]+h)|0];
+    }
+    return H.map(x => (x>>>0).toString(16).padStart(8,'0')).join('');
+  }
+
+  function novoSal() {
+    let s = '';
+    const abc = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    // crypto.getRandomValues quando existir; Math.random é o plano B em navegador antigo.
+    if (window.crypto && window.crypto.getRandomValues) {
+      const b = new Uint8Array(16);
+      window.crypto.getRandomValues(b);
+      for (let i = 0; i < b.length; i++) s += abc[b[i] % abc.length];
+    } else {
+      for (let i = 0; i < 16; i++) s += abc[Math.floor(Math.random() * abc.length)];
+    }
+    return s;
+  }
+
+  // Repetir o cálculo encarece a vida de quem tentar adivinhar senhas por tentativa e erro,
+  // sem pesar para quem só está entrando no painel.
+  function hashSenha(senha, sal) {
+    let h = sal + ':' + senha;
+    for (let i = 0; i < 1000; i++) h = sha256(h);
+    return h;
+  }
+
+  // Converte cadastros antigos (senha em texto) e completa quem ainda não tem senha definida.
+  function protegerSenhas(auth) {
+    if (!auth || !Array.isArray(auth.users)) return auth;
+    auth.users.forEach(u => {
+      if (u.password != null) {
+        u.sal = u.sal || novoSal();
+        u.passwordHash = hashSenha(String(u.password), u.sal);
+        u.senhaPadrao = String(u.password) === SENHA_PADRAO;
+        delete u.password;
+      } else if (!u.passwordHash) {
+        u.sal = novoSal();
+        u.passwordHash = hashSenha(SENHA_PADRAO, u.sal);
+        u.senhaPadrao = true;
+      }
+    });
+    return auth;
   }
 
   // ---- Dados publicados ----
@@ -261,6 +357,7 @@
     if (key === LS.visits) return published.visits;
     if (key === LS.integrations) return published.integrations;
     if (key === LS.history) return published.history;
+    if (key === LS.auth) return published.auth;
     return undefined;
   }
 
@@ -309,7 +406,9 @@
   CHAVES_COMPARTILHADAS[LS.visits] = 'visits';
   CHAVES_COMPARTILHADAS[LS.integrations] = 'integrations';
   CHAVES_COMPARTILHADAS[LS.history] = 'history';
-  // LS.auth fica fora: as senhas estão em texto e este banco é de leitura pública.
+  // Com a senha guardada só como impressão digital, o cadastro de usuários pode ser
+  // compartilhado: quem ler o banco vê quem tem acesso, não a senha de ninguém.
+  CHAVES_COMPARTILHADAS[LS.auth] = 'auth';
 
   // Quando o dado chega pelo watch não há o que devolver — sem esta trava a atualização
   // recebida seria reenviada ao servidor, e dois aparelhos abertos ficariam se respondendo.
@@ -1074,8 +1173,11 @@
           registrar('Sincronia deste navegador', 'ok', 'Seguindo o banco normalmente.');
         }
 
-        // Usuários e senhas ficam de fora da sincronização de propósito
-        registrar('Usuários e senhas', 'aviso', 'Não sincronizam entre aparelhos: as senhas são guardadas em texto e o banco é de leitura pública.', 'Ligar Firebase Authentication');
+        // Senhas: guardadas como impressão digital, então o cadastro sincroniza. O que
+        // interessa avisar agora é quem ainda não trocou a senha de fábrica.
+        const padrao = eu.usuariosComSenhaPadrao();
+        if (padrao.length) registrar('Senhas', 'aviso', 'Ainda usam a senha de fábrica (' + SENHA_PADRAO + '): ' + padrao.join(', ') + '.', 'Troque em Usuários & Acesso');
+        else registrar('Senhas', 'ok', 'Nenhum usuário com a senha de fábrica.');
 
         if (corrigir && corrigidos) { try { window.dispatchEvent(new CustomEvent('edina:published-updated')); } catch (e) {} }
         return { ok: !itens.some(i => i.situacao === 'erro'), itens: itens, corrigidos: corrigidos };
@@ -1289,24 +1391,41 @@
     saveAuth: (obj) => set(LS.auth, obj),
     ROLE_PERMISSIONS,
     getPermissions: (role) => ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.corretor,
-    verifyLogin: (identifier, password) => {
-      const auth = get(LS.auth, seedAuth);
+    // Confere a senha pela impressão digital; a original nunca é guardada para comparar.
+    verifyLogin: function (identifier, password) {
+      const auth = this.getAuthProtegido();
       const id = String(identifier).toLowerCase().trim();
       const user = auth.users.find(u =>
         (u.username.toLowerCase() === id || (u.email && u.email.toLowerCase() === id)) &&
-        u.password === password && u.active !== false
+        u.active !== false && u.passwordHash === hashSenha(String(password), u.sal)
       );
       return user || null;
     },
-    changePassword: (username, oldPassword, newPassword) => {
+    // Lê o cadastro já convertido — e grava de volta na primeira vez, para que a senha em
+    // texto de versões antigas não continue no armazenamento.
+    getAuthProtegido: function () {
       const auth = get(LS.auth, seedAuth);
+      const tinhaTexto = (auth.users || []).some(u => u.password != null || !u.passwordHash);
+      protegerSenhas(auth);
+      if (tinhaTexto) set(LS.auth, auth);
+      return auth;
+    },
+    // Quem ainda está com a senha de fábrica — o painel avisa para trocar.
+    usuariosComSenhaPadrao: function () {
+      return this.getAuthProtegido().users.filter(u => u.senhaPadrao && u.active !== false).map(u => u.name || u.username);
+    },
+    SENHA_PADRAO: SENHA_PADRAO,
+    changePassword: function (username, oldPassword, newPassword) {
+      const auth = this.getAuthProtegido();
       const user = auth.users.find(u => u.username.toLowerCase() === String(username).toLowerCase());
-      if (!user || user.password !== oldPassword) return false;
-      user.password = newPassword;
+      if (!user || user.passwordHash !== hashSenha(String(oldPassword), user.sal)) return false;
+      user.sal = novoSal();
+      user.passwordHash = hashSenha(String(newPassword), user.sal);
+      user.senhaPadrao = String(newPassword) === SENHA_PADRAO;
       set(LS.auth, auth);
       return true;
     },
-    getUsers: () => get(LS.auth, seedAuth).users,
+    getUsers: function () { return this.getAuthProtegido().users; },
     saveUsers: (users) => {
       const auth = get(LS.auth, seedAuth);
       auth.users = users;
@@ -1315,7 +1434,8 @@
     addUser: (user) => {
       const auth = get(LS.auth, seedAuth);
       const nextId = auth.users.reduce((m, u) => Math.max(m, u.id), 0) + 1;
-      auth.users.push({ id: nextId, active: true, password: '123456', ...user });
+      const sal = novoSal();
+      auth.users.push({ id: nextId, active: true, sal: sal, passwordHash: hashSenha(SENHA_PADRAO, sal), senhaPadrao: true, ...user });
       set(LS.auth, auth);
       return auth.users;
     },
@@ -1323,7 +1443,9 @@
       const auth = get(LS.auth, seedAuth);
       const user = auth.users.find(u => u.id === userId);
       if (!user) return false;
-      user.password = '123456';
+      user.sal = novoSal();
+      user.passwordHash = hashSenha(SENHA_PADRAO, user.sal);
+      user.senhaPadrao = true;
       set(LS.auth, auth);
       return true;
     },

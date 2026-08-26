@@ -43,6 +43,13 @@ service cloud.firestore {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// AS SENHAS NÃO ESTÃO MAIS AQUI
+//
+// O cadastro de usuários passou a ser sincronizado, mas guarda apenas a impressão
+// digital de cada senha (SHA-256 com sal próprio, repetido 1000 vezes). Quem abrir o
+// banco vê quem tem acesso ao painel — não vê, e não consegue recuperar, a senha de
+// ninguém.
+//
 // SOBRE O `allow write: if true` EM /edina/{doc}
 //
 // Ele é necessário porque hoje o CRM entra com login próprio (guardado no

@@ -462,6 +462,16 @@
         <h1 style="font-family:'Manrope',sans-serif;font-size:34px;font-weight:600;margin:0 0 6px">Dashboard</h1>
         <div style="color:#746b5c;font-size:14px;margin-bottom:24px">Visão geral de leads, imóveis e conversão.</div>
 
+        <sc-if value="{{ temSenhaPadrao }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fdf4e3;border:1px solid #e8d4a8;border-left:4px solid #c99a3d;border-radius:6px;padding:16px 20px;margin-bottom:20px">
+            <div style="font-size:14px;font-weight:700;margin-bottom:4px">🔑 Troque a senha de fábrica</div>
+            <div style="font-size:13px;color:#6b5c3a;line-height:1.55">
+              {{ avisoSenhaPadrao }}<br>
+              A senha de fábrica é <strong>{{ senhaPadraoValor }}</strong> e qualquer pessoa que conheça o endereço do painel pode tentá-la. Troque em <strong>Usuários &amp; Acesso</strong>.
+            </div>
+          </div>
+        </sc-if>
+
         <div style="background:#fffdf8;border:1px solid #ddd3bd;border-radius:6px;padding:18px 20px;margin-bottom:24px">
           <div data-crm-actions="true" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
             <div>
@@ -5019,6 +5029,15 @@ Responda em JSON puro, um array de 2 objetos: [{"text": "...", "hashtags": "#tag
       onSiteField_address: this.updateSiteField('address'),
       onSiteField_footerTagline: this.updateSiteField('footerTagline'),
       onSiteField_footerNote: this.updateSiteField('footerNote'),
+      temSenhaPadrao: (window.CRMData.usuariosComSenhaPadrao ? window.CRMData.usuariosComSenhaPadrao() : []).length > 0,
+      senhaPadraoValor: window.CRMData.SENHA_PADRAO || '123456',
+      avisoSenhaPadrao: (() => {
+        const l = window.CRMData.usuariosComSenhaPadrao ? window.CRMData.usuariosComSenhaPadrao() : [];
+        if (!l.length) return '';
+        return l.length === 1
+          ? l[0] + ' ainda está com a senha de fábrica.'
+          : l.length + ' usuários ainda estão com a senha de fábrica: ' + l.join(', ') + '.';
+      })(),
       onDiagnosticar: this.onDiagnosticar,
       onDiagnosticarCorrigir: this.onDiagnosticarCorrigir,
       diagRodando: !!this.state.diagRodando,
