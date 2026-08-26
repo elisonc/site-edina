@@ -19,12 +19,22 @@
   <meta name="description" content="Edina Oliveira — Imóveis de Alto Padrão em Navegantes, Itajaí, Balneário Camboriú e Praia Brava">
   <link rel="preload" href="./data/site-data.json" as="fetch">
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <!-- O arquivo da fonte vem de outro servidor: sem esta linha, a conexão só começa
+       depois que o CSS chega, e o texto fica esperando por isso. -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com">
+  <link rel="preconnect" href="https://firestore.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
   <style>
     html { scroll-behavior: smooth; }
     :root { --accent:#c1664a; --tan:#c4a886; --cream:#f6f3ec; --bg-alt:#ece5d6; --olive:#8a9463; --blue:#6e93ac; --stone:#cfc7b8; --ink:#241f18; --header-bg:#f6f3ec; --footer-bg:#ece5d6; }
     body { margin: 0; background: var(--cream); }
     ::selection { background: var(--accent); color: #fff; }
+    /* O espaço da capa e dos cards é reservado antes de a foto chegar. Sem isso o conteúdo
+       nasce colado no topo e desce quando a imagem carrega — o pulo que o medidor do Google
+       aponta como deslocamento de layout. */
+    [data-no-watermark] { min-height: 480px; background-color: #141108; }
+    @media (max-width: 980px) { [data-no-watermark] { min-height: 420px; } }
   </style>
   <script src="./firebase-config.js"></script>
   <script src="./firebase-db.js"></script>

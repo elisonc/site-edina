@@ -1318,9 +1318,14 @@
           path: entry.path || '',
           source: entry.source || 'direto'
         };
-        arr.push(rec);
-        while (arr.length > 20000) arr.shift();
-        set(LS.analytics, arr);
+        // Com o banco ativo, ele é quem conta: guardar também aqui faria a mesma visita ser
+        // somada duas vezes quando a lista do servidor chegasse, e cada aparelho mostraria
+        // um número diferente. A cópia local só serve para quando o banco está fora.
+        if (!(window.FirebaseDB && window.FirebaseDB.enabled)) {
+          arr.push(rec);
+          while (arr.length > 20000) arr.shift();
+          set(LS.analytics, arr);
+        }
         // Também grava no banco de dados compartilhado, se configurado — assim o Dashboard
         // enxerga visitas de QUALQUER navegador, não só o de quem administra.
         if (window.FirebaseDB && window.FirebaseDB.enabled) window.FirebaseDB.logPageview(rec).catch(() => {});

@@ -2506,7 +2506,9 @@ class Component extends DCLogic {
     selectedLeadId: null, leadTimelineType: 'Anotação', leadTimelineText: '', leadTaskDate: '',
     users: window.CRMData.getUsers(), userDraft: null,
     pwOld: '', pwNew: '', pwConfirm: '', pwError: false, pwErrorMsg: '', pwSuccess: false,
-    analyticsRows: window.CRMData.getAnalytics ? window.CRMData.getAnalytics() : [], dashRange: null,
+    // Começa vazio de propósito: a lista boa vem do banco em seguida. Partir da cópia
+    // local fazia o painel exibir por um instante um número que só valia neste aparelho.
+    analyticsRows: [], dashRange: null,
     propFilterRef: '', propFilterTitle: '', propFilterRegion: '', propFilterPublished: '', propFilterStatus: ''
   } : {
     tab: 'dashboard',
@@ -2545,7 +2547,12 @@ class Component extends DCLogic {
       });
     };
     window.addEventListener('edina:published-updated', this._aoAtualizar);
-    this._aoAtualizarVisitas = () => this.setState({ analyticsTick: Date.now() });
+    // Chegou visita nova: relê do banco, que é onde a contagem vale.
+    this._aoAtualizarVisitas = () => {
+      if (window.CRMData.getAnalyticsMerged) {
+        window.CRMData.getAnalyticsMerged().then(rows => this.setState({ analyticsRows: rows }));
+      }
+    };
     window.addEventListener('edina:analytics-updated', this._aoAtualizarVisitas);
 
     // Alinha o catálogo com o que está no ar antes de editar, senão salvar daqui devolve
