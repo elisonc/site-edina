@@ -260,6 +260,7 @@
     if (key === LS.leads) return published.leads;
     if (key === LS.visits) return published.visits;
     if (key === LS.integrations) return published.integrations;
+    if (key === LS.history) return published.history;
     return undefined;
   }
 
@@ -307,6 +308,7 @@
   CHAVES_COMPARTILHADAS[LS.leads] = 'leads';
   CHAVES_COMPARTILHADAS[LS.visits] = 'visits';
   CHAVES_COMPARTILHADAS[LS.integrations] = 'integrations';
+  CHAVES_COMPARTILHADAS[LS.history] = 'history';
   // LS.auth fica fora: as senhas estão em texto e este banco é de leitura pública.
 
   // Quando o dado chega pelo watch não há o que devolver — sem esta trava a atualização
@@ -980,6 +982,97 @@
       leads[idx] = { ...leads[idx], ...patch };
       return set(LS.leads, leads);
     },
+    // Confere, ponto a ponto, se este navegador está de acordo com o banco — e conserta o
+    // que estiver fora do lugar. Serve de botão de pânico quando dois aparelhos mostram
+    // coisas diferentes: em vez de adivinhar qual está certo, o servidor decide.
+    diagnosticar: function (corrigir) {
+      const eu = this;
+      const itens = [];
+      const registrar = (o, s, d, a) => itens.push({ area: o, situacao: s, detalhe: d, acao: a || '' });
+
+      if (!(window.FirebaseDB && window.FirebaseDB.enabled)) {
+        registrar('Banco de dados', 'erro', 'Firebase não está ativo neste site.', 'Confira firebase-config.js');
+        return Promise.resolve({ ok: false, itens: itens, corrigidos: 0 });
+      }
+
+      let corrigidos = 0;
+      return window.FirebaseDB.fetchAll().then(remoto => {
+        if (!remoto) {
+          registrar('Banco de dados', 'erro', 'Não foi possível ler o banco. Regras do Firestore podem estar bloqueando.', 'Publique firestore.rules');
+          return { ok: false, itens: itens, corrigidos: 0 };
+        }
+        registrar('Banco de dados', 'ok', 'Leitura e escrita respondendo.');
+
+        // Cada conjunto compartilhado: o que está aqui bate com o que está no ar?
+        const nomes = { properties: 'Imóveis', site: 'Conteúdo do site', posts: 'Blog',
+                        testimonials: 'Depoimentos', leads: 'Contatos', visits: 'Agenda',
+                        integrations: 'Integrações e comissão', history: 'Histórico' };
+        Object.keys(CHAVES_COMPARTILHADAS).forEach(chaveLocal => {
+          const doc = CHAVES_COMPARTILHADAS[chaveLocal];
+          const rotulo = nomes[doc] || doc;
+          let local = null;
+          try { local = JSON.parse(localStorage.getItem(chaveLocal) || 'null'); } catch (e) {}
+          const noAr = remoto[doc];
+
+          if (noAr === undefined && local == null) { registrar(rotulo, 'ok', 'Sem dados nos dois lados.'); return; }
+          if (noAr === undefined) {
+            registrar(rotulo, 'aviso', 'Existe só neste navegador, nunca foi ao banco.', corrigir ? 'Enviado ao banco' : 'Enviar ao banco');
+            if (corrigir) { sincronizar(chaveLocal, local); corrigidos++; }
+            return;
+          }
+          if (JSON.stringify(local) === JSON.stringify(noAr)) {
+            const n = Array.isArray(noAr) ? noAr.length + ' registro(s)' : 'configurado';
+            registrar(rotulo, 'ok', 'Igual ao que está no ar — ' + n + '.');
+            return;
+          }
+          const qLocal = Array.isArray(local) ? local.length : (local ? 1 : 0);
+          const qAr = Array.isArray(noAr) ? noAr.length : (noAr ? 1 : 0);
+          registrar(rotulo, 'aviso', 'Diferente do banco (aqui: ' + qLocal + ', no ar: ' + qAr + ').',
+                    corrigir ? 'Alinhado pelo banco' : 'Alinhar pelo banco');
+          if (corrigir) {
+            aplicandoDoServidor = true;
+            try { localStorage.setItem(chaveLocal, JSON.stringify(noAr)); } catch (e) {}
+            aplicandoDoServidor = false;
+            published = published || {}; published[doc] = noAr;
+            corrigidos++;
+          }
+        });
+
+        // Imóveis sem foto de capa: o card fica com um retângulo vazio no site.
+        const imoveis = (remoto.properties || []);
+        const semFoto = imoveis.filter(x => !x.image);
+        if (imoveis.length && semFoto.length) {
+          registrar('Fotos dos imóveis', 'aviso', semFoto.length + ' imóvel(is) sem foto de capa: ' + semFoto.map(x => x.title).join(', '), 'Cadastre uma foto na aba Imóveis');
+        } else if (imoveis.length) {
+          registrar('Fotos dos imóveis', 'ok', 'Todos os ' + imoveis.length + ' com foto de capa.');
+        }
+
+        // Posts sem imagem
+        const posts = (remoto.posts || []);
+        const postsSemFoto = posts.filter(x => !x.image);
+        if (posts.length && postsSemFoto.length) registrar('Fotos do blog', 'aviso', postsSemFoto.length + ' post(s) sem imagem.', 'Cadastre na aba Blog');
+        else if (posts.length) registrar('Fotos do blog', 'ok', 'Todos os ' + posts.length + ' com imagem.');
+
+        // Marca de edição presa: faz este navegador ignorar o banco
+        if (hasLocalEdits()) {
+          registrar('Sincronia deste navegador', 'aviso', 'Este navegador está marcado como "tem alteração não enviada" e por isso ignora o banco.',
+                    corrigir ? 'Marca liberada' : 'Liberar marca');
+          if (corrigir) { try { localStorage.removeItem('edina_local_edits'); } catch (e) {} corrigidos++; }
+        } else {
+          registrar('Sincronia deste navegador', 'ok', 'Seguindo o banco normalmente.');
+        }
+
+        // Usuários e senhas ficam de fora da sincronização de propósito
+        registrar('Usuários e senhas', 'aviso', 'Não sincronizam entre aparelhos: as senhas são guardadas em texto e o banco é de leitura pública.', 'Ligar Firebase Authentication');
+
+        if (corrigir && corrigidos) { try { window.dispatchEvent(new CustomEvent('edina:published-updated')); } catch (e) {} }
+        return { ok: !itens.some(i => i.situacao === 'erro'), itens: itens, corrigidos: corrigidos };
+      }).catch(e => {
+        registrar('Banco de dados', 'erro', 'Falha ao consultar: ' + (e && (e.code || e.message)), '');
+        return { ok: false, itens: itens, corrigidos: 0 };
+      });
+    },
+
     // Alinha este navegador com o catálogo que está no ar antes de qualquer edição. Sem
     // isso o painel edita sobre a cópia que tinha guardada e, ao salvar, devolve ao banco
     // uma versão antiga — foi assim que as fotos dos imóveis se perderam de uma vez.

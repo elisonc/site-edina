@@ -462,6 +462,39 @@
         <h1 style="font-family:'Manrope',sans-serif;font-size:34px;font-weight:600;margin:0 0 6px">Dashboard</h1>
         <div style="color:#746b5c;font-size:14px;margin-bottom:24px">Visão geral de leads, imóveis e conversão.</div>
 
+        <div style="background:#fffdf8;border:1px solid #ddd3bd;border-radius:6px;padding:18px 20px;margin-bottom:24px">
+          <div data-crm-actions="true" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:15px;font-weight:700;margin-bottom:2px">Verificação do sistema</div>
+              <div style="font-size:12.5px;color:#746b5c">Confere se este aparelho está mostrando o mesmo que o site e os outros navegadores.</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button onClick="{{ onDiagnosticar }}" style="background:none;border:1px solid #1d1a15;color:#1d1a15;padding:11px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif;border-radius:3px">Analisar</button>
+              <button onClick="{{ onDiagnosticarCorrigir }}" style="background:#3e7a4f;color:#fff;border:none;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Manrope',sans-serif;border-radius:3px">Analisar e corrigir</button>
+            </div>
+          </div>
+          <sc-if value="{{ diagRodando }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:14px;font-size:13px;color:#746b5c">Verificando…</div>
+          </sc-if>
+          <sc-if value="{{ temDiag }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:14px">
+              <div style="font-size:13px;font-weight:700;margin-bottom:10px">{{ diagResumo }}</div>
+              <sc-for list="{{ diagItens }}" as="d" hint-placeholder-count="3">
+                <div style="display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid #efe8d9">
+                  <div style="{{ d.pontoStyle }}"></div>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:13px;font-weight:600">{{ d.area }}</div>
+                    <div style="font-size:12.5px;color:#746b5c;overflow-wrap:anywhere">{{ d.detalhe }}</div>
+                    <sc-if value="{{ d.temAcao }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:12px;color:#3e7a4f;margin-top:2px">→ {{ d.acao }}</div>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+
         <sc-if value="{{ hasPublishWarnings }}" hint-placeholder-val="{{ false }}">
           <div style="background:#fffaf0;border:1px solid #e0b878;padding:20px 24px;margin-bottom:26px">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:12px">
@@ -2575,6 +2608,25 @@ class Component extends DCLogic {
     window.CRMData && window.CRMData.saveProperties(properties);
     this.autoPublish('comissão atualizada');
   };
+  rodarDiagnostico = (corrigir) => () => {
+    if (this.state.diagRodando) return;
+    this.setState({ diagRodando: true });
+    window.CRMData.diagnosticar(corrigir).then(res => {
+      this.setState({
+        diagRodando: false,
+        diag: res,
+        // Corrigir alinha este navegador pelo banco: a tela precisa reler o que mudou.
+        properties: window.CRMData.getPropertiesRaw(),
+        leads: window.CRMData.getLeads(),
+        siteContent: window.CRMData.getSiteContentRaw(),
+        integrations: window.CRMData.getIntegrations()
+      });
+      if (corrigir) this.logAction('Rodou verificação do sistema', res.corrigidos + ' ajuste(s)');
+    }).catch(() => this.setState({ diagRodando: false }));
+  };
+  onDiagnosticar = this.rodarDiagnostico(false);
+  onDiagnosticarCorrigir = this.rodarDiagnostico(true);
+
   onSoldFrom = (e) => this.setState({ soldFrom: e.target.value });
   onSoldTo = (e) => this.setState({ soldTo: e.target.value });
   onGlobalSearch = (e) => this.setState({ globalSearch: e.target.value });
@@ -4967,6 +5019,24 @@ Responda em JSON puro, um array de 2 objetos: [{"text": "...", "hashtags": "#tag
       onSiteField_address: this.updateSiteField('address'),
       onSiteField_footerTagline: this.updateSiteField('footerTagline'),
       onSiteField_footerNote: this.updateSiteField('footerNote'),
+      onDiagnosticar: this.onDiagnosticar,
+      onDiagnosticarCorrigir: this.onDiagnosticarCorrigir,
+      diagRodando: !!this.state.diagRodando,
+      temDiag: !!(this.state.diag && this.state.diag.itens),
+      diagResumo: (() => {
+        const d = this.state.diag;
+        if (!d || !d.itens) return '';
+        const problemas = d.itens.filter(i => i.situacao !== 'ok').length;
+        const partes = [d.itens.length + ' verificação(ões)'];
+        if (d.corrigidos) partes.push(d.corrigidos + ' corrigida(s)');
+        partes.push(problemas ? problemas + ' ponto(s) de atenção' : 'nada fora do lugar');
+        return partes.join(' · ');
+      })(),
+      diagItens: ((this.state.diag && this.state.diag.itens) || []).map(i => ({
+        area: i.area, detalhe: i.detalhe, acao: i.acao, temAcao: !!i.acao,
+        pontoStyle: 'flex:0 0 auto;width:9px;height:9px;border-radius:50%;margin-top:5px;background:' +
+          (i.situacao === 'ok' ? '#3e7a4f' : i.situacao === 'erro' ? '#b4432f' : '#c99a3d')
+      })),
       onLogoWidth: this.updateSiteField('logoWidth'),
       applyReferencePalette: this.applyReferencePalette,
       themeSwatches: [

@@ -53,7 +53,7 @@
   // ficavam de fora e por isso divergiam de um navegador para o outro.
   // 'auth' não entra de propósito: as senhas são guardadas em texto e este banco é de
   // leitura pública — sincronizá-las seria publicá-las.
-  const DOCS = ['properties', 'site', 'posts', 'testimonials', 'leads', 'visits', 'integrations'];
+  const DOCS = ['properties', 'site', 'posts', 'testimonials', 'leads', 'visits', 'integrations', 'history'];
 
   function dataUrlToBlob(dataUrl) {
     const comma = dataUrl.indexOf(',');
