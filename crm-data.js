@@ -317,6 +317,12 @@
     if (aplicandoDoServidor) return;
     const doc = CHAVES_COMPARTILHADAS[key];
     if (!doc) return;
+    // A cópia publicada tem prioridade na leitura. Se ela não acompanhar a gravação que
+    // acabou de acontecer, a leitura seguinte volta ao estado anterior e a alteração se
+    // perde — foi o que fazia um lead mudar de etapa e voltar sozinho.
+    published = published || {};
+    published[doc] = JSON.parse(JSON.stringify(val));
+    storeCache(published);
     if (!(window.FirebaseDB && window.FirebaseDB.enabled)) return;
     const envio = doc === 'properties' ? window.FirebaseDB.saveProperties(val)
                 : doc === 'site' ? window.FirebaseDB.saveSite(val)
