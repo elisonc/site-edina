@@ -298,14 +298,18 @@
     if (!firebase.apps.length) return null;
     try {
       const snap = await DOC('uso_fotos').get();
-      if (!snap.exists) return { fotos: 0, bytes: 0, conjuntos: 0 };
+      if (!snap.exists) return { fotos: 0, bytes: 0, conjuntos: 0, porChave: {} };
       const d = snap.data() || {};
       let fotos = 0, bytes = 0, conjuntos = 0;
+      // porChave permite saber quantas fotos cada conjunto tem — é assim que a verificação
+      // do sistema descobre um endereço apontando para um bloco que não existe mais.
+      const porChave = {};
       Object.keys(d).forEach(k => {
         if (k.indexOf('c_') !== 0 || !d[k]) return;
         fotos += d[k].fotos || 0; bytes += d[k].bytes || 0; conjuntos++;
+        porChave[k.slice(2)] = d[k].fotos || 0;
       });
-      return { fotos: fotos, bytes: bytes, conjuntos: conjuntos };
+      return { fotos: fotos, bytes: bytes, conjuntos: conjuntos, porChave: porChave };
     } catch (e) { return null; }
   }
 

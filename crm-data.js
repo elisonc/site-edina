@@ -1230,7 +1230,7 @@
       }
 
       let corrigidos = 0;
-      return window.FirebaseDB.fetchAll().then(remoto => {
+      return window.FirebaseDB.fetchAll().then(async remoto => {
         if (!remoto) {
           registrar('Banco de dados', 'erro', 'Não foi possível ler o banco. Regras do Firestore podem estar bloqueando.', 'Publique firestore.rules');
           return { ok: false, itens: itens, corrigidos: 0 };
@@ -1286,6 +1286,44 @@
         const postsSemFoto = posts.filter(x => !x.image);
         if (posts.length && postsSemFoto.length) registrar('Fotos do blog', 'aviso', postsSemFoto.length + ' post(s) sem imagem.', 'Cadastre na aba Blog');
         else if (posts.length) registrar('Fotos do blog', 'ok', 'Todos os ' + posts.length + ' com imagem.');
+
+        // Endereço de foto apontando para bloco que não existe mais. Acontecia quando
+        // gravar uma imagem nova reescrevia o bloco do conjunto inteiro (corrigido), e
+        // deixa para trás campos que nunca mais carregam. Sem esta limpeza o site fica
+        // preso: a trava que protege as fotos antigas impede qualquer regravação.
+        try {
+          const uso = await window.FirebaseDB.usoDeFotos();
+          const quantas = (uso && uso.porChave) || {};
+          const quebrada = (v) => {
+            if (typeof v !== 'string' || v.indexOf('fotodoc:') !== 0) return false;
+            const partes = v.slice(8).split(':');
+            const i = parseInt(partes.pop(), 10);
+            const rotulo = partes.join(':');
+            const n = quantas[rotulo];
+            return n !== undefined && (isNaN(i) || i >= n);
+          };
+          const campos = ['logoUrl', 'signatureUrl', 'watermarkLogoUrl', 'faviconUrl', 'heroImage',
+                          'aboutImage', 'spotlightImage', 'footerLogoUrl', 'ogImage'];
+          const site = remoto.site || {};
+          const ruins = campos.filter(k => quebrada(site[k]));
+          const slidesRuins = (site.heroSlides || []).filter(quebrada).length;
+          const total = ruins.length + slidesRuins;
+          if (total) {
+            registrar('Imagens do site', 'aviso',
+                      total + ' imagem(ns) apontando para um lugar que não existe mais' +
+                      (ruins.length ? ' (' + ruins.join(', ') + ')' : '') + '. Precisam ser reenviadas.',
+                      corrigir ? 'Endereços quebrados removidos' : 'Remover endereços quebrados');
+            if (corrigir) {
+              const limpo = { ...site };
+              ruins.forEach(k => { limpo[k] = ''; });
+              limpo.heroSlides = (site.heroSlides || []).filter(v => !quebrada(v));
+              this.saveSiteContent(limpo);
+              corrigidos++;
+            }
+          } else {
+            registrar('Imagens do site', 'ok', 'Todos os endereços de imagem apontam para uma foto real.');
+          }
+        } catch (e) {}
 
         // Marca de edição presa: faz este navegador ignorar o banco
         if (hasLocalEdits()) {
