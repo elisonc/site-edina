@@ -2972,8 +2972,22 @@ class Component extends DCLogic {
       .catch(() => window.alert('Não foi possível ler essa imagem.'));
   };
   refreshStorage = () => {
+    // O número que interessa é o do site, não o deste navegador: a estimativa local só
+    // conhece as fotos que passaram por aqui, e mostrava um valor diferente em cada
+    // aparelho. O uso real vem do banco.
+    if (window.FirebaseDB && window.FirebaseDB.enabled && window.FirebaseDB.usoDeFotos) {
+      window.FirebaseDB.usoDeFotos().then(u => {
+        if (!u) return;
+        const teto = window.CRMData.getStorageBudget ? window.CRMData.getStorageBudget()
+                                                     : 2 * 1024 * 1024 * 1024;
+        this.setState({ storage: { used: u.bytes, quota: teto, fotos: u.fotos, doSite: true } });
+      }).catch(() => {});
+    }
     if (!window.CRMData || !window.CRMData.storageEstimate) return;
-    window.CRMData.storageEstimate().then(s => { if (s) this.setState({ storage: s }); });
+    window.CRMData.storageEstimate().then(s => {
+      // Só usa a estimativa local enquanto o número do site não chegou.
+      if (s && !(this.state.storage && this.state.storage.doSite)) this.setState({ storage: s });
+    });
   };
   onProCode = (e) => this.setState({ proCode: e.target.value, proError: '' });
   onUnlockPro = () => {
@@ -5122,7 +5136,9 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
         if (!st || !st.quota) return 'Calculando o espaço disponível…';
         const fmt = (n) => n >= 1073741824 ? (n / 1073741824).toFixed(1) + ' GB' : (n / 1048576).toFixed(0) + ' MB';
         const pct = Math.min(100, Math.round(st.used / st.quota * 100));
-        const base = `${fmt(st.used)} usados de ${fmt(st.quota)} reservados para fotos e vídeos (${pct}%).`;
+        const quantas = st.fotos != null ? `${st.fotos} foto(s) · ` : '';
+        const onde = st.doSite ? ' no site (vale para todos os aparelhos)' : ' neste navegador';
+        const base = `${quantas}${fmt(st.used)} usados de ${fmt(st.quota)}${onde} (${pct}%).`;
         if (pct > 85) return base + ' Espaço quase cheio — troque a qualidade para "Leve" ou remova fotos que não usa.';
         return base;
       })(),

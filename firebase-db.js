@@ -234,10 +234,12 @@
     // Cada bloco é gravado por conta própria: se um falhar, os anteriores continuam valendo
     // e a ficha fica com as fotos que deram certo, em vez de perder todas.
     let gravadas = 0;
+    let bytes = 0;
     for (let n = 0; n < blocos.length; n++) {
       try {
         await DOC(nomeBloco(chave, n)).set({ data: blocos[n], updatedAt: Date.now() });
         gravadas += blocos[n].length;
+        bytes += blocos[n].reduce((t, f) => t + f.length, 0);
       } catch (e) {
         mediaErrors.push({ path: nomeBloco(chave, n), code: e && (e.code || e.message) });
         break;
@@ -247,7 +249,32 @@
     for (let n = blocos.length; n < MAX_BLOCOS; n++) {
       try { await DOC(nomeBloco(chave, n)).delete(); } catch (e) { break; }
     }
+    // Anota quanto este conjunto ocupa, para o painel mostrar o espaço real do site e não
+    // o do navegador de quem está olhando.
+    if (gravadas) {
+      try {
+        await DOC('uso_fotos').set({ ['c_' + chave]: { fotos: gravadas, bytes: bytes, em: Date.now() } },
+                                    { merge: true });
+      } catch (e) {}
+    }
     return gravadas || null;
+  }
+
+  // Soma o que está guardado no site inteiro.
+  async function usoDeFotos() {
+    await ready;
+    if (!firebase.apps.length) return null;
+    try {
+      const snap = await DOC('uso_fotos').get();
+      if (!snap.exists) return { fotos: 0, bytes: 0, conjuntos: 0 };
+      const d = snap.data() || {};
+      let fotos = 0, bytes = 0, conjuntos = 0;
+      Object.keys(d).forEach(k => {
+        if (k.indexOf('c_') !== 0 || !d[k]) return;
+        fotos += d[k].fotos || 0; bytes += d[k].bytes || 0; conjuntos++;
+      });
+      return { fotos: fotos, bytes: bytes, conjuntos: conjuntos };
+    } catch (e) { return null; }
   }
 
   async function lerImagens(chave) {
@@ -604,6 +631,7 @@
     saveDoc: (nome, dados) => save(nome, dados),
     mediaErrors: () => mediaErrors.slice(),
     guardarImagens: guardarImagens,
+    usoDeFotos: usoDeFotos,
     lerImagens: lerImagens,
     hidratarFotos: hidratarFotos,
     fetchAll: fetchAll,

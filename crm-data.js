@@ -633,15 +633,29 @@
   window.CRMData = {
     MAX_PROPERTIES,
     MAX_PHOTOS_PER_PROPERTY: 50,
-    isProUnlocked: function () { try { return localStorage.getItem('edina_pro_unlocked') === '1'; } catch (e) { return false; } },
+    isProUnlocked: function () {
+      try { if (localStorage.getItem('edina_pro_unlocked') === '1') return true; } catch (e) {}
+      try { return !!(this.getIntegrations() || {}).pro; } catch (e) { return false; }
+    },
     getMaxProperties: function () { return this.isProUnlocked() ? MAX_PROPERTIES_PRO : MAX_PROPERTIES; },
     getMaxPosts: function () { return this.isProUnlocked() ? MAX_POSTS_PRO : MAX_POSTS; },
+    // O Pro vale para a conta, não para um navegador: fica junto das integrações, que
+    // sincronizam. Antes ficava só aqui, e liberar num aparelho não liberava nos outros.
     unlockPro: function (code) {
       if (String(code || '').trim().toUpperCase() !== PRO_UNLOCK_CODE) return false;
       try { localStorage.setItem('edina_pro_unlocked', '1'); } catch (e) {}
+      try {
+        const integ = this.getIntegrations();
+        integ.pro = true;
+        integ.proDesde = new Date().toISOString();
+        this.saveIntegrations(integ);
+      } catch (e) {}
       return true;
     },
-    lockPro: function () { try { localStorage.removeItem('edina_pro_unlocked'); } catch (e) {} },
+    lockPro: function () {
+      try { localStorage.removeItem('edina_pro_unlocked'); } catch (e) {}
+      try { const integ = this.getIntegrations(); integ.pro = false; this.saveIntegrations(integ); } catch (e) {}
+    },
     addSyncRecord: function (kind, commitFull, filesCount, summary) {
       try {
         const arr = get(LS.syncHistory, []);
