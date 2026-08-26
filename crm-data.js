@@ -72,8 +72,11 @@
   ];
 
   const seedSiteContent = {
-    logoUrl: "",
-    faviconUrl: "",
+    // A marca da Edina vai versionada junto com o site, como a assinatura: carrega na hora,
+    // não ocupa espaço no banco e continua valendo mesmo num navegador que nunca abriu o
+    // painel. Continua trocável pelo CRM — o que for salvo lá passa na frente deste padrão.
+    logoUrl: "media/logo-edina.png",
+    faviconUrl: "media/favicon-edina.png",
     // Arquivo versionado junto com o site: a assinatura aparece para qualquer visitante desde
     // a primeira visita, sem depender do que estiver salvo no navegador de quem administra.
     signatureUrl: "assinatura-ink.png",
@@ -81,6 +84,8 @@
     heroTitle: "Bem-vindos ao litoral de alto padrão",
     heroSubtitle: "Os melhores imóveis de alto padrão em Navegantes, Itajaí, Camboriú e Praia Brava, selecionados para quem busca vista, exclusividade e conforto.",
     heroImage: "",
+    // Retrato da Edina para a seção "Sobre", também versionado com o site.
+    aboutImage: "media/edina-retrato.jpg",
     metaTitle: "Edina Oliveira — Imóveis de Alto Padrão",
     metaDescription: "Edina Oliveira — Imóveis de Alto Padrão em Navegantes, Itajaí, Balneário Camboriú e Praia Brava",
     metaKeywords: "imóveis de alto padrão, litoral catarinense, casas de praia, coberturas balneário camboriú, corretora de imóveis itajaí",
