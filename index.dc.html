@@ -17,7 +17,6 @@
   <meta name="twitter:title" content="Edina Oliveira — Imóveis de Alto Padrão">
   <meta name="twitter:description" content="Edina Oliveira — Imóveis de Alto Padrão em Navegantes, Itajaí, Balneário Camboriú e Praia Brava">
   <meta name="description" content="Edina Oliveira — Imóveis de Alto Padrão em Navegantes, Itajaí, Balneário Camboriú e Praia Brava">
-  <link rel="preload" href="./data/site-data.json" as="fetch">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <!-- O arquivo da fonte vem de outro servidor: sem esta linha, a conexão só começa
        depois que o CSS chega, e o texto fica esperando por isso. -->
@@ -416,7 +415,7 @@ class Component extends DCLogic {
     this._onPub = () => {
       this._photosPreloaded = false;
       // Manda o navegador buscar as capas novas antes de redesenhar.
-      try { window.__aquecerFotos((window.CRMData.getProperties() || []).map(p => p.image)); } catch (e) {}
+      try { window.__aquecerFotos((window.CRMData.getProperties() || []).slice(0, 6).map(p => p.image)); } catch (e) {}
       this.loadData();
     };
     window.addEventListener('edina:published-updated', this._onPub);
@@ -453,7 +452,13 @@ class Component extends DCLogic {
         this._heroTimer = setTimeout(this._heroTick, secs * 1000);
       }
     };
-    this._heroTimer = setTimeout(this._heroTick, 1000);
+    // A primeira foto fica parada até a página terminar de carregar, e ainda ganha alguns
+    // segundos de folga. Trocar de imagem enquanto o site ainda está montando atrapalha duas
+    // vezes: quem chegou não termina de ver a primeira foto, e o navegador segue redesenhando
+    // a maior área da tela — é o que faz a página demorar a "parecer pronta".
+    const comecarCiclo = () => { this._heroTimer = setTimeout(this._heroTick, 6000); };
+    if (document.readyState === 'complete') comecarCiclo();
+    else window.addEventListener('load', comecarCiclo, { once: true });
   }
 
   adjustFont = (delta) => () => {
@@ -660,7 +665,9 @@ class Component extends DCLogic {
         }
         if (el.dataset.adiado === img) return;
         el.dataset.adiado = img;
-        const põe = () => { el.style.backgroundImage = `url('${img}')`; };
+        // Os slides seguintes também usam a versão leve. Antes buscavam o arquivo cheio, e a
+        // mesma foto acabava baixada duas vezes — uma para a capa, outra para o slide.
+        const põe = () => { el.style.backgroundImage = `url('${leve}')`; };
         if (document.readyState === 'complete') setTimeout(põe, 600);
         else window.addEventListener('load', () => setTimeout(põe, 600), { once: true });
       }

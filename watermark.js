@@ -27,6 +27,12 @@
     if (logo) {
       mark = document.createElement('img');
       mark.src = logo;
+      mark.alt = '';
+      mark.setAttribute('aria-hidden', 'true');
+      mark.decoding = 'async';
+      // Dimensões declaradas: sem elas o navegador não sabe quanto espaço a marca vai ocupar
+      // e reposiciona o conteúdo quando ela carrega — e são sete por página.
+      mark.width = 300; mark.height = 300;
       mark.style.cssText = 'width:auto;height:auto;max-width:30%;max-height:55%;object-fit:contain;opacity:' + op + ';filter:drop-shadow(0 1px 5px rgba(0,0,0,.45))';
     } else {
       mark = document.createElement('div');
