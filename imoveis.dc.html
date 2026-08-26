@@ -70,13 +70,13 @@
     <div style="font-size:14px;color:var(--accent)">{{ resultsLabel }}</div>
   </section>
 
-  <section style="display:grid;grid-template-columns:260px 1fr;gap:0">
+  <section role="main" aria-label="Lista de imóveis" style="display:grid;grid-template-columns:260px 1fr;gap:0">
     <aside data-filters="true" style="padding:36px 32px;border-right:1px solid #ddd3bd;align-self:start;position:sticky;top:81px">
       <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#1d1a15;font-weight:700;margin-bottom:22px;display:flex;align-items:center;gap:8px">☰ Filtrar Imóveis</div>
 
       <div style="margin-bottom:20px">
         <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#746b5c;margin-bottom:8px">Localização</div>
-        <select onChange="{{ onRegionChange }}" value="{{ region }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
+        <select onChange="{{ onRegionChange }}" aria-label="Filtrar por localização" value="{{ region }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
           <option value="all">Todas</option>
           <option value="navegantes">Navegantes</option>
           <option value="itajai">Itajaí</option>
@@ -87,7 +87,7 @@
 
       <div style="margin-bottom:20px">
         <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#746b5c;margin-bottom:8px">Estágio</div>
-        <select onChange="{{ onStageChange }}" value="{{ stage }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
+        <select onChange="{{ onStageChange }}" aria-label="Filtrar por estágio da obra" value="{{ stage }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
           <option value="all">Todos</option>
           <option value="lancamento">Lançamento</option>
           <option value="construcao">Em construção</option>
@@ -96,7 +96,7 @@
       </div>
       <div style="margin-bottom:20px">
         <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#746b5c;margin-bottom:8px">Finalidade</div>
-        <select onChange="{{ onPurposeChange }}" value="{{ purpose }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
+        <select onChange="{{ onPurposeChange }}" aria-label="Filtrar por finalidade" value="{{ purpose }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
           <option value="all">Todas</option>
           <option value="venda">Venda</option>
           <option value="aluguel">Aluguel</option>
@@ -105,7 +105,7 @@
 
       <div style="margin-bottom:20px">
         <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#746b5c;margin-bottom:8px">Tipo</div>
-        <select onChange="{{ onTypeChange }}" value="{{ type }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
+        <select onChange="{{ onTypeChange }}" aria-label="Filtrar por tipo de imóvel" value="{{ type }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
           <option value="all">Todos</option>
           <sc-for list="{{ typeOptions }}" as="t" hint-placeholder-count="4">
             <option value="{{ t }}">{{ t }}</option>
@@ -115,7 +115,7 @@
 
       <div style="margin-bottom:20px">
         <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#746b5c;margin-bottom:8px">Suítes (mín.)</div>
-        <select onChange="{{ onSuitesChange }}" value="{{ suitesMin }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
+        <select onChange="{{ onSuitesChange }}" aria-label="Filtrar por número mínimo de suítes" value="{{ suitesMin }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
           <option value="0">Qualquer</option>
           <option value="1">1+</option>
           <option value="2">2+</option>
@@ -127,7 +127,7 @@
 
       <div style="margin-bottom:20px">
         <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#746b5c;margin-bottom:8px">Preço mín.</div>
-        <select onChange="{{ onPriceMinChange }}" value="{{ priceMin }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
+        <select onChange="{{ onPriceMinChange }}" aria-label="Filtrar por preço mínimo" value="{{ priceMin }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
           <option value="0">Sem mínimo</option>
           <option value="1000000">R$ 1.000.000</option>
           <option value="3000000">R$ 3.000.000</option>
@@ -137,7 +137,7 @@
 
       <div style="margin-bottom:26px">
         <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#746b5c;margin-bottom:8px">Preço máx.</div>
-        <select onChange="{{ onPriceMaxChange }}" value="{{ priceMax }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
+        <select onChange="{{ onPriceMaxChange }}" aria-label="Filtrar por preço máximo" value="{{ priceMax }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
           <option value="0">Sem máximo</option>
           <option value="3000000">R$ 3.000.000</option>
           <option value="5000000">R$ 5.000.000</option>
@@ -147,7 +147,7 @@
 
       <div style="margin-bottom:26px">
         <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#746b5c;margin-bottom:8px">Ordenar</div>
-        <select onChange="{{ onSortChange }}" value="{{ sort }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
+        <select onChange="{{ onSortChange }}" aria-label="Ordenar resultados" value="{{ sort }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
           <option value="relevance">Mais recentes</option>
           <option value="price-asc">Menor Preço</option>
           <option value="price-desc">Maior Preço</option>
@@ -197,7 +197,7 @@
     </div>
   </section>
 
-  <a href="{{ whatsappFloatLink }}" target="_blank" style="position:fixed;bottom:28px;right:28px;width:56px;height:56px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;color:#fff;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.25);z-index:60"><svg viewBox="0 0 32 32" width="30" height="30" fill="#fff"><path d="M16.04 4C9.4 4 4 9.37 4 16c0 2.2.6 4.28 1.62 6.06L4 28l6.1-1.6A11.9 11.9 0 0 0 16.04 28C22.68 28 28 22.63 28 16S22.68 4 16.04 4Zm0 21.7c-1.9 0-3.68-.53-5.2-1.44l-.37-.22-3.62.95.97-3.53-.24-.36A9.63 9.63 0 0 1 6.3 16c0-5.36 4.37-9.7 9.74-9.7 5.36 0 9.73 4.34 9.73 9.7s-4.37 9.7-9.73 9.7Zm5.33-7.27c-.29-.15-1.73-.85-2-.95-.27-.1-.46-.15-.66.14-.2.3-.76.95-.93 1.14-.17.2-.34.22-.63.07-.29-.15-1.22-.45-2.32-1.43-.86-.76-1.44-1.7-1.6-1.99-.17-.3-.02-.45.13-.6.13-.13.29-.34.44-.51.15-.17.2-.3.29-.49.1-.2.05-.37-.02-.51-.07-.15-.66-1.58-.9-2.17-.24-.57-.48-.49-.66-.5h-.56c-.2 0-.51.07-.78.37-.27.3-1.02 1-1.02 2.44s1.05 2.83 1.2 3.03c.15.2 2.06 3.15 5 4.42.7.3 1.24.48 1.67.61.7.22 1.34.19 1.84.12.56-.08 1.73-.71 1.97-1.39.24-.68.24-1.27.17-1.39-.07-.12-.27-.2-.56-.35Z"/></svg></a>
+  <a href="{{ whatsappFloatLink }}" target="_blank" aria-label="Falar com a Edina no WhatsApp" title="Falar no WhatsApp" rel="noopener" style="position:fixed;bottom:28px;right:28px;width:56px;height:56px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;color:#fff;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.25);z-index:60"><svg viewBox="0 0 32 32" width="30" height="30" fill="#fff"><path d="M16.04 4C9.4 4 4 9.37 4 16c0 2.2.6 4.28 1.62 6.06L4 28l6.1-1.6A11.9 11.9 0 0 0 16.04 28C22.68 28 28 22.63 28 16S22.68 4 16.04 4Zm0 21.7c-1.9 0-3.68-.53-5.2-1.44l-.37-.22-3.62.95.97-3.53-.24-.36A9.63 9.63 0 0 1 6.3 16c0-5.36 4.37-9.7 9.74-9.7 5.36 0 9.73 4.34 9.73 9.7s-4.37 9.7-9.73 9.7Zm5.33-7.27c-.29-.15-1.73-.85-2-.95-.27-.1-.46-.15-.66.14-.2.3-.76.95-.93 1.14-.17.2-.34.22-.63.07-.29-.15-1.22-.45-2.32-1.43-.86-.76-1.44-1.7-1.6-1.99-.17-.3-.02-.45.13-.6.13-.13.29-.34.44-.51.15-.17.2-.3.29-.49.1-.2.05-.37-.02-.51-.07-.15-.66-1.58-.9-2.17-.24-.57-.48-.49-.66-.5h-.56c-.2 0-.51.07-.78.37-.27.3-1.02 1-1.02 2.44s1.05 2.83 1.2 3.03c.15.2 2.06 3.15 5 4.42.7.3 1.24.48 1.67.61.7.22 1.34.19 1.84.12.56-.08 1.73-.71 1.97-1.39.24-.68.24-1.27.17-1.39-.07-.12-.27-.2-.56-.35Z"/></svg></a>
 
   <footer style="background:var(--footer-bg);border-top:1px solid #ddd3bd;padding:36px 64px;font-size:12.5px;color:#746b5c;text-align:center">
     © 2026 {{ brandName }}. {{ creci }}. Todos os direitos reservados.
@@ -212,13 +212,13 @@
 // Sem isso, abrir o portfólio baixava as quinze fotos grandes de uma vez.
 window.__lazyFoto = (function () {
   const pendentes = new WeakMap();
-  let contador = 0;
+  const jaPintado = new WeakSet();
   const aplicar = (el) => {
     const src = pendentes.get(el);
     if (!src) return;
     pendentes.delete(el);
     const mini = /^media\/[^/]+-1\.jpg$/.test(src) ? src.replace('media/', 'media/mini/') : src;
-    const pintar = (url) => { el.style.backgroundImage = `url('${url}')`; el.style.opacity = '1'; };
+    const pintar = (url) => { el.style.backgroundImage = `url('${url}')`; el.style.opacity = '1'; jaPintado.add(el); };
     const img = new Image();
     img.onload = () => pintar(mini);
     img.onerror = () => pintar(src);
@@ -227,22 +227,27 @@ window.__lazyFoto = (function () {
   const obs = ('IntersectionObserver' in window)
     ? new IntersectionObserver((entradas, o) => {
         entradas.forEach(e => { if (e.isIntersecting) { o.unobserve(e.target); aplicar(e.target); } });
-      }, { rootMargin: '400px' })
+      }, { rootMargin: '600px' })
     : null;
+  const naTela = (el) => {
+    const r = el.getBoundingClientRect();
+    return r.bottom > -600 && r.top < (window.innerHeight || 800) + 600 && r.width > 0;
+  };
   return function (el, src) {
     if (!el || !src) return;
+    if (el.dataset.fotoAtual === src && jaPintado.has(el)) return;   // nada mudou
+    el.dataset.fotoAtual = src;
     pendentes.set(el, src);
-    const ordem = contador++;
-    // Os primeiros cards entram sem esperar: são os que já estão à vista, e adiar a foto
-    // deles só atrasaria o que a pessoa vê primeiro.
-    if (ordem < 4 || !obs) { aplicar(el); return; }
-    el.style.transition = 'opacity .35s ease';
+    // Troca de foto num card que já estava na tela é atualização, não primeira pintura:
+    // adiar seria fazer a pessoa esperar para ver o que ela acabou de mudar. O mesmo vale
+    // para qualquer card já visível — adiar só faz sentido para o que está longe da vista.
+    if (jaPintado.has(el) || naTela(el) || !obs) { aplicar(el); return; }
+    el.style.transition = 'opacity .3s ease';
     el.style.opacity = '0';
     obs.observe(el);
-    // Rede de segurança: se o observador não disparar (aba em segundo plano, navegador que
-    // não compõe a página, layout sem rolagem), a foto entra assim mesmo. Um card invisível
-    // seria pior do que um card pesado.
-    setTimeout(() => { if (pendentes.has(el)) { try { obs.unobserve(el); } catch (e) {} aplicar(el); } }, 2500);
+    // Rede de segurança caso o observador não dispare (aba em segundo plano, página que
+    // não rola). Curta, porque agora só alcança cards fora da vista.
+    setTimeout(() => { if (pendentes.has(el)) { try { obs.unobserve(el); } catch (e) {} aplicar(el); } }, 1200);
   };
 })();
 

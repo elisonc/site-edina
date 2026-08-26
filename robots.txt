@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# O painel interno não interessa a buscador nenhum.
+Disallow: /crm.dc.html
+Disallow: /media/mini/
+
+Sitemap: https://www.edinaoliveiraimoveis.com.br/sitemap.xml

@@ -103,7 +103,7 @@
     </sc-for>
   </section>
 
-  <section id="imoveis" style="padding:110px 64px 90px">
+  <section id="imoveis" role="main" aria-label="Imóveis em destaque" style="padding:110px 64px 90px">
     <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:48px;flex-wrap:wrap;gap:20px">
       <div>
         <div style="font-size:13px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:12px">Portfólio Exclusivo</div>
@@ -333,13 +333,13 @@
 // mini/ — o card é pequeno e não justifica baixar a foto em tamanho cheio.
 window.__lazyFoto = (function () {
   const pendentes = new WeakMap();
-  let contador = 0;
+  const jaPintado = new WeakSet();
   const aplicar = (el) => {
     const src = pendentes.get(el);
     if (!src) return;
     pendentes.delete(el);
     const mini = /^media\/[^/]+-1\.jpg$/.test(src) ? src.replace('media/', 'media/mini/') : src;
-    const pintar = (url) => { el.style.backgroundImage = `url('${url}')`; el.style.opacity = '1'; };
+    const pintar = (url) => { el.style.backgroundImage = `url('${url}')`; el.style.opacity = '1'; jaPintado.add(el); };
     const img = new Image();
     img.onload = () => pintar(mini);
     img.onerror = () => pintar(src);
@@ -348,22 +348,27 @@ window.__lazyFoto = (function () {
   const obs = ('IntersectionObserver' in window)
     ? new IntersectionObserver((entradas, o) => {
         entradas.forEach(e => { if (e.isIntersecting) { o.unobserve(e.target); aplicar(e.target); } });
-      }, { rootMargin: '400px' })
+      }, { rootMargin: '600px' })
     : null;
+  const naTela = (el) => {
+    const r = el.getBoundingClientRect();
+    return r.bottom > -600 && r.top < (window.innerHeight || 800) + 600 && r.width > 0;
+  };
   return function (el, src) {
     if (!el || !src) return;
+    if (el.dataset.fotoAtual === src && jaPintado.has(el)) return;   // nada mudou
+    el.dataset.fotoAtual = src;
     pendentes.set(el, src);
-    const ordem = contador++;
-    // Os primeiros cards entram sem esperar: são os que já estão à vista, e adiar a foto
-    // deles só atrasaria o que a pessoa vê primeiro.
-    if (ordem < 4 || !obs) { aplicar(el); return; }
-    el.style.transition = 'opacity .35s ease';
+    // Troca de foto num card que já estava na tela é atualização, não primeira pintura:
+    // adiar seria fazer a pessoa esperar para ver o que ela acabou de mudar. O mesmo vale
+    // para qualquer card já visível — adiar só faz sentido para o que está longe da vista.
+    if (jaPintado.has(el) || naTela(el) || !obs) { aplicar(el); return; }
+    el.style.transition = 'opacity .3s ease';
     el.style.opacity = '0';
     obs.observe(el);
-    // Rede de segurança: se o observador não disparar (aba em segundo plano, navegador que
-    // não compõe a página, layout sem rolagem), a foto entra assim mesmo. Um card invisível
-    // seria pior do que um card pesado.
-    setTimeout(() => { if (pendentes.has(el)) { try { obs.unobserve(el); } catch (e) {} aplicar(el); } }, 2500);
+    // Rede de segurança caso o observador não dispare (aba em segundo plano, página que
+    // não rola). Curta, porque agora só alcança cards fora da vista.
+    setTimeout(() => { if (pendentes.has(el)) { try { obs.unobserve(el); } catch (e) {} aplicar(el); } }, 1200);
   };
 })();
 

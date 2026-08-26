@@ -40,7 +40,11 @@
     if (site.metaTitle) document.title = site.metaTitle;
     setMeta('description', site.metaDescription || document.querySelector('meta[name="description"]')?.content);
     if (site.metaKeywords) setMeta('keywords', site.metaKeywords);
-    if (site.canonicalUrl) setLink('canonical', site.canonicalUrl.replace(/\/$/, '') + location.pathname.replace(/^\/*/, '/'));
+    // Endereço canônico: sem ele, a mesma página respondendo em / e em /index.dc.html
+    // conta como conteúdo repetido para o buscador. Cai no domínio do próprio site quando
+    // nada foi configurado no painel.
+    const base = (site.canonicalUrl || location.origin).replace(/\/$/, '');
+    setLink('canonical', base + location.pathname.replace(/^\/*/, '/'));
     setMeta('robots', site.seoIndexable === false ? 'noindex, nofollow' : 'index, follow');
 
     setMeta('og:title', site.metaTitle || document.title, 'property');
@@ -54,6 +58,39 @@
     setMeta('twitter:card', 'summary_large_image');
 
     if (integ.gtmId) injectGTM(integ.gtmId);
+    dadosEstruturados(site, base);
+  }
+
+  // Cartão de visita legível por buscador: nome, contato, região atendida e o registro
+  // profissional. É o que permite ao Google mostrar o negócio como empresa local em vez de
+  // uma página solta.
+  function dadosEstruturados(site, base) {
+    try {
+      const antigo = document.getElementById('dados-estruturados');
+      if (antigo) antigo.remove();
+      const marca = site.brandName || 'Edina Oliveira';
+      const dados = {
+        '@context': 'https://schema.org',
+        '@type': 'RealEstateAgent',
+        name: marca,
+        description: site.metaDescription || '',
+        url: base + '/',
+        telephone: site.phone || '',
+        email: site.email || '',
+        areaServed: ['Navegantes', 'Itajaí', 'Balneário Camboriú', 'Praia Brava'],
+        address: { '@type': 'PostalAddress', addressRegion: 'SC', addressCountry: 'BR',
+                   streetAddress: site.address || '' },
+        knowsLanguage: 'pt-BR'
+      };
+      if (site.creci) dados.identifier = site.creci;
+      const logo = site.logoUrl && window.CRMData.photoURL ? window.CRMData.photoURL(site.logoUrl) : '';
+      if (logo) dados.logo = logo;
+      const tag = document.createElement('script');
+      tag.type = 'application/ld+json';
+      tag.id = 'dados-estruturados';
+      tag.textContent = JSON.stringify(dados);
+      document.head.appendChild(tag);
+    } catch (e) {}
   }
 
   if (window.CRMData && window.CRMData.loadPublished) {
