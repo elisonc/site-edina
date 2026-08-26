@@ -39,6 +39,14 @@
   // por minutos. Uma falha basta para concluir que o Storage está fora e seguir em frente.
   let storageIndisponivel = false;
 
+  // Plano B para quando o Storage está fora: a imagem viaja dentro do próprio documento,
+  // em vez de virar um endereço. Só serve para as poucas e pequenas — logo, assinatura,
+  // fotos de capa, foto de depoimento —, porque um documento do Firestore não passa de 1 MB.
+  // Sem isso, uma foto enviada pelo painel simplesmente não existia para os outros aparelhos.
+  const TETO_INLINE = 700 * 1024;
+  const TETO_POR_IMAGEM = 350 * 1024;
+  let inlineUsado = 0;
+
   function comPrazo(promessa, ms, rotulo) {
     let t;
     return Promise.race([
@@ -66,6 +74,18 @@
 
   // Sobe cada foto/áudio nova (data: ou idb:) para o Storage e troca pela URL pública —
   // documentos do Firestore são pequenos (limite de 1MB); as mídias vivem no Storage.
+  // Com o Storage fora, a imagem viaja dentro do próprio documento em vez de virar um
+  // endereço — é o que faz uma foto enviada pelo painel existir para os outros aparelhos.
+  // Vale só para as pequenas: um documento do Firestore não passa de 1 MB.
+  function guardarNoDocumento(chave, dataUrl, cache) {
+    if (!dataUrl || dataUrl.indexOf('data:') !== 0) return '';
+    if (dataUrl.length > TETO_POR_IMAGEM) return '';
+    if (inlineUsado + dataUrl.length > TETO_INLINE) return '';
+    inlineUsado += dataUrl.length;
+    cache[chave] = dataUrl;
+    return dataUrl;
+  }
+
   async function externalizeMedia(value, folder, cache) {
     if (!value || typeof value !== 'string') return value;
     const isIdb = /^idb(photo|audio|video):/.test(value);
@@ -81,7 +101,10 @@
     const blob = dataUrlToBlob(dataUrl);
     const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
     const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    if (storageIndisponivel) { mediaErrors.push({ path: path, code: 'storage-indisponivel' }); return ''; }
+    if (storageIndisponivel) {
+      mediaErrors.push({ path: path, code: 'storage-indisponivel' });
+      return guardarNoDocumento(value, dataUrl, cache);
+    }
     try {
       const ref = firebase.storage().ref(path);
       // O envio precisa de prazo. Quando o Storage recusa a origem, o SDK não devolve erro:
@@ -98,7 +121,7 @@
       // neste navegador e sobe assim que o Storage voltar.
       storageIndisponivel = true;
       mediaErrors.push({ path: path, code: e && (e.code || e.message) });
-      return '';
+      return guardarNoDocumento(value, dataUrl, cache);
     }
   }
 
@@ -109,6 +132,7 @@
   async function externalizeProperties(props) {
     mediaErrors.length = 0;
     storageIndisponivel = false;
+    inlineUsado = 0;
     const cache = {};
     const out = [];
     for (const p of props) {
@@ -126,6 +150,8 @@
   }
 
   async function externalizeSite(site) {
+    mediaErrors.length = 0;
+    inlineUsado = 0;
     const cache = {};
     const out = { ...site };
     for (const k of ['logoUrl', 'signatureUrl', 'watermarkLogoUrl', 'faviconUrl']) {
@@ -140,6 +166,8 @@
   }
 
   async function externalizeList(list, key) {
+    mediaErrors.length = 0;
+    inlineUsado = 0;
     const cache = {};
     const out = [];
     for (const item of list) {
