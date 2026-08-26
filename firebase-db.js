@@ -166,7 +166,9 @@
   // uma ficha (uma dúzia, às vezes) não cabem ali junto com todos os outros imóveis — era
   // por isso que uma importação com sete fotos chegava ao banco sem nenhuma. Cada imóvel
   // passa a ter o seu próprio documento de fotos, e a ficha guarda apenas a referência.
-  const PASTA_FOTOS = 'edina_fotos';
+  // Documentos dentro de 'edina', e não numa coleção nova: as regras já publicadas liberam
+  // 'edina/{doc}', então isto funciona sem pedir nenhuma alteração no console do Firebase.
+  const nomeDocFotos = (id) => 'fotos_' + id;
   const TETO_DOC_FOTOS = 900 * 1024;
 
   // Resolve uma referência local (idb:) para a imagem em si; data: já vem pronta.
@@ -192,15 +194,14 @@
       cabem.push(f);
     }
     if (!cabem.length) return null;
-    await firebase.firestore().collection(PASTA_FOTOS).doc(String(id))
-      .set({ data: cabem, updatedAt: Date.now() });
+    await DOC(nomeDocFotos(id)).set({ data: cabem, updatedAt: Date.now() });
     return cabem.length;
   }
 
   async function lerFotosDoImovel(id) {
     await ready;
     if (!firebase.apps.length) return [];
-    return firebase.firestore().collection(PASTA_FOTOS).doc(String(id)).get()
+    return DOC(nomeDocFotos(id)).get()
       .then(s => (s.exists ? (s.data().data || []) : []))
       .catch(() => []);
   }
