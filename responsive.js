@@ -12,6 +12,10 @@
 
     /* Cabeçalho: logo em cima, menu numa linha própria, botão inteiro embaixo */
     '  header{flex-wrap:wrap !important;height:auto !important;row-gap:12px !important;padding-top:14px !important;padding-bottom:14px !important}',
+    /* A marca ocupa a primeira linha inteira e fica centralizada: encostada à esquerda,
+       com o menu centralizado logo abaixo, o cabeçalho parecia desalinhado. */
+    '  header > a:first-child{flex:0 0 100% !important;justify-content:center !important;text-align:center !important}',
+    '  header > a:first-child > *{margin-left:auto !important;margin-right:auto !important}',
     '  header nav{flex-wrap:wrap !important;justify-content:center !important;align-items:center !important;width:100% !important;row-gap:10px !important;column-gap:18px !important}',
     /* Links do menu com 15px de altura eram alvo pequeno demais para o dedo: o recheio
        vertical leva cada um perto dos 44px recomendados, sem mudar o desenho. */
