@@ -86,6 +86,12 @@
       /* Cartões de número (Total da Carteira, Dashboard): duas colunas aproveitam a largura
          em vez de virar uma pilha alta que obriga a rolar. */
       [data-crm-main] [style*="grid-template-columns"] { gap: 12px !important; }
+      /* Duas colunas servem para série de cartões de número (três ou mais itens curtos).
+         Blocos de conteúdo — funil, listas, gráficos — ficam ilegíveis em 166px de largura,
+         então ocupam a linha inteira. */
+      [data-crm-main] [style*="grid-template-columns"]:not(:has(> :nth-child(3))) {
+        grid-template-columns: 1fr !important;
+      }
       [data-crm-main] [style*="font-size:34px"], [data-crm-main] [style*="font-size:32px"],
       [data-crm-main] [style*="font-size:30px"] { font-size: clamp(19px, 5.6vw, 26px) !important; line-height: 1.15 !important; overflow-wrap: anywhere; }
 

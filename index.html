@@ -410,12 +410,25 @@ class Component extends DCLogic {
     };
     window.addEventListener('edina:published-updated', this._onPub);
     this.loadData();
+    // O próximo passo é agendado no finally: qualquer erro no meio interrompia a cadeia de
+    // vez, e a capa parava de passar até alguém recarregar a página.
     this._heroTick = () => {
-      const site = this.state.siteContent || {};
-      const slides = (site.heroSlides || []).filter(Boolean);
-      if (slides.length > 1) this.setState(s => ({ heroSlideIndex: (s.heroSlideIndex + 1) % slides.length }));
-      const secs = Math.max(1, Math.min(5, parseFloat(site.heroSlideInterval) || 1));
-      this._heroTimer = setTimeout(this._heroTick, secs * 1000);
+      let secs = 4;
+      try {
+        const site = this.state.siteContent || {};
+        const slides = (site.heroSlides || []).filter(Boolean);
+        secs = Math.max(1, Math.min(10, parseFloat(site.heroSlideInterval) || 4));
+        if (slides.length > 1) {
+          this.setState(s => {
+            const atual = Number.isFinite(s.heroSlideIndex) ? s.heroSlideIndex : 0;
+            return { heroSlideIndex: (atual + 1) % slides.length };
+          });
+        }
+      } catch (e) {
+        // Segue tentando: uma falha pontual não deve congelar a capa.
+      } finally {
+        this._heroTimer = setTimeout(this._heroTick, secs * 1000);
+      }
     };
     this._heroTimer = setTimeout(this._heroTick, 1000);
   }
@@ -599,9 +612,17 @@ class Component extends DCLogic {
 
     const site = this.state.siteContent || {};
     const heroBase = `position:relative;height:calc(100vh - 180px);min-height:480px;max-height:680px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden`;
-    const heroSlides = (site.heroSlides || []).filter(Boolean);
+    // A capa não pode ficar vazia: sem slides configurados, usa a imagem única e, na falta
+    // dela, uma foto do próprio portfólio — melhor um imóvel real do que um retângulo escuro.
+    let heroSlides = (site.heroSlides || []).filter(Boolean);
+    if (!heroSlides.length) {
+      const doPortfolio = (this.state.properties || []).map(p => p.image).filter(Boolean).slice(0, 3);
+      if (site.heroImage) heroSlides = [site.heroImage];
+      else if (doPortfolio.length) heroSlides = doPortfolio;
+    }
     const useSlides = heroSlides.length > 0;
-    const hIdx = heroSlides.length ? (this.state.heroSlideIndex % heroSlides.length) : 0;
+    const idxBruto = Number.isFinite(this.state.heroSlideIndex) ? this.state.heroSlideIndex : 0;
+    const hIdx = heroSlides.length ? (idxBruto % heroSlides.length) : 0;
     const heroSlideItems = heroSlides.map((img, i) => ({
       style: `position:absolute;inset:0;background-size:cover;background-position:center;opacity:${i === hIdx ? 1 : 0};transition:opacity .8s ease;z-index:0`,
       ref: (el) => { if (el && img) el.style.backgroundImage = `url('${img}')`; }
