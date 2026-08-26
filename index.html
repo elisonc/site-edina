@@ -329,6 +329,34 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script>
 
+// Fotos dos cards entram quando se aproximam da tela e usam a versão reduzida da pasta
+// mini/ — o card é pequeno e não justifica baixar a foto em tamanho cheio.
+window.__lazyFoto = (function () {
+  const pendentes = new WeakMap();
+  const aplicar = (el) => {
+    const src = pendentes.get(el);
+    if (!src) return;
+    pendentes.delete(el);
+    const mini = /^media\/[^/]+-1\.jpg$/.test(src) ? src.replace('media/', 'media/mini/') : src;
+    const img = new Image();
+    img.onload = () => { el.style.backgroundImage = `url('${mini}')`; el.style.opacity = '1'; };
+    img.onerror = () => { el.style.backgroundImage = `url('${src}')`; el.style.opacity = '1'; };
+    img.src = mini;
+  };
+  const obs = ('IntersectionObserver' in window)
+    ? new IntersectionObserver((entradas, o) => {
+        entradas.forEach(e => { if (e.isIntersecting) { o.unobserve(e.target); aplicar(e.target); } });
+      }, { rootMargin: '400px' })
+    : null;
+  return function (el, src) {
+    if (!el || !src) return;
+    pendentes.set(el, src);
+    el.style.transition = 'opacity .35s ease';
+    el.style.opacity = '0';
+    if (obs) obs.observe(el); else aplicar(el);
+  };
+})();
+
 class Component extends DCLogic {
   state = { favorites: {}, formSent: false, formError: '', formSending: false, properties: [], posts: [], testimonials: [], siteContent: null, fontScale: 100, heroSlideIndex: 0 };
 
@@ -476,7 +504,7 @@ class Component extends DCLogic {
       'repeating-linear-gradient(135deg,#e6dcdc,#e6dcdc 12px,#dccdcd 12px,#dccdcd 24px)'
     ];
     const cardImg = (tone, h, img) => img ? `height:${h}px;background-size:cover;background-position:center` : `background:${tones[tone % 3]};height:${h}px;display:flex;align-items:center;justify-content:center;color:#8a7c5c;font-family:monospace;font-size:12px;text-align:center;padding:10px`;
-    const cardImgRef = (img) => (el) => { if (el && img) el.style.backgroundImage = `url('${img}')`; };
+    const cardImgRef = (img) => (el) => { if (el && img) window.__lazyFoto(el, img); };
 
     const featuredSource = properties.filter(p => p.featured);
     const featuredProperties = (featuredSource.length ? featuredSource : properties).slice(0, 3).map(p => ({
@@ -510,7 +538,7 @@ class Component extends DCLogic {
       href: `blog-post.dc.html?id=${p.id}`,
       cat: p.cat, date: p.date, title: p.title,
       imgStyle: p.image ? `height:170px;background-size:cover;background-position:center;opacity:.95` : `background:${tones[p.tone % 3]};height:170px;display:flex;align-items:center;justify-content:center;color:#8a7c5c;font-family:monospace;font-size:12px;text-align:center;padding:10px;opacity:.9`,
-      imgRef: (el) => { if (el && p.image) el.style.backgroundImage = `url('${p.image}')`; },
+      imgRef: (el) => { if (el && p.image) window.__lazyFoto(el, p.image); },
       hasPlaceholderText: !p.image
     }));
 
