@@ -912,6 +912,18 @@
       }
       return set(LS.leads, leads);
     },
+    // Alinha este navegador com o catálogo que está no ar antes de qualquer edição. Sem
+    // isso o painel edita sobre a cópia que tinha guardada e, ao salvar, devolve ao banco
+    // uma versão antiga — foi assim que as fotos dos imóveis se perderam de uma vez.
+    syncProperties: function () {
+      if (!(window.FirebaseDB && window.FirebaseDB.enabled)) return Promise.resolve(null);
+      return window.FirebaseDB.fetchAll().then(d => {
+        if (!d || !Array.isArray(d.properties)) return null;
+        set(LS.properties, d.properties);
+        return d.properties;
+      }).catch(() => null);
+    },
+
     // Traz do banco os contatos recebidos de outros aparelhos e junta com os daqui.
     syncLeads: function () {
       if (!(window.FirebaseDB && window.FirebaseDB.enabled)) return Promise.resolve(null);

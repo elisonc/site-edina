@@ -2477,6 +2477,13 @@ class Component extends DCLogic {
     window.CRMData.applyTheme(this.state.siteContent.theme);
     // Contatos enviados pelo site chegam no banco, não neste navegador — busca os que
     // faltam antes de montar a lista, senão o painel mostra só o que foi digitado aqui.
+    // Alinha o catálogo com o que está no ar antes de editar, senão salvar daqui devolve
+    // ao banco a versão que este navegador tinha guardada.
+    if (window.CRMData.syncProperties) {
+      window.CRMData.syncProperties().then(props => {
+        if (props) this.setState({ properties: window.CRMData.getPropertiesRaw() });
+      });
+    }
     if (window.CRMData.syncLeads) {
       window.CRMData.syncLeads().then(merged => {
         if (merged) this.setState({ leads: window.CRMData.getLeads() });
