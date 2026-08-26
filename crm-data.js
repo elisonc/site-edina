@@ -557,6 +557,36 @@
     });
   }
 
+  // Uma imagem de fundo vazado — logo, selo, marca d'água — não pode virar JPEG: o formato
+  // não guarda transparência e o canvas pinta o vazado de preto. Era o que colocava um
+  // retângulo escuro atrás da logo toda vez que ela era salva.
+  function temTransparencia(ctx, w, h) {
+    try {
+      const d = ctx.getImageData(0, 0, w, h).data;
+      // De quatro em quatro pixels: basta um ponto vazado para o formato precisar de alfa.
+      for (let i = 3; i < d.length; i += 16) if (d[i] < 250) return true;
+      return false;
+    } catch (e) { return false; }
+  }
+
+  // Escolhe o formato de saída preservando o que a imagem precisa. Com transparência, WebP
+  // (que guarda alfa) e PNG como reserva; sem ela, o caminho normal de WebP/JPEG.
+  function codificar(canvas, ctx, width, height, quality) {
+    if (temTransparencia(ctx, width, height)) {
+      const png = canvas.toDataURL('image/png');
+      let webp = '';
+      try { webp = canvas.toDataURL('image/webp', Math.min(0.92, quality + 0.06)); } catch (e) {}
+      return (webp.indexOf('data:image/webp') === 0 && webp.length < png.length) ? webp : png;
+    }
+    const jpeg = canvas.toDataURL('image/jpeg', quality);
+    // WebP entrega a mesma imagem com bem menos peso. Só é adotado quando o navegador
+    // realmente gera o formato (o cabeçalho confirma) e quando o arquivo sai menor —
+    // caso contrário fica o JPEG, sem risco de piorar.
+    let webp = '';
+    try { webp = canvas.toDataURL('image/webp', Math.min(0.92, quality + 0.06)); } catch (e) {}
+    return (webp.indexOf('data:image/webp') === 0 && webp.length < jpeg.length) ? webp : jpeg;
+  }
+
   function resizeImage(file, maxDim, quality, format) {
     maxDim = maxDim || 1280;
     quality = quality || 0.75;
@@ -579,10 +609,7 @@
           ctx.drawImage(img, 0, 0, width, height);
           try {
             if (format === 'png') { resolve(canvas.toDataURL('image/png')); return; }
-          const jpeg = canvas.toDataURL('image/jpeg', quality);
-          let webp = '';
-          try { webp = canvas.toDataURL('image/webp', Math.min(0.92, quality + 0.06)); } catch (e) {}
-          resolve((webp.indexOf('data:image/webp') === 0 && webp.length < jpeg.length) ? webp : jpeg);
+            resolve(codificar(canvas, ctx, width, height, quality));
           } catch (e) {
             reject(new Error('encode-failed'));
           }
@@ -614,14 +641,7 @@
         ctx.drawImage(img, 0, 0, width, height);
         try {
           if (format === 'png') { resolve(canvas.toDataURL('image/png')); return; }
-          const jpeg = canvas.toDataURL('image/jpeg', quality);
-          // WebP entrega a mesma imagem com bem menos peso. Só é adotado quando o navegador
-          // realmente gera o formato (o cabeçalho confirma) e quando o arquivo sai menor —
-          // caso contrário fica o JPEG, sem risco de piorar.
-          let webp = '';
-          try { webp = canvas.toDataURL('image/webp', Math.min(0.92, quality + 0.06)); } catch (e) {}
-          const valeAPena = webp.indexOf('data:image/webp') === 0 && webp.length < jpeg.length;
-          resolve(valeAPena ? webp : jpeg);
+          resolve(codificar(canvas, ctx, width, height, quality));
         } catch (e) {
           reject(new Error('encode-failed'));
         }
