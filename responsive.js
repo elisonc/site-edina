@@ -48,8 +48,12 @@
     '  [data-filters]{position:static !important;top:auto !important;border-right:none !important;border-bottom:1px solid #ddd3bd !important;padding:26px 22px !important}',
     '  [data-filters] + div{padding-top:26px !important}',
 
-    /* Botões: alvo de toque confortável */
+    /* Botões e campos: alvo de toque confortável. O 16px nos campos também evita que o
+       iPhone dê zoom sozinho ao focar um input, o que desalinha a tela inteira. */
     '  a[style*="padding"],button{box-sizing:border-box !important;min-height:44px}',
+    '  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea{box-sizing:border-box !important;min-height:46px !important;font-size:16px !important;padding:12px 14px !important}',
+    '  textarea{min-height:96px !important}',
+    '  label,[style*="font-size:11px"],[style*="font-size:11.5px"]{font-size:12.5px !important}',
     '  [style*="padding:60px"],[style*="padding: 60px"]{padding:36px 22px !important}',
     '  [style*="padding:100px"],[style*="padding: 100px"]{padding:52px 22px !important}',
     '  [style*="padding:70px"],[style*="padding: 70px"]{padding:44px 22px !important}',
