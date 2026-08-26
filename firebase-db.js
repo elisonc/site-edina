@@ -30,6 +30,24 @@
     return true;
   }).catch(() => false);
 
+  // Prazo máximo de um envio ao Storage. Passou disso, seguimos sem a imagem: é preferível
+  // publicar o imóvel sem foto a deixar o cadastro inteiro esperando por ela.
+  const UPLOAD_TIMEOUT_MS = 20000;
+
+  // Depois da primeira recusa não vale insistir nas outras imagens: com 19 fotos numa
+  // ficha, esperar o prazo de cada uma deixaria a pessoa olhando para um botão travado
+  // por minutos. Uma falha basta para concluir que o Storage está fora e seguir em frente.
+  let storageIndisponivel = false;
+
+  function comPrazo(promessa, ms, rotulo) {
+    let t;
+    return Promise.race([
+      Promise.resolve(promessa).then(v => { clearTimeout(t); return v; },
+                                     e => { clearTimeout(t); throw e; }),
+      new Promise((_, rej) => { t = setTimeout(() => rej(new Error('tempo esgotado: ' + rotulo)), ms); })
+    ]);
+  }
+
   const DOC = (name) => firebase.firestore().collection('edina').doc(name);
   const DOCS = ['properties', 'site', 'posts', 'testimonials'];
 
@@ -59,10 +77,14 @@
     const blob = dataUrlToBlob(dataUrl);
     const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
     const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    if (storageIndisponivel) { mediaErrors.push({ path: path, code: 'storage-indisponivel' }); return ''; }
     try {
       const ref = firebase.storage().ref(path);
-      await ref.put(blob);
-      const url = await ref.getDownloadURL();
+      // O envio precisa de prazo. Quando o Storage recusa a origem, o SDK não devolve erro:
+      // fica retentando em silêncio e a promessa nunca se resolve — a gravação do imóvel
+      // ficava pendurada nela e nunca chegava ao banco.
+      await comPrazo(ref.put(blob), UPLOAD_TIMEOUT_MS, 'upload');
+      const url = await comPrazo(ref.getDownloadURL(), UPLOAD_TIMEOUT_MS, 'url');
       cache[value] = url;
       return url;
     } catch (e) {
@@ -70,6 +92,7 @@
       // recusada derrubava a gravação inteira e o imóvel não chegava a existir no banco.
       // Melhor o imóvel no ar sem imagem do que imóvel nenhum — a foto continua guardada
       // neste navegador e sobe assim que o Storage voltar.
+      storageIndisponivel = true;
       mediaErrors.push({ path: path, code: e && (e.code || e.message) });
       return '';
     }
@@ -81,6 +104,7 @@
 
   async function externalizeProperties(props) {
     mediaErrors.length = 0;
+    storageIndisponivel = false;
     const cache = {};
     const out = [];
     for (const p of props) {
