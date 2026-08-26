@@ -175,9 +175,29 @@
   const TETO_DOC_FOTOS = 900 * 1024;
 
   // Resolve uma referência local (idb:) para a imagem em si; data: já vem pronta.
+  // Uma referência que já está no banco precisa voltar a ser imagem aqui. Sem isto ela
+  // virava vazio na hora de salvar, era descartada, e o bloco era reescrito só com as fotos
+  // novas — apagando todas as anteriores. Era o motivo de a logo e as fotos do imóvel
+  // sumirem logo depois de uma edição.
+  async function refParaDataUrl(v) {
+    const doCache = (window.CRMData && window.CRMData.photoURL) ? window.CRMData.photoURL(v) : '';
+    if (doCache) return doCache;
+    const partes = String(v).slice('fotodoc:'.length).split(':');
+    const idx = parseInt(partes.pop(), 10);
+    const rotulo = partes.join(':');
+    if (!rotulo || isNaN(idx)) return '';
+    try {
+      const imgs = await lerImagens(rotulo);
+      if (imgs && imgs.length && window.CRMData.registrarImagensDoBanco)
+        window.CRMData.registrarImagensDoBanco(rotulo, imgs);
+      return (imgs && imgs[idx]) || '';
+    } catch (e) { return ''; }
+  }
+
   async function paraDataUrl(valor) {
     const v = String(valor || '');
     if (v.indexOf('data:') === 0) return v;
+    if (v.indexOf('fotodoc:') === 0) return await refParaDataUrl(v);
     if (!/^idb/.test(v)) return '';
     try {
       await window.CRMData.warm([v]);
@@ -376,7 +396,9 @@
         }
         // Se alguma foto da ficha não abriu neste navegador, ela veio de outro aparelho:
         // reescrever a lista aqui apagaria justamente essa. Deixa como está.
-        if (algumaNaoAbriu && !dados.length) { out.push(q); continue; }
+        // Qualquer foto da ficha que não abriu aqui veio de outro aparelho. Regravar
+        // renumeraria os blocos e apagaria justamente essa. Deixa a ficha como está.
+        if (algumaNaoAbriu) { out.push(q); continue; }
         // Problema ao guardar as fotos não pode levar a ficha junto: o cadastro vai para o
         // banco de qualquer forma, e as imagens seguem neste navegador para a próxima
         // tentativa. Perder o imóvel inteiro por causa de uma foto seria pior.
@@ -427,37 +449,49 @@
     const out = { ...site };
 
     const local = (v) => typeof v === 'string' && (/^idb/.test(v) || v.indexOf('data:') === 0);
+    const jaNoBanco = (v) => typeof v === 'string' && v.indexOf('fotodoc:site:') === 0;
+    // O conjunto do site é reescrito por inteiro. Levar só a imagem nova fazia o bloco 0 ser
+    // regravado com ela sozinha: a logo, o favicon e a do rodapé perdiam o endereço de uma
+    // vez. Era o motivo de trocar uma logo derrubar as outras.
     const pendentes = [];
-    CAMPOS_DE_IMAGEM.forEach(k => { if (local(out[k])) pendentes.push({ campo: k }); });
-    (Array.isArray(out.heroSlides) ? out.heroSlides : []).forEach((v, i) => {
-      if (local(v)) pendentes.push({ slide: i });
-    });
+    let temNovidade = false;
+    const anotar = (alvo, v) => {
+      if (local(v)) { temNovidade = true; pendentes.push(alvo); }
+      else if (jaNoBanco(v)) pendentes.push(alvo);
+    };
+    CAMPOS_DE_IMAGEM.forEach(k => anotar({ campo: k }, out[k]));
+    (Array.isArray(out.heroSlides) ? out.heroSlides : []).forEach((v, i) => anotar({ slide: i }, v));
 
-    if (pendentes.length) {
-      // Sonda o Storage com a primeira; recusado, todas vão para os blocos do site.
-      const primeira = pendentes[0].campo ? out[pendentes[0].campo] : out.heroSlides[pendentes[0].slide];
+    if (temNovidade) {
+      // Sonda o Storage com uma imagem nova; recusado, todas vão para os blocos do site.
+      const nova = pendentes.find(a => local(a.campo ? out[a.campo] : out.heroSlides[a.slide]));
+      const primeira = nova.campo ? out[nova.campo] : out.heroSlides[nova.slide];
       if (!storageIndisponivel && !storageMarcadoFora()) await externalizeMedia(primeira, 'site', cache);
 
       if (storageIndisponivel || storageMarcadoFora()) {
         const dados = [];
+        let faltou = false;
         for (const alvo of pendentes) {
           const valor = alvo.campo ? out[alvo.campo] : out.heroSlides[alvo.slide];
           const d = await paraDataUrl(valor);
+          if (!d && jaNoBanco(valor)) faltou = true;   // imagem antiga ilegível aqui
           dados.push(d || '');
-          alvo.original = valor;   // se a imagem não abrir aqui, o valor original fica de pé
         }
-        let gravadas = 0;
-        try { gravadas = await guardarImagens('site', dados.filter(Boolean)) || 0; }
-        catch (e) { mediaErrors.push({ path: 'fotos_site', code: e && (e.code || e.message) }); }
-        if (gravadas) {
-          let idx = 0;
-          pendentes.forEach((alvo, i) => {
-            // Sem imagem legível ou sem espaço no bloco, o campo continua como estava.
-            if (!dados[i] || idx >= gravadas) return;
-            const ref = 'fotodoc:site:' + idx;
-            if (alvo.campo) out[alvo.campo] = ref; else out.heroSlides[alvo.slide] = ref;
-            idx++;
-          });
+        // Não deu para ler alguma que já estava guardada? Regravar renumeraria os blocos e a
+        // apagaria. Melhor não mexer: a nova continua neste navegador para a próxima vez.
+        if (!faltou) {
+          let gravadas = 0;
+          try { gravadas = await guardarImagens('site', dados.filter(Boolean)) || 0; }
+          catch (e) { mediaErrors.push({ path: 'fotos_site', code: e && (e.code || e.message) }); }
+          if (gravadas) {
+            let idx = 0;
+            pendentes.forEach((alvo, i) => {
+              if (!dados[i] || idx >= gravadas) return;
+              const ref = 'fotodoc:site:' + idx;
+              if (alvo.campo) out[alvo.campo] = ref; else out.heroSlides[alvo.slide] = ref;
+              idx++;
+            });
+          }
         }
       }
     }
@@ -480,22 +514,34 @@
     const cache = {};
     const out = (list || []).map(item => ({ ...item }));
     const local = (v) => typeof v === 'string' && (/^idb/.test(v) || v.indexOf('data:') === 0);
-    const pendentes = out.filter(q => local(q[key]));
+    const jaNoBanco = (v) => typeof v === 'string' && v.indexOf('fotodoc:' + rotulo + ':') === 0;
+    // Reescreve o conjunto inteiro: mandar só a imagem nova regravava o bloco 0 com ela
+    // sozinha e as outras do blog perdiam o endereço.
+    const pendentes = out.filter(q => local(q[key]) || jaNoBanco(q[key]));
+    const temNovidade = out.some(q => local(q[key]));
 
-    if (pendentes.length && rotulo) {
-      if (!storageIndisponivel && !storageMarcadoFora()) await externalizeMedia(pendentes[0][key], 'midia', cache);
+    if (temNovidade && rotulo) {
+      const nova = pendentes.find(q => local(q[key]));
+      if (!storageIndisponivel && !storageMarcadoFora()) await externalizeMedia(nova[key], 'midia', cache);
       if (storageIndisponivel || storageMarcadoFora()) {
         const dados = [];
-        for (const q of pendentes) dados.push(await paraDataUrl(q[key]) || '');
-        const validos = dados.filter(Boolean);
-        let gravadas = 0;
-        try { gravadas = await guardarImagens(rotulo, validos) || 0; }
-        catch (e) { mediaErrors.push({ path: 'fotos_' + rotulo, code: e && (e.code || e.message) }); }
-        let idx = 0;
-        for (let i = 0; i < pendentes.length && idx < gravadas; i++) {
-          if (!dados[i]) continue;
-          pendentes[i][key] = 'fotodoc:' + rotulo + ':' + idx;
-          idx++;
+        let faltou = false;
+        for (const q of pendentes) {
+          const d = await paraDataUrl(q[key]) || '';
+          if (!d && jaNoBanco(q[key])) faltou = true;
+          dados.push(d);
+        }
+        if (!faltou) {
+          const validos = dados.filter(Boolean);
+          let gravadas = 0;
+          try { gravadas = await guardarImagens(rotulo, validos) || 0; }
+          catch (e) { mediaErrors.push({ path: 'fotos_' + rotulo, code: e && (e.code || e.message) }); }
+          let idx = 0;
+          for (let i = 0; i < pendentes.length && idx < gravadas; i++) {
+            if (!dados[i]) continue;
+            pendentes[i][key] = 'fotodoc:' + rotulo + ':' + idx;
+            idx++;
+          }
         }
       }
     }
@@ -504,6 +550,52 @@
       if (local(q[key])) q[key] = await externalizeMedia(q[key], 'midia', cache);
     }
     return out;
+  }
+
+  // Anexos de contato seguiam crus para o banco: um PDF ou uma foto de 200 KB ia inteiro
+  // dentro do documento de contatos, que tem 1 MB no total. Alguns anexos e os contatos
+  // parariam de salvar. Pior: o navegador guarda esse anexo vazio, e a gravação seguinte
+  // mandava o vazio de volta, apagando o arquivo. Agora vão para blocos, como as fotos.
+  async function externalizeLeads(list) {
+    const out = (list || []).map(l => ({ ...l, attachments: (l.attachments || []).map(a => ({ ...a })) }));
+    const pesado = (v) => typeof v === 'string' && (v.indexOf('data:') === 0 || /^idb/.test(v));
+    const jaNoBanco = (v) => typeof v === 'string' && v.indexOf('fotodoc:leads:') === 0;
+    const pendentes = [];
+    let temNovidade = false;
+    out.forEach(l => (l.attachments || []).forEach(a => {
+      if (pesado(a.url)) { temNovidade = true; pendentes.push(a); }
+      else if (jaNoBanco(a.url)) pendentes.push(a);
+    }));
+    if (!temNovidade) return out;
+
+    const dados = [];
+    let faltou = false;
+    for (const a of pendentes) {
+      const d = await paraDataUrl(a.url) || '';
+      if (!d && jaNoBanco(a.url)) faltou = true;
+      dados.push(d);
+    }
+    if (faltou) return out;      // anexo antigo ilegível aqui: não regrava, para não perdê-lo
+
+    let gravadas = 0;
+    try { gravadas = await guardarImagens('leads', dados.filter(Boolean)) || 0; }
+    catch (e) { mediaErrors.push({ path: 'fotos_leads', code: e && (e.code || e.message) }); }
+
+    let idx = 0;
+    for (let i = 0; i < pendentes.length && idx < gravadas; i++) {
+      if (!dados[i]) continue;
+      pendentes[i].url = 'fotodoc:leads:' + idx;
+      idx++;
+    }
+    return out;
+  }
+
+  // Traz os anexos do banco para o cache de memória, para photoURL resolvê-los.
+  async function hidratarAnexos(lista) {
+    const usa = (lista || []).some(l => (l.attachments || [])
+      .some(a => typeof a.url === 'string' && a.url.indexOf('fotodoc:leads:') === 0));
+    if (usa) await carregarParaCache('leads');
+    return lista;
   }
 
   async function save(name, payload) {
@@ -562,6 +654,7 @@
     }
     if (out.site) {
       try { await hidratarConjunto(out.site, CAMPOS_DE_IMAGEM, 'site'); } catch (e) {}
+      try { await hidratarAnexos(out.leads); } catch (e) {}
     }
     if (Array.isArray(out.posts)) {
       try { await hidratarLista(out.posts, 'image', 'posts'); } catch (e) {}
@@ -592,6 +685,10 @@
           hidratarLista(dados, 'image', 'posts').then(() => onChange(name, dados)).catch(() => onChange(name, dados));
           return;
         }
+        if (name === 'leads' && Array.isArray(dados)) {
+          hidratarAnexos(dados).then(() => onChange(name, dados)).catch(() => onChange(name, dados));
+          return;
+        }
         onChange(name, dados);
       }, () => {}));
     });
@@ -599,11 +696,17 @@
 
   // Contatos recebidos pelo site. Ficam fora de DOCS de propósito: o pacote que todo
   // visitante baixa não precisa carregar a carteira de clientes junto.
-  async function saveLeads(arr) { return save('leads', arr); }
+  async function saveLeads(arr) {
+    const out = await externalizeLeads(arr);
+    return save('leads', out);
+  }
   async function fetchLeads() {
     const ok = await ready;
     if (!ok || !firebase.apps.length) return null;
-    return DOC('leads').get().then(s => (s.exists ? (s.data().data || []) : [])).catch(() => null);
+    return DOC('leads').get()
+      .then(s => (s.exists ? (s.data().data || []) : []))
+      .then(l => hidratarAnexos(l).then(() => l))
+      .catch(() => null);
   }
   // Acrescenta um contato lendo a lista no instante da gravação — dois envios ao mesmo tempo
   // não se sobrescrevem, como aconteceria se a lista viesse do navegador.

@@ -4925,7 +4925,7 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
         hasNoOffered: offeredIds.length === 0,
         propertyOptions: (s.properties || []).filter(p => !offeredIds.includes(p.id)).map(p => ({ id: p.id, title: p.title })),
         addOffered: this.addOfferedProperty,
-        attachments: (selLead.attachments || []).map((a, i) => ({ name: a.name, url: a.url, remove: this.removeLeadAttachment(i) })),
+        attachments: (selLead.attachments || []).map((a, i) => ({ name: a.name, url: window.CRMData.photoURL(a.url) || a.url, remove: this.removeLeadAttachment(i) })),
         hasNoAttachments: !(selLead.attachments || []).length,
         onAttachmentFile: this.onLeadAttachmentFile,
         channel: selLead.channel, date: selLead.time ? `${selLead.date} às ${selLead.time}` : selLead.date
