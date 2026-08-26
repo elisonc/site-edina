@@ -100,8 +100,15 @@
       [data-crm-actions] > * { width: 100% !important; }
       [data-crm-actions] button { justify-content: center !important; }
 
-      /* Cartões do importador: a miniatura sai da linha do formulário e os campos respiram. */
+      /* Cartões do importador: a miniatura vai para cima, ocupando a linha, e os campos
+         ficam em duas colunas — em três eles não cabem e os rótulos quebram no meio. */
       [data-crm-main] [style*="align-items:center"][style*="gap:14px"] { align-items: flex-start !important; }
+      [data-crm-main] [style*="align-items:flex-start"][style*="gap:16px"] { flex-wrap: wrap !important; }
+      [data-crm-main] [style*="grid-template-columns:repeat(3,minmax(0,1fr))"] {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      }
+      [data-crm-main] [style*="width:190px"][style*="height:140px"] { width: 100% !important; height: 180px !important; }
+      [data-crm-main] [style*="grid-column:span 3"] { grid-column: span 2 !important; }
     }  </style>
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <script src="./facebook-login.js"></script>
@@ -1315,8 +1322,11 @@
               <div style="background:#fffdf8;border:1px solid #ddd3bd;padding:18px">
                 <div style="display:flex;gap:16px;align-items:flex-start">
                   <input type="checkbox" checked="{{ iq.checked }}" onChange="{{ iq.onToggle }}" style="margin-top:6px" />
-                  <div style="{{ iq.thumbStyle }}" ref="{{ iq.thumbRef }}"></div>
-                  <div style="flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+                  <div style="flex:0 0 auto;display:flex;flex-direction:column;gap:6px;align-items:center">
+                    <div style="{{ iq.thumbStyle }}" ref="{{ iq.thumbRef }}"></div>
+                    <div style="font-size:11.5px;color:#746b5c">{{ iq.qtdFotos }}</div>
+                  </div>
+                  <div style="flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
                     <div style="grid-column:span 3">
                       <div style="font-size:11px;color:#746b5c;margin-bottom:4px">Título</div>
                       <input value="{{ iq.title }}" onChange="{{ iq.onTitle }}" style="width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13px" />
@@ -4946,9 +4956,12 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
         garage: q.garage, onGarage: this.updateImportItem(q.uid, 'garage'),
         stage: q.stage, onStage: this.updateImportItem(q.uid, 'stage'),
         summary: q.summary,
+        // A foto é a primeira coisa que se confere ao revisar uma importação: em 110x78 mal
+        // dava para reconhecer o empreendimento.
         thumbStyle: (q.images || []).length
-          ? `width:110px;height:78px;flex:0 0 auto;border:1px solid #e5ddcd;background-size:cover;background-position:center`
-          : `width:110px;height:78px;flex:0 0 auto;border:1px dashed #ddd3bd;background:#f4eee0`,
+          ? `width:190px;height:140px;flex:0 0 auto;border:1px solid #e5ddcd;border-radius:4px;background-size:cover;background-position:center`
+          : `width:190px;height:140px;flex:0 0 auto;border:1px dashed #ddd3bd;border-radius:4px;background:#f4eee0;display:flex;align-items:center;justify-content:center;color:#a8997e;font-size:12px`,
+        qtdFotos: (q.images || []).length ? (q.images.length + ' foto' + (q.images.length > 1 ? 's' : '')) : 'sem foto',
         thumbRef: (el) => { if (el && (q.images || []).length) el.style.backgroundImage = `url('${q.images[0]}')`; }
       })),
       isLeadDetail: !!s.selectedLeadId, leadDetail, closeLeadDetail: this.closeLeadDetail,
