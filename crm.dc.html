@@ -274,7 +274,7 @@
                   <div style="padding:9px 10px;border:1px solid #eee4d0;background:#faf6ec;font-size:13px;color:#4a4438">{{ leadDetail.email }}</div>
                 </div>
               </div>
-              <a href="{{ leadDetail.whatsappLink }}" target="_blank" style="display:block;text-align:center;background:#25d366;color:#fff;padding:11px;text-decoration:none;font-size:13px;font-weight:600">Conversar no WhatsApp</a>
+              <a href="{{ leadDetail.whatsappLink }}" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;background:#25d366;color:#fff;padding:11px;text-decoration:none;font-size:13px;font-weight:600">Conversar no WhatsApp</a>
             </div>
 
             <div style="background:#fffdf8;border:1px solid #ddd3bd;padding:20px">
@@ -327,7 +327,7 @@
                 <sc-for list="{{ leadDetail.offeredProperties }}" as="op" hint-placeholder-count="1">
                   <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;gap:8px">
                     <span style="flex:1">{{ op.title }}</span>
-                    <a href="{{ op.whatsappLink }}" target="_blank" title="Enviar este imóvel no WhatsApp (título, preço e link com as fotos)" style="color:#25d366;text-decoration:none;font-size:15px">🟢</a>
+                    <a href="{{ op.whatsappLink }}" target="_blank" rel="noopener noreferrer" title="Enviar este imóvel no WhatsApp (título, preço e link com as fotos)" style="color:#25d366;text-decoration:none;font-size:15px">🟢</a>
                     <button onClick="{{ op.remove }}" style="background:none;border:none;color:#b4432f;cursor:pointer;font-size:12px">✕</button>
                   </div>
                 </sc-for>
@@ -664,7 +664,7 @@
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;background:#fff;padding:10px 14px;flex-wrap:wrap">
                   <div style="font-size:13px"><strong>{{ sl.name }}</strong> — parado há {{ sl.daysAgo }} dias</div>
                   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                    <a href="{{ sl.whatsappLink }}" target="_blank" style="padding:7px 12px;border:1px solid #25d366;background:#25d366;color:#fff;font-size:12px;text-decoration:none;font-weight:600;font-family:'Manrope',sans-serif">WhatsApp</a>
+                    <a href="{{ sl.whatsappLink }}" target="_blank" rel="noopener noreferrer" style="padding:7px 12px;border:1px solid #25d366;background:#25d366;color:#fff;font-size:12px;text-decoration:none;font-weight:600;font-family:'Manrope',sans-serif">WhatsApp</a>
                     <select onChange="{{ sl.onMoveStage }}" value="" style="padding:6px 8px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:12px">
                       <option value="">Mudar etapa…</option>
                       <sc-for list="{{ sl.stageOptions }}" as="so" hint-placeholder-count="6">
@@ -1732,7 +1732,7 @@
                     <div style="font-size:19px;font-weight:800;color:#2f6b3f">{{ sd.valueLabel }}</div>
                     <div style="font-size:12.5px;color:#5c7a5c;font-weight:600">comissão {{ sd.pctLabel }} = {{ sd.commissionLabel }}</div>
                   </div>
-                  <a href="{{ sd.whatsappLink }}" target="_blank" title="Falar no WhatsApp" style="display:flex;align-items:center;gap:6px;background:#25d366;color:#fff;text-decoration:none;font-size:12px;font-weight:700;padding:8px 12px;border-radius:20px;white-space:nowrap">🟢 WhatsApp</a>
+                  <a href="{{ sd.whatsappLink }}" target="_blank" rel="noopener noreferrer" title="Falar no WhatsApp" style="display:flex;align-items:center;gap:6px;background:#25d366;color:#fff;text-decoration:none;font-size:12px;font-weight:700;padding:8px 12px;border-radius:20px;white-space:nowrap">🟢 WhatsApp</a>
                 </div>
               </div>
             </sc-for>
