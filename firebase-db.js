@@ -182,11 +182,18 @@
     } catch (e) { return ''; }
   }
 
+  // As fotos de uma ficha vão em blocos: um documento do Firestore para no limite de 1 MB, e
+  // uma galeria de duas dúzias de imagens passa disso com folga. Antes tudo ia num documento
+  // só, a gravação era recusada inteira e a ficha acabava com as poucas fotos que coubessem
+  // embutidas — que era o motivo de as imagens sumirem logo depois de salvar.
+  const TETO_BLOCO = 600 * 1024;
+  const MAX_BLOCOS = 12;
+  const nomeBloco = (id, n) => 'fotos_' + id + '_' + n;
+
   async function guardarFotosDoImovel(id, fotos) {
     await ready;
     if (!firebase.apps.length) return null;
-    // Reduz antes de guardar, para que a ficha inteira caiba. Sem isso, uma ficha com sete
-    // fotos entregava cinco e as duas últimas se perdiam em silêncio.
+
     const reduzir = async (f, larg, q) => {
       if (!(window.CRMData && window.CRMData.resizeDataUrl)) return f;
       try {
@@ -198,33 +205,65 @@
     const validas = (fotos || []).filter(f => f && f.indexOf('data:') === 0);
     if (!validas.length) return null;
 
-    // Orçamento por foto, a partir do que há para guardar; nunca abaixo do que ainda
-    // rende uma imagem apresentável na página do imóvel.
-    const cota = Math.max(60 * 1024, Math.floor(TETO_DOC_FOTOS / validas.length));
-    const etapas = [[1400, 0.72], [1100, 0.66], [900, 0.6], [700, 0.52]];
+    // Galeria grande pede foto mais leve; o piso mantém a imagem apresentável na página.
+    const cota = validas.length > 12 ? 90 * 1024 : 130 * 1024;
+    const etapas = [[1400, 0.72], [1100, 0.66], [900, 0.6], [700, 0.52], [560, 0.46]];
 
-    const cabem = [];
-    let usado = 0;
+    const blocos = [[]];
+    let usadoNoBloco = 0;
+    let total = 0;
     for (const original of validas) {
       let f = original;
       for (let i = 0; i < etapas.length && f.length > cota; i++) {
         f = await reduzir(f, etapas[i][0], etapas[i][1]);
       }
-      if (usado + f.length > TETO_DOC_FOTOS) break;
-      usado += f.length;
-      cabem.push(f);
+      if (usadoNoBloco + f.length > TETO_BLOCO) {
+        if (blocos.length >= MAX_BLOCOS) break;
+        blocos.push([]);
+        usadoNoBloco = 0;
+      }
+      blocos[blocos.length - 1].push(f);
+      usadoNoBloco += f.length;
+      total++;
     }
-    if (!cabem.length) return null;
-    await DOC(nomeDocFotos(id)).set({ data: cabem, updatedAt: Date.now() });
-    return cabem.length;
+    if (!total) return null;
+
+    // Cada bloco é gravado por conta própria: se um falhar, os anteriores continuam valendo
+    // e a ficha fica com as fotos que deram certo, em vez de perder todas.
+    let gravadas = 0;
+    for (let n = 0; n < blocos.length; n++) {
+      try {
+        await DOC(nomeBloco(id, n)).set({ data: blocos[n], updatedAt: Date.now() });
+        gravadas += blocos[n].length;
+      } catch (e) {
+        mediaErrors.push({ path: nomeBloco(id, n), code: e && (e.code || e.message) });
+        break;
+      }
+    }
+    // Blocos de uma gravação anterior que sobraram não podem continuar aparecendo.
+    for (let n = blocos.length; n < MAX_BLOCOS; n++) {
+      try { await DOC(nomeBloco(id, n)).delete(); } catch (e) { break; }
+    }
+    return gravadas || null;
   }
 
   async function lerFotosDoImovel(id) {
     await ready;
     if (!firebase.apps.length) return [];
-    return DOC(nomeDocFotos(id)).get()
-      .then(s => (s.exists ? (s.data().data || []) : []))
-      .catch(() => []);
+    const fotos = [];
+    for (let n = 0; n < MAX_BLOCOS; n++) {
+      try {
+        const snap = await DOC(nomeBloco(id, n)).get();
+        if (!snap.exists) break;
+        fotos.push(...(snap.data().data || []));
+      } catch (e) { break; }
+    }
+    if (fotos.length) return fotos;
+    // Fichas gravadas antes da divisão em blocos.
+    try {
+      const antigo = await DOC('fotos_' + id).get();
+      return antigo.exists ? (antigo.data().data || []) : [];
+    } catch (e) { return []; }
   }
 
   // Troca as referências 'fotodoc:' pelas imagens de verdade, para quem for exibir.
@@ -262,7 +301,12 @@
           const d = await paraDataUrl(v);
           if (d) dados.push(d);
         }
-        const gravadas = await guardarFotosDoImovel(q.id, dados);
+        // Problema ao guardar as fotos não pode levar a ficha junto: o cadastro vai para o
+        // banco de qualquer forma, e as imagens seguem neste navegador para a próxima
+        // tentativa. Perder o imóvel inteiro por causa de uma foto seria pior.
+        let gravadas = null;
+        try { gravadas = await guardarFotosDoImovel(q.id, dados); }
+        catch (e) { mediaErrors.push({ path: 'fotos_' + q.id, code: e && (e.code || e.message) }); }
         if (gravadas) {
           q.images = Array.from({ length: gravadas }, (_, i) => 'fotodoc:' + q.id + ':' + i);
           q.image = q.images[0];
