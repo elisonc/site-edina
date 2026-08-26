@@ -3358,7 +3358,13 @@ class Component extends DCLogic {
       grande:  { blocos: 5, detalhe: 'abertura, Destaques, Condomínio, um parágrafo sobre a região e fechamento com chamada.' }
     }[size];
     const sizeSpec = `${receita.blocos} blocos — ${receita.detalhe}`;
-    const amenities = (d.amenities || '').split(',').map(s => s.trim()).filter(Boolean);
+    // As características vêm do texto do documento e trazem campos que já aparecem
+    // estruturados na ficha ("Preço: 4500000", "Área: 376m²"). Repeti-los no anúncio soa
+    // como formulário — e o valor cru, sem formato de dinheiro, destoa do resto.
+    const formatarValor = (t) => t.replace(/(\d{6,})/g, (m) => 'R$ ' + Number(m).toLocaleString('pt-BR'));
+    const ehCampoEstruturado = (t) => /^(pre[çc]o|valor|[áa]rea|su[íi]tes?|banheiros?|vagas?|quartos?|dormit[óo]rios?|tipo de im[óo]vel|localiza[çc][ãa]o|condom[íi]nio)\s*[:\-]/i.test(t.trim());
+    const amenities = (d.amenities || '').split(',').map(s => s.trim())
+      .filter(Boolean).filter(t => !ehCampoEstruturado(t)).map(formatarValor);
     const facts = [
       d.title && `Título: ${d.title}`,
       d.location && `Localização: ${d.location}`,

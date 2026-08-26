@@ -188,9 +188,9 @@
   // embutidas — que era o motivo de as imagens sumirem logo depois de salvar.
   const TETO_BLOCO = 600 * 1024;
   const MAX_BLOCOS = 12;
-  const nomeBloco = (id, n) => 'fotos_' + id + '_' + n;
+  const nomeBloco = (chave, n) => 'fotos_' + chave + '_' + n;
 
-  async function guardarFotosDoImovel(id, fotos) {
+  async function guardarImagens(chave, fotos) {
     await ready;
     if (!firebase.apps.length) return null;
 
@@ -233,27 +233,27 @@
     let gravadas = 0;
     for (let n = 0; n < blocos.length; n++) {
       try {
-        await DOC(nomeBloco(id, n)).set({ data: blocos[n], updatedAt: Date.now() });
+        await DOC(nomeBloco(chave, n)).set({ data: blocos[n], updatedAt: Date.now() });
         gravadas += blocos[n].length;
       } catch (e) {
-        mediaErrors.push({ path: nomeBloco(id, n), code: e && (e.code || e.message) });
+        mediaErrors.push({ path: nomeBloco(chave, n), code: e && (e.code || e.message) });
         break;
       }
     }
     // Blocos de uma gravação anterior que sobraram não podem continuar aparecendo.
     for (let n = blocos.length; n < MAX_BLOCOS; n++) {
-      try { await DOC(nomeBloco(id, n)).delete(); } catch (e) { break; }
+      try { await DOC(nomeBloco(chave, n)).delete(); } catch (e) { break; }
     }
     return gravadas || null;
   }
 
-  async function lerFotosDoImovel(id) {
+  async function lerImagens(chave) {
     await ready;
     if (!firebase.apps.length) return [];
     const fotos = [];
     for (let n = 0; n < MAX_BLOCOS; n++) {
       try {
-        const snap = await DOC(nomeBloco(id, n)).get();
+        const snap = await DOC(nomeBloco(chave, n)).get();
         if (!snap.exists) break;
         fotos.push(...(snap.data().data || []));
       } catch (e) { break; }
@@ -261,19 +261,49 @@
     if (fotos.length) return fotos;
     // Fichas gravadas antes da divisão em blocos.
     try {
-      const antigo = await DOC('fotos_' + id).get();
+      const antigo = await DOC('fotos_' + chave).get();
       return antigo.exists ? (antigo.data().data || []) : [];
     } catch (e) { return []; }
   }
 
   // Troca as referências 'fotodoc:' pelas imagens de verdade, para quem for exibir.
+  // Resolve as referências de um conjunto (site, posts) para as imagens de verdade.
+  async function hidratarConjunto(alvo, campos, rotulo) {
+    const refDe = (v) => (typeof v === 'string' && v.indexOf('fotodoc:' + rotulo + ':') === 0)
+      ? parseInt(v.split(':')[2], 10) : -1;
+    const precisa = campos.some(c => refDe(alvo[c]) >= 0) ||
+      (Array.isArray(alvo.heroSlides) && alvo.heroSlides.some(v => refDe(v) >= 0));
+    if (!precisa) return alvo;
+    const imgs = await lerImagens(rotulo);
+    if (!imgs.length) return alvo;
+    campos.forEach(c => { const i = refDe(alvo[c]); if (i >= 0 && imgs[i]) alvo[c] = imgs[i]; });
+    if (Array.isArray(alvo.heroSlides)) {
+      alvo.heroSlides = alvo.heroSlides.map(v => { const i = refDe(v); return (i >= 0 && imgs[i]) ? imgs[i] : v; });
+    }
+    return alvo;
+  }
+
+  async function hidratarLista(lista, campo, rotulo) {
+    const precisa = (lista || []).some(x => typeof x[campo] === 'string' && x[campo].indexOf('fotodoc:' + rotulo + ':') === 0);
+    if (!precisa) return lista;
+    const imgs = await lerImagens(rotulo);
+    if (!imgs.length) return lista;
+    lista.forEach(x => {
+      if (typeof x[campo] === 'string' && x[campo].indexOf('fotodoc:' + rotulo + ':') === 0) {
+        const i = parseInt(x[campo].split(':')[2], 10);
+        if (imgs[i]) x[campo] = imgs[i];
+      }
+    });
+    return lista;
+  }
+
   async function hidratarFotos(props) {
     const precisam = (props || []).filter(p =>
       String(p.image || '').indexOf('fotodoc:') === 0 ||
       (p.images || []).some(i => String(i).indexOf('fotodoc:') === 0));
     if (!precisam.length) return props;
     await Promise.all(precisam.map(async p => {
-      const fotos = await lerFotosDoImovel(p.id);
+      const fotos = await lerImagens(p.id);
       if (!fotos.length) return;
       p.images = fotos.slice();
       p.image = fotos[0];
@@ -314,7 +344,7 @@
         // banco de qualquer forma, e as imagens seguem neste navegador para a próxima
         // tentativa. Perder o imóvel inteiro por causa de uma foto seria pior.
         let gravadas = null;
-        try { gravadas = await guardarFotosDoImovel(q.id, dados); }
+        try { gravadas = await guardarImagens(q.id, dados); }
         catch (e) { mediaErrors.push({ path: 'fotos_' + q.id, code: e && (e.code || e.message) }); }
         if (gravadas) {
           q.images = Array.from({ length: gravadas }, (_, i) => 'fotodoc:' + q.id + ':' + i);
@@ -337,31 +367,94 @@
     return out;
   }
 
+  // Todas as imagens do site, e não só o logotipo e a assinatura: a foto da Edina, a de
+  // compartilhamento, o destaque e as capas ficavam de fora e iam para o banco como
+  // referência local — que só existe no navegador de quem enviou. Nos outros aparelhos
+  // simplesmente não apareciam.
+  const CAMPOS_DE_IMAGEM = ['logoUrl', 'signatureUrl', 'watermarkLogoUrl', 'faviconUrl',
+                            'heroImage', 'aboutImage', 'spotlightImage', 'footerLogoUrl', 'ogImage'];
+
   async function externalizeSite(site) {
     mediaErrors.length = 0;
     inlineUsado = 0;
     const cache = {};
     const out = { ...site };
-    for (const k of ['logoUrl', 'signatureUrl', 'watermarkLogoUrl', 'faviconUrl']) {
-      if (out[k]) out[k] = await externalizeMedia(out[k], 'site', cache);
+
+    const local = (v) => typeof v === 'string' && (/^idb/.test(v) || v.indexOf('data:') === 0);
+    const pendentes = [];
+    CAMPOS_DE_IMAGEM.forEach(k => { if (local(out[k])) pendentes.push({ campo: k }); });
+    (Array.isArray(out.heroSlides) ? out.heroSlides : []).forEach((v, i) => {
+      if (local(v)) pendentes.push({ slide: i });
+    });
+
+    if (pendentes.length) {
+      // Sonda o Storage com a primeira; recusado, todas vão para os blocos do site.
+      const primeira = pendentes[0].campo ? out[pendentes[0].campo] : out.heroSlides[pendentes[0].slide];
+      if (!storageIndisponivel && !storageMarcadoFora()) await externalizeMedia(primeira, 'site', cache);
+
+      if (storageIndisponivel || storageMarcadoFora()) {
+        const dados = [];
+        for (const alvo of pendentes) {
+          const valor = alvo.campo ? out[alvo.campo] : out.heroSlides[alvo.slide];
+          const d = await paraDataUrl(valor);
+          dados.push(d || '');
+        }
+        let gravadas = 0;
+        try { gravadas = await guardarImagens('site', dados.filter(Boolean)) || 0; }
+        catch (e) { mediaErrors.push({ path: 'fotos_site', code: e && (e.code || e.message) }); }
+        if (gravadas) {
+          let idx = 0;
+          for (const alvo of pendentes) {
+            if (!dados[pendentes.indexOf(alvo)]) continue;
+            if (idx >= gravadas) break;
+            const ref = 'fotodoc:site:' + idx;
+            if (alvo.campo) out[alvo.campo] = ref; else out.heroSlides[alvo.slide] = ref;
+            idx++;
+          }
+        }
+      }
+    }
+
+    // O que sobrou (endereço já pronto, ou Storage funcionando) segue o caminho normal.
+    for (const k of CAMPOS_DE_IMAGEM) {
+      if (local(out[k])) out[k] = await externalizeMedia(out[k], 'site', cache);
     }
     if (Array.isArray(out.heroSlides)) {
       const arr = [];
-      for (const s of out.heroSlides) arr.push(s ? await externalizeMedia(s, 'site', cache) : s);
+      for (const v of out.heroSlides) arr.push(local(v) ? await externalizeMedia(v, 'site', cache) : v);
       out.heroSlides = arr;
     }
     return out;
   }
 
-  async function externalizeList(list, key) {
+  async function externalizeList(list, key, rotulo) {
     mediaErrors.length = 0;
     inlineUsado = 0;
     const cache = {};
-    const out = [];
-    for (const item of list) {
-      const q = { ...item };
-      if (q[key]) q[key] = await externalizeMedia(q[key], 'midia', cache);
-      out.push(q);
+    const out = (list || []).map(item => ({ ...item }));
+    const local = (v) => typeof v === 'string' && (/^idb/.test(v) || v.indexOf('data:') === 0);
+    const pendentes = out.filter(q => local(q[key]));
+
+    if (pendentes.length && rotulo) {
+      if (!storageIndisponivel && !storageMarcadoFora()) await externalizeMedia(pendentes[0][key], 'midia', cache);
+      if (storageIndisponivel || storageMarcadoFora()) {
+        const dados = [];
+        for (const q of pendentes) dados.push(await paraDataUrl(q[key]) || '');
+        const validos = dados.filter(Boolean);
+        let gravadas = 0;
+        try { gravadas = await guardarImagens(rotulo, validos) || 0; }
+        catch (e) { mediaErrors.push({ path: 'fotos_' + rotulo, code: e && (e.code || e.message) }); }
+        let idx = 0;
+        for (let i = 0; i < pendentes.length && idx < gravadas; i++) {
+          if (!dados[i]) continue;
+          pendentes[i][key] = 'fotodoc:' + rotulo + ':' + idx;
+          idx++;
+        }
+      }
+    }
+
+    for (const q of out) {
+      if (local(q[key])) q[key] = await externalizeMedia(q[key], 'midia', cache);
     }
     return out;
   }
@@ -410,6 +503,15 @@
     if (Array.isArray(out.properties)) {
       try { await hidratarFotos(out.properties); } catch (e) {}
     }
+    if (out.site) {
+      try { await hidratarConjunto(out.site, CAMPOS_DE_IMAGEM, 'site'); } catch (e) {}
+    }
+    if (Array.isArray(out.posts)) {
+      try { await hidratarLista(out.posts, 'image', 'posts'); } catch (e) {}
+    }
+    if (Array.isArray(out.testimonials)) {
+      try { await hidratarLista(out.testimonials, 'audioUrl', 'depoimentos'); } catch (e) {}
+    }
     return out;
   }
 
@@ -423,6 +525,14 @@
         const dados = snap.data().data;
         if (name === 'properties' && Array.isArray(dados)) {
           hidratarFotos(dados).then(() => onChange(name, dados)).catch(() => onChange(name, dados));
+          return;
+        }
+        if (name === 'site' && dados) {
+          hidratarConjunto(dados, CAMPOS_DE_IMAGEM, 'site').then(() => onChange(name, dados)).catch(() => onChange(name, dados));
+          return;
+        }
+        if (name === 'posts' && Array.isArray(dados)) {
+          hidratarLista(dados, 'image', 'posts').then(() => onChange(name, dados)).catch(() => onChange(name, dados));
           return;
         }
         onChange(name, dados);
@@ -461,13 +571,13 @@
     fetchLeads: fetchLeads,
     appendLead: appendLead,
     saveSite: (obj) => externalizeSite(obj).then(out => save('site', out)),
-    savePosts: (arr) => externalizeList(arr, 'image').then(out => save('posts', out)),
-    saveTestimonials: (arr) => externalizeList(arr, 'audioUrl').then(out => save('testimonials', out)),
+    savePosts: (arr) => externalizeList(arr, 'image', 'posts').then(out => save('posts', out)),
+    saveTestimonials: (arr) => externalizeList(arr, 'audioUrl', 'depoimentos').then(out => save('testimonials', out)),
     // Gravação genérica, para as chaves que não precisam de tratamento de mídia.
     saveDoc: (nome, dados) => save(nome, dados),
     mediaErrors: () => mediaErrors.slice(),
-    guardarFotosDoImovel: guardarFotosDoImovel,
-    lerFotosDoImovel: lerFotosDoImovel,
+    guardarImagens: guardarImagens,
+    lerImagens: lerImagens,
     hidratarFotos: hidratarFotos,
     fetchAll: fetchAll,
     watch: watch,
