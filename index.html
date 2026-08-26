@@ -623,7 +623,10 @@ class Component extends DCLogic {
       imgStyle: spImg
         ? `width:100%;height:420px;background-size:cover;background-position:center`
         : `width:100%;background:repeating-linear-gradient(135deg,#3a352a,#3a352a 12px,#2c281f 12px,#2c281f 24px);height:420px;display:flex;align-items:center;justify-content:center;color:#cfc7b6;font-family:monospace;font-size:12px;text-align:center;padding:10px`,
-      imgRef: (el) => { if (el && spImg) el.style.backgroundImage = `url('${spImg}')`; },
+      // O destaque tem 420px de altura e usava o arquivo cheio, o único que ainda vinha em
+      // tamanho original. Entra pelo mesmo caminho dos outros cards: versão reduzida e só
+      // quando chega perto da tela.
+      imgRef: (el) => { if (el && spImg) window.__lazyFoto(el, spImg); },
       bg: siteC.spotlightBg || 'var(--ink)'
     };
 
