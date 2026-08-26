@@ -251,6 +251,22 @@ window.__lazyFoto = (function () {
   };
 })();
 
+// Assim que o conteúdo novo chega do banco, o navegador já começa a baixar as capas — em
+// paralelo com o redesenho da tela. Quando o card vai pintar, a imagem costuma estar em
+// cache e a troca é imediata, em vez de esperar o download só depois de montar o card.
+window.__aquecerFotos = function (lista) {
+  try {
+    (lista || []).slice(0, 24).forEach(src => {
+      if (!src) return;
+      const mini = /^media\/[^/]+-1\.jpg$/.test(src) ? src.replace('media/', 'media/mini/') : src;
+      if (mini.indexOf('data:') === 0) return;   // já está em memória
+      const img = new Image();
+      img.decoding = 'async';
+      img.src = mini;
+    });
+  } catch (e) {}
+};
+
 class Component extends DCLogic {
   state = {
     region: 'all', purpose: 'all', stage: 'all', type: 'all', suitesMin: '0', priceMin: '0', priceMax: '0',
@@ -282,7 +298,12 @@ class Component extends DCLogic {
     if (r) this.setState({ region: r });
     // Recarrega sem esvaziar a lista antes: o estado intermediário vazio apagava os
     // cards por um instante a cada atualização vinda do banco — era isso que piscava.
-    this._onPub = () => { this._photosPreloaded = false; this.loadData(); };
+    this._onPub = () => {
+      this._photosPreloaded = false;
+      // Manda o navegador buscar as capas novas antes de redesenhar.
+      try { window.__aquecerFotos((window.CRMData.getProperties() || []).map(p => p.image)); } catch (e) {}
+      this.loadData();
+    };
     window.addEventListener('edina:published-updated', this._onPub);
     this.loadData();
   }
