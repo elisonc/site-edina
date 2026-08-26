@@ -292,9 +292,18 @@
       const originais = [q.image].concat(Array.isArray(q.images) ? q.images : []).filter(Boolean);
       const precisamSubir = originais.some(v => /^idb/.test(String(v)) || String(v).indexOf('data:') === 0);
 
-      // Com o Storage fora, as fotos da ficha vão para o documento do próprio imóvel, onde
-      // cabem. A ficha guarda só a referência — assim o catálogo continua leve e nenhuma
-      // foto se perde por falta de espaço, que era o que acontecia na importação.
+      // Antes de decidir o caminho, uma sondagem: a primeira foto vai ao Storage. Deu certo,
+      // segue o fluxo normal de endereços. Falhou, todas vão para os blocos de uma vez.
+      // Depender de uma marca com validade fazia a decisão variar entre uma gravação e outra
+      // — e no meio do caminho o espaço para embutir imagem já tinha se esgotado.
+      if (precisamSubir && !storageIndisponivel && !storageMarcadoFora()) {
+        const sonda = originais.find(v => /^idb/.test(String(v)) || String(v).indexOf('data:') === 0);
+        if (sonda) await externalizeMedia(sonda, 'fotos', cache);
+      }
+
+      // Sem Storage, as fotos da ficha vão para documentos do próprio imóvel, onde cabem.
+      // A ficha guarda só a referência: o catálogo continua leve e nenhuma foto se perde
+      // por falta de espaço.
       if (precisamSubir && (storageIndisponivel || storageMarcadoFora())) {
         const dados = [];
         for (const v of originais) {
