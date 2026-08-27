@@ -2,6 +2,12 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
+<!-- O framework esconde o molde da página assim que carrega. Como os scripts passaram a
+     usar defer, ele carrega DEPOIS de o navegador já ter desenhado — e o molde aparecia
+     cru por um instante: chaves duplas no lugar dos textos e todas as janelas de aviso
+     abertas ao mesmo tempo, porque sem a lógica nada decide o que esconder. A mesma regra,
+     escrita aqui, vale desde o primeiro traço na tela. -->
+<style>x-dc{display:none!important}</style>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- defer: o navegador busca em paralelo e executa nesta ordem antes de a página ficar
      pronta, sem parar a leitura do HTML. Os dados vêm antes do framework, então ele já
