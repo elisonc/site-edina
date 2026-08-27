@@ -634,9 +634,11 @@ class Component extends DCLogic {
 
     const emb = this.videoEmbed(p.videoUrl);
     const youtubeUrl = emb ? emb.src : '';
-    // O endereço vai para o mapa junto com bairro e cidade: só "Rua Renato Melim Cunha"
-    // acha ruas de mesmo nome em outras cidades. Partes repetidas entram uma vez só.
-    const partesEndereco = [p.address, p.location, p.city, 'SC', 'Brasil']
+    // Sem rua cadastrada — o caso da maioria das fichas — o mapa procura pelo nome do
+    // empreendimento na cidade, que para prédio conhecido cai no lugar certo. Buscar só a
+    // cidade levaria todo mundo para o centro dela. A cidade e o estado sempre entram: só
+    // "Rua Renato Melim Cunha" acha rua de mesmo nome em outra cidade.
+    const partesEndereco = [p.address || p.condo || p.title, p.location, 'SC', 'Brasil']
       .map(v => String(v || '').trim()).filter(Boolean);
     const vistos = new Set();
     const fullAddress = partesEndereco.filter(v => {

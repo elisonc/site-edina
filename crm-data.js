@@ -1458,6 +1458,21 @@
           }
         } catch (e) {}
 
+        // Imóvel sem rua cadastrada: o botão de localização ainda funciona, mas procura pelo
+        // nome do empreendimento em vez do endereço exato — no mapa cai perto, não em cima.
+        try {
+          const semRua = (remoto.properties || []).filter(x => !String(x.address || '').trim());
+          if (semRua.length) {
+            registrar('Endereço dos imóveis', 'aviso',
+                      semRua.length + ' sem rua cadastrada: ' + semRua.slice(0, 4).map(x => x.title).join(', ') +
+                      (semRua.length > 4 ? ' e mais ' + (semRua.length - 4) : '') +
+                      '. O mapa procura pelo nome do empreendimento.',
+                      'Preencha o Endereço na aba Imóveis');
+          } else if ((remoto.properties || []).length) {
+            registrar('Endereço dos imóveis', 'ok', 'Todos com rua cadastrada.');
+          }
+        } catch (e) {}
+
         // Marca de edição presa: faz este navegador ignorar o banco
         if (hasLocalEdits()) {
           registrar('Sincronia deste navegador', 'aviso', 'Este navegador está marcado como "tem alteração não enviada" e por isso ignora o banco.',
