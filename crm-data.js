@@ -508,6 +508,20 @@
 
   // Navegadores que já guardaram imagens antes desta mudança continuam com o armazenamento
   // entupido e recusando qualquer gravação nova. Uma passagem no início devolve o espaço.
+  // Quem visitou o site antes desta mudança ficou com contatos, agenda, histórico e
+  // usuários guardados no próprio navegador — eram baixados junto com o resto. Fora do
+  // painel isso não tem uso nenhum e sai daqui, para não continuar parado na máquina de
+  // quem só veio olhar imóvel.
+  (function limparDadosDoPainel() {
+    try {
+      if (/crm/i.test(location.pathname)) return;
+      const doPainel = ['edina_db_leads', 'edina_db_visits', 'edina_db_history', 'edina_db_auth'];
+      Object.keys(localStorage)
+        .filter(k => doPainel.some(p => k.indexOf(p) === 0))
+        .forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+    } catch (e) {}
+  })();
+
   (function faxinaInicial() {
     try {
       let usado = 0;
