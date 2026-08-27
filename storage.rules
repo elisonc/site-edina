@@ -1,24 +1,48 @@
 rules_version = '2';
 
-// Regras do Firebase Storage (fotos e vídeos dos imóveis).
-// São SEPARADAS das regras do Firestore — publicar uma não libera a outra.
+// Regras do Firebase Storage do projeto site-edina-final.
 //
-// COMO APLICAR:
+// COMO APLICAR (2 minutos, só você pode fazer — exige login no Firebase):
 //   1. https://console.firebase.google.com/project/site-edina-final/storage
-//   2. Se aparecer "Começar"/"Get started", ative o Storage primeiro.
-//   3. Vá na aba "Rules", apague o conteúdo, cole este arquivo e clique em "Publicar".
+//   2. Se aparecer "Começar" / "Get started", clique e confirme (cria o bucket).
+//   3. Abra a aba "Rules" (Regras), apague o conteúdo, cole este arquivo inteiro.
+//   4. Clique em "Publicar".
 //
-// SEM ISSO as fotos não sobem: o navegador recusa o envio ainda no preflight
-// (erro de CORS) e o imóvel fica sem imagem para quem abre o site de outro aparelho.
+// POR QUE ISSO IMPORTA
+//
+// Sem o Storage, todo arquivo precisa caber no banco de dados — e um banco de documentos
+// não é lugar de arquivo grande. Um vídeo de 50 MB vira 66 MB de texto, 97 documentos,
+// ~39 s de envio e ~116 MB de memória no celular, e nada toca antes de tudo chegar. A cota
+// gratuita comportaria 15 vídeos, e 514 exibições por dia a esgotariam.
+//
+// Com o Storage: 5 GB gratuitos (100 vídeos de 50 MB), uma operação por exibição em vez de
+// 97, e o vídeo começa a tocar enquanto baixa — o navegador pede só o pedaço que precisa,
+// então dá para avançar para qualquer ponto sem esperar o arquivo inteiro.
+//
+// Enquanto não estiver publicado, o painel aceita vídeo de até 12 MB e explica o motivo;
+// acima disso, o caminho é o campo "Link do vídeo" com um endereço do YouTube ou Vimeo.
 
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Fotos dos imóveis, mídia do blog e imagens do site.
+    // Fotos dos imóveis, plantas, ebooks, vídeos, áudio dos depoimentos e imagens do site.
     match /{pasta}/{arquivo=**} {
+      // Qualquer visitante lê: é isso que faz a foto aparecer para quem abre o site.
       allow read: if true;
-      allow write: if request.resource.size < 20 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*|video/.*|audio/.*');
+
+      // 120 MB cobre com folga o vídeo de 50 MB e deixa margem para os maiores, mantendo
+      // um teto que impede alguém de usar o espaço do site para hospedar o que quiser.
+      allow write: if request.resource.size < 120 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*|video/.*|audio/.*|application/pdf');
     }
   }
 }
+
+// SOBRE O `allow write` SEM LOGIN
+//
+// É o mesmo motivo do Firestore: o painel entra com login próprio, guardado no navegador,
+// e não com o Firebase Authentication — do ponto de vista do Storage, ele é um visitante
+// comum. O teto de tamanho e a lista de tipos são o que limita o estrago possível.
+//
+// Para fechar de vez, ligue o Firebase Authentication e troque a linha por:
+//     allow write: if request.auth != null && request.resource.size < 120 * 1024 * 1024;
