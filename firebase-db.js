@@ -742,12 +742,14 @@
     return lista;
   }
 
-  // Cliques nos botões. Um documento por mês, com um campo por botão, somado com increment
-  // — dois visitantes clicando ao mesmo tempo não sobrescrevem a conta um do outro, porque
-  // quem soma é o banco e não o navegador. Doze documentos por ano é todo o custo.
-  function mesAtual() {
+  // Cliques nos botões. Um documento por mês, e dentro dele um mapa por dia — é o dia que
+  // permite ao painel usar o mesmo filtro de período dos acessos (hoje, 7 dias, 30 dias).
+  // A soma é feita com increment: dois visitantes clicando ao mesmo tempo não sobrescrevem
+  // a conta um do outro, porque quem soma é o banco e não o navegador.
+  function diaHoje() {
     const d = new Date();
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') +
+           '-' + String(d.getDate()).padStart(2, '0');
   }
 
   async function somarCliques(lote) {
@@ -755,36 +757,40 @@
     if (!firebase.apps.length || !lote) return false;
     const campos = {};
     Object.keys(lote).forEach(k => {
-      if (!k || !lote[k]) return;
-      campos['b_' + k] = firebase.firestore.FieldValue.increment(lote[k]);
+      // Chave de mapa no Firestore não aceita estes caracteres nem começar com dois traços
+      // baixos; um nome assim faria a gravação inteira ser recusada.
+      const nome = String(k).replace(/[.\/\[\]*`~]/g, '-').replace(/^__+/, '');
+      if (!nome || !lote[k]) return;
+      campos[nome] = firebase.firestore.FieldValue.increment(lote[k]);
     });
     if (!Object.keys(campos).length) return false;
-    campos.atualizadoEm = Date.now();
-    await DOC('cliques_' + mesAtual()).set(campos, { merge: true });
+    const dia = diaHoje();
+    await DOC('cliques_' + dia.slice(0, 7)).set({ dias: { [dia]: campos } }, { merge: true });
     return true;
   }
 
-  // Lê os meses pedidos e devolve a lista ordenada do mais clicado para o menos.
+  // Devolve os cliques abertos por dia, para o painel filtrar pelo período escolhido do
+  // mesmo jeito que já filtra os acessos.
   async function lerCliques(meses) {
     await ready;
-    if (!firebase.apps.length) return { total: 0, botoes: [] };
-    const alvos = meses && meses.length ? meses : [mesAtual()];
-    const soma = {};
+    if (!firebase.apps.length) return [];
+    const alvos = meses && meses.length ? meses : [diaHoje().slice(0, 7)];
+    const linhas = [];
     for (const m of alvos) {
       try {
         const snap = await DOC('cliques_' + m).get();
         if (!snap.exists) continue;
-        const d = snap.data() || {};
-        Object.keys(d).forEach(k => {
-          if (k.indexOf('b_') !== 0) return;
-          const nome = k.slice(2);
-          soma[nome] = (soma[nome] || 0) + (d[k] || 0);
+        const dias = (snap.data() || {}).dias || {};
+        Object.keys(dias).forEach(dia => {
+          const porBotao = dias[dia] || {};
+          Object.keys(porBotao).forEach(nome => {
+            const n = porBotao[nome];
+            if (typeof n === 'number' && n > 0) linhas.push({ dia: dia, nome: nome, cliques: n });
+          });
         });
       } catch (e) {}
     }
-    const botoes = Object.keys(soma).map(n => ({ nome: n, cliques: soma[n] }))
-      .sort((a, b) => b.cliques - a.cliques);
-    return { total: botoes.reduce((t, b) => t + b.cliques, 0), botoes: botoes };
+    return linhas;
   }
 
   async function save(name, payload) {

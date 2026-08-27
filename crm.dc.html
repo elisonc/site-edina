@@ -625,7 +625,7 @@
               <div style="font-size:13px;font-weight:700;color:#4a4438">Botões mais clicados</div>
               <div style="font-size:12px;color:#8a7f6a">{{ cliques.resumo }}</div>
             </div>
-            <div style="font-size:11.5px;color:#8a7f6a;margin-bottom:12px">Conta os cliques dos visitantes no site — WhatsApp, agendar visita, ebook, mapa, cards de imóvel.</div>
+            <div style="font-size:11.5px;color:#8a7f6a;margin-bottom:12px">Cliques dos visitantes no período escolhido acima — WhatsApp, agendar visita, ebook, mapa, cards de imóvel.</div>
             <div style="display:grid;gap:6px">
               <sc-for list="{{ cliques.lista }}" as="cq" hint-placeholder-count="5">
                 <div style="display:flex;align-items:center;gap:12px;font-size:13px">
@@ -637,7 +637,7 @@
                 </div>
               </sc-for>
               <sc-if value="{{ cliques.vazio }}" hint-placeholder-val="{{ true }}">
-                <div style="color:#7d7157;font-size:13px">Nenhum clique registrado ainda. Os números aparecem conforme os visitantes usam o site.</div>
+                <div style="color:#7d7157;font-size:13px">Nenhum clique neste período.</div>
               </sc-if>
             </div>
           </div>
@@ -2566,7 +2566,7 @@ class Component extends DCLogic {
     // Também na abertura, e não só quando o banco muda: o conserto precisa acontecer mesmo
     // que ninguém edite nada nesta sessão.
     setTimeout(this.repararArquivosPresos, 6000);
-    setTimeout(this.carregarCliques, 1500);
+    setTimeout(() => this.carregarCliques(this.state.dashRange), 1500);
     // Contatos enviados pelo site chegam no banco, não neste navegador — busca os que
     // faltam antes de montar a lista, senão o painel mostra só o que foi digitado aqui.
     // O painel também precisa acompanhar o banco: sem escutar estas mudanças, uma edição
@@ -2655,10 +2655,13 @@ class Component extends DCLogic {
     else if (key === '30d') from = this.daysAgoISO(29);
     else if (key === 'month') from = `${toISO.slice(0, 7)}-01`;
     this.setState({ dashRange: { from, to: toISO, preset: key } });
+    this.carregarCliques({ from, to: toISO });
   };
   onRangeCustom = (field) => (e) => {
     const cur = this.state.dashRange || { from: this.daysAgoISO(6), to: new Date().toISOString().slice(0, 10) };
-    this.setState({ dashRange: { ...cur, [field]: e.target.value, preset: 'custom' } });
+    const novo = { ...cur, [field]: e.target.value, preset: 'custom' };
+    this.setState({ dashRange: novo });
+    this.carregarCliques(novo);
   };
   onCommissionChange = (e) => {
     const v = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
@@ -3004,15 +3007,34 @@ class Component extends DCLogic {
   // existe AQUI, então este navegador é justamente o que consegue mandá-lo para o banco —
   // e basta gravar de novo, porque a gravação leva para o banco tudo o que estiver preso.
   // Assim o conserto acontece sozinho, sem depender de alguém lembrar de reenviar.
-  // Busca os cliques do mês atual e do anterior — a virada de mês não pode zerar o painel.
-  carregarCliques = () => {
+  // Busca os cliques dos meses que o período escolhido alcança. Os dias já vêm abertos, e
+  // quem filtra é o painel — do mesmo jeito que faz com os acessos. Mês já buscado não é
+  // buscado de novo: trocar de "7 dias" para "30 dias" não custa nada se o mês é o mesmo.
+  carregarCliques = (range) => {
     if (!window.FirebaseDB || !window.FirebaseDB.lerCliques) return;
-    const d = new Date();
-    const chave = (dt) => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0');
-    const anterior = new Date(d.getFullYear(), d.getMonth() - 1, 1);
-    window.FirebaseDB.lerCliques([chave(anterior), chave(d)])
-      .then(r => this.setState({ cliques: r }))
-      .catch(() => {});
+    const hoje = new Date().toISOString().slice(0, 10);
+    const de = (range && range.from) || this.daysAgoISO(6);
+    const ate = (range && range.to) || hoje;
+
+    const meses = [];
+    const cursor = new Date(de.slice(0, 4), parseInt(de.slice(5, 7), 10) - 1, 1);
+    const fim = new Date(ate.slice(0, 4), parseInt(ate.slice(5, 7), 10) - 1, 1);
+    while (cursor <= fim && meses.length < 24) {
+      meses.push(cursor.getFullYear() + '-' + String(cursor.getMonth() + 1).padStart(2, '0'));
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    this._mesesDeCliques = this._mesesDeCliques || {};
+    const faltando = meses.filter(m => !this._mesesDeCliques[m]);
+    // O mês corrente é sempre relido: ele muda enquanto as pessoas usam o site.
+    const corrente = hoje.slice(0, 7);
+    if (meses.indexOf(corrente) > -1 && faltando.indexOf(corrente) < 0) faltando.push(corrente);
+    if (!faltando.length) return;
+
+    window.FirebaseDB.lerCliques(faltando).then(linhas => {
+      faltando.forEach(m => { this._mesesDeCliques[m] = true; });
+      const antigas = (this.state.cliquesRows || []).filter(r => faltando.indexOf(r.dia.slice(0, 7)) < 0);
+      this.setState({ cliquesRows: antigas.concat(linhas || []) });
+    }).catch(() => {});
   };
 
   repararArquivosPresos = () => {
@@ -5137,20 +5159,25 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       isDiscardReasonOther: s.discardReason === 'Outro', discardReasonOther: s.discardReasonOther || '', onDiscardReasonOtherChange: this.onDiscardReasonOtherChange,
       confirmDiscard: this.confirmDiscard,
       cliques: (() => {
-        const dados = s.cliques || { total: 0, botoes: [] };
-        const lista = (dados.botoes || []).slice(0, 8);
+        // Mesmo recorte dos acessos: o que estiver escolhido lá vale aqui.
+        const noPeriodo = (s.cliquesRows || [])
+          .filter(r => (!range.from || r.dia >= range.from) && (!range.to || r.dia <= range.to));
+        const soma = {};
+        noPeriodo.forEach(r => { soma[r.nome] = (soma[r.nome] || 0) + r.cliques; });
+        const lista = Object.keys(soma).map(n => ({ nome: n, cliques: soma[n] }))
+          .sort((a, b) => b.cliques - a.cliques).slice(0, 8);
+        const total = noPeriodo.reduce((t, r) => t + r.cliques, 0);
         const maior = lista.length ? lista[0].cliques : 0;
         return {
           vazio: !lista.length,
-          resumo: dados.total ? dados.total.toLocaleString('pt-BR') + ' cliques nos últimos 2 meses' : '',
+          resumo: total ? total.toLocaleString('pt-BR') + (total === 1 ? ' clique' : ' cliques') + ' no período' : '',
           lista: lista.map(b => ({
             nome: b.nome,
             rotulo: b.cliques.toLocaleString('pt-BR') +
-                    (dados.total ? '  ' + Math.round(b.cliques / dados.total * 100) + '%' : ''),
-            // A barra compara com o mais clicado, que é a leitura útil: mostra a distância
-            // entre o primeiro e os demais.
+                    (total ? '  ·  ' + Math.round(b.cliques / total * 100) + '%' : ''),
+            // A barra compara com o mais clicado: mostra a distância entre o primeiro e os demais.
             barraStyle: 'position:absolute;left:0;top:0;bottom:0;background:var(--accent);width:' +
-                        (maior ? Math.max(3, Math.round(b.cliques / maior * 100)) : 0) + '%'
+                        (maior ? Math.max(3, Math.round(b.cliques / maior * 100)) + '%' : '0')
           }))
         };
       })(),
