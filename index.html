@@ -707,13 +707,17 @@ class Component extends DCLogic {
         const pronto = (u && D.paraBlobURL) ? D.paraBlobURL(u) : u;
         if (pronto && el.getAttribute('src') !== pronto) { el.setAttribute('src', pronto); el.load(); }
       };
-      const jaEmMaos = D.mediaURL ? D.mediaURL(chave) : '';
-      if (jaEmMaos) return por(jaEmMaos);
+      // Endereço do banco é verificado ANTES de qualquer atalho. mediaURL devolve string
+      // desconhecida como se fosse endereço pronto, então "arqdoc:audio_2" passava por
+      // endereço válido e ia direto para o player — que não sabe o que fazer com isso e
+      // ficava mudo. Só o primeiro depoimento tocava, porque o dele é de outro formato.
       const s = String(chave);
       if (s.indexOf('arqdoc:') === 0 || s.indexOf('fotodoc:') === 0) {
         D.getDocURL(s).then(por).catch(() => {});
         return;
       }
+      const jaEmMaos = D.mediaURL ? D.mediaURL(chave) : '';
+      if (jaEmMaos) return por(jaEmMaos);
       if (D.getMediaRaw) D.getMediaRaw(s).then(por).catch(() => {});
     };
     const d = window.SITE_INFO || {};
