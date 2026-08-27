@@ -481,9 +481,14 @@ class Component extends DCLogic {
       statusLabel: p.status === 'vendido' ? 'Vendido' : 'Reservado',
       statusBadgeStyle: `position:absolute;top:14px;left:14px;z-index:2;padding:6px 14px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:${p.status === 'vendido' ? '#5c5245' : 'var(--accent)'}`,
       descProvisional: !!p.descProvisional,
-      hasStageBadge: (p.stage || 'pronto') !== 'pronto',
-      stageLabel: (p.stage === 'lancamento' ? 'Lançamento' : 'Em construção') +
-                  (String(p.delivery || '').trim() ? ' · Entrega ' + String(p.delivery).trim() : ''),
+      hasStageBadge: (p.stage || 'pronto') !== 'pronto' || !!String(p.delivery || '').trim(),
+      stageLabel: (() => {
+        const entrega = String(p.delivery || '').trim();
+        const fase = (p.stage || 'pronto') === 'pronto' ? ''
+                   : (p.stage === 'lancamento' ? 'Lançamento' : 'Em construção');
+        if (fase && entrega) return fase + ' · Entrega ' + entrega;
+        return fase || ('Entrega ' + entrega);
+      })(),
       stageBadgeStyle: `position:absolute;top:${(p.status === 'reservado' || p.status === 'vendido') ? 52 : 14}px;left:14px;z-index:2;padding:6px 14px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:${p.stage === 'lancamento' ? '#b98a5e' : '#5c6b7a'}`
     }));
 

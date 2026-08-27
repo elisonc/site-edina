@@ -243,14 +243,12 @@
     <div>
       <div style="font-size:12px;color:var(--accent);letter-spacing:.03em;margin-bottom:10px">
         <a href="{{ property.mapsUrl }}" target="_blank" rel="noopener noreferrer" data-clique="endereco" title="Ver no mapa" style="color:inherit;text-decoration:none;border-bottom:1px dotted currentColor;padding-bottom:1px">{{ property.location }}</a> · {{ property.condo }} · Ref. {{ property.code }}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <sc-if value="{{ property.hasStatusBadge }}" hint-placeholder-val="{{ false }}">
-          <div style="{{ property.statusBadgeStyle }}">{{ property.statusLabel }}</div>
-        </sc-if>
-        <sc-if value="{{ property.hasDelivery }}" hint-placeholder-val="{{ false }}">
-          <div style="display:inline-flex;align-items:center;gap:7px;padding:7px 16px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#1d1a15;background:var(--tan);margin-bottom:16px">🔑 Entrega {{ property.delivery }}</div>
-        </sc-if>
-      </div>
+      <sc-if value="{{ property.hasStatusBadge }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ property.statusBadgeStyle }}">{{ property.statusLabel }}</div>
+      </sc-if>
+      <sc-if value="{{ property.hasDelivery }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ property.deliveryBadgeStyle }}">🔑 Entrega {{ property.delivery }}</div>
+      </sc-if>
       <h1 style="font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:600;margin:0 0 22px">{{ property.title }}</h1>
       <div style="display:flex;gap:36px;padding:24px 0;border-top:1px solid #ddd3bd;border-bottom:1px solid #ddd3bd;margin-bottom:30px;flex-wrap:wrap">
         <div><div style="font-size:20px;font-weight:700">{{ property.area }} m²</div><div style="font-size:12.5px;color:#746b5c">Área</div></div>
@@ -750,6 +748,7 @@ class Component extends DCLogic {
       // então fica ao lado do título e não perdida no meio da ficha.
       hasDelivery: !!String(p.delivery || '').trim(),
       delivery: String(p.delivery || '').trim(),
+      deliveryBadgeStyle: 'display:inline-block;padding:7px 16px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#1d1a15;background:var(--tan);margin:0 0 16px 8px',
       hasStatusBadge: p.status === 'reservado' || p.status === 'vendido',
       statusLabel: p.status === 'vendido' ? 'Vendido' : 'Reservado',
       statusBadgeStyle: `display:inline-block;padding:7px 16px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:${p.status === 'vendido' ? '#5c5245' : 'var(--accent)'};margin-bottom:16px`
