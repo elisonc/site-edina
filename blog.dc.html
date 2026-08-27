@@ -207,9 +207,9 @@ class Component extends DCLogic {
     const s = this.state;
     const all = s.posts || [];
     const tones = [
-      'repeating-linear-gradient(135deg,#e9e1cf,#e9e1cf 12px,#e2d8c2 12px,#e2d8c2 24px)',
-      'repeating-linear-gradient(135deg,#dfe3da,#dfe3da 12px,#d3d9cc 12px,#d3d9cc 24px)',
-      'repeating-linear-gradient(135deg,#e6dcdc,#e6dcdc 12px,#dccdcd 12px,#dccdcd 24px)'
+      '#f1ece0',
+      '#eceee9',
+      '#efe8e8'
     ];
     const cats = ['all', ...Array.from(new Set(all.map(p => p.cat)))];
     const categoryFilters = cats.map(c => ({

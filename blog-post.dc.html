@@ -217,9 +217,9 @@ class Component extends DCLogic {
     const all = s.posts || [];
     const p = all.find(x => x.id === s.id) || all[0] || {};
     const tones = [
-      'repeating-linear-gradient(135deg,#e9e1cf,#e9e1cf 12px,#e2d8c2 12px,#e2d8c2 24px)',
-      'repeating-linear-gradient(135deg,#dfe3da,#dfe3da 12px,#d3d9cc 12px,#d3d9cc 24px)',
-      'repeating-linear-gradient(135deg,#e6dcdc,#e6dcdc 12px,#dccdcd 12px,#dccdcd 24px)'
+      '#f1ece0',
+      '#eceee9',
+      '#efe8e8'
     ];
     const paragraphs = (p.body || '').split('\n\n').filter(Boolean);
     const related = all.filter(x => x.id !== p.id && x.status === 'publicado' && x.cat === p.cat).slice(0, 3);

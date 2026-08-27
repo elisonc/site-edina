@@ -830,6 +830,29 @@
     return linhas;
   }
 
+  // O áudio de um depoimento tem alguns minutos e passa fácil do que cabe num documento
+  // (1 MB). Ia pelo caminho das fotos, que grava num documento só: acima de ~700 KB a
+  // gravação era recusada em silêncio e o áudio ficava apenas no navegador de quem enviou
+  // — o depoimento parecia perder o áudio sozinho. Vai pelos mesmos pedaços do ebook, que
+  // não têm esse teto.
+  async function externalizeTestimonials(lista) {
+    const out = (lista || []).map(t => ({ ...t }));
+    const local = (v) => typeof v === 'string' && (/^idb/.test(v) || v.indexOf('data:') === 0);
+    for (const t of out) {
+      if (!local(t.audioUrl)) continue;
+      let arq = '';
+      try {
+        arq = t.audioUrl.indexOf('data:') === 0
+          ? t.audioUrl
+          : (window.CRMData.getMediaRaw ? await window.CRMData.getMediaRaw(t.audioUrl) : '');
+      } catch (e) {}
+      if (!arq) continue;                       // não está neste aparelho: deixa como está
+      const rotulo = 'audio_' + t.id;
+      if (await guardarArquivo(rotulo, arq)) t.audioUrl = 'arqdoc:' + rotulo;
+    }
+    return out;
+  }
+
   async function save(name, payload) {
     await ready;
     if (!firebase.apps.length) return false;
@@ -964,7 +987,9 @@
     appendLead: appendLead,
     saveSite: (obj) => externalizeSite(obj).then(out => save('site', out)),
     savePosts: (arr) => externalizeList(arr, 'image', 'posts').then(out => save('posts', out)),
-    saveTestimonials: (arr) => externalizeList(arr, 'audioUrl', 'depoimentos').then(out => save('testimonials', out)),
+    // Áudio vai pelos pedaços (sem teto de tamanho); o caminho antigo continua valendo
+    // para o que já está guardado como fotodoc:depoimentos.
+    saveTestimonials: (arr) => externalizeTestimonials(arr).then(out => save('testimonials', out)),
     // Gravação genérica, para as chaves que não precisam de tratamento de mídia.
     saveDoc: (nome, dados) => save(nome, dados),
     mediaErrors: () => mediaErrors.slice(),

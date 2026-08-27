@@ -509,7 +509,7 @@
                     <div style="font-size:13px;font-weight:600">{{ d.area }}</div>
                     <div style="font-size:12.5px;color:#746b5c;overflow-wrap:anywhere">{{ d.detalhe }}</div>
                     <sc-if value="{{ d.temAcao }}" hint-placeholder-val="{{ false }}">
-                      <div style="font-size:12px;color:#3e7a4f;margin-top:2px">→ {{ d.acao }}</div>
+                      <div style="{{ d.acaoStyle }}">→ {{ d.acao }}</div>
                     </sc-if>
                   </div>
                 </div>
@@ -2702,6 +2702,9 @@ class Component extends DCLogic {
       this.setState({
         diagRodando: false,
         diag: res,
+        // Guarda se foi o botão de corrigir: é o que permite dizer "nada disto o site
+        // conserta sozinho" em vez de mostrar zero correções sem explicação.
+        diagCorrigiu: !!corrigir,
         // Corrigir alinha este navegador pelo banco: a tela precisa reler o que mudou.
         properties: window.CRMData.getPropertiesRaw(),
         leads: window.CRMData.getLeads(),
@@ -4910,7 +4913,7 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       imgStyle: (p.thumb || p.image) ? `width:44px;height:32px;border:1px solid #e5ddcd;background-size:cover;background-position:center;flex:none` : `width:44px;height:32px;background:#f0ead9;flex:none`,
       // A miniatura viaja junto com a ficha e tem o tamanho exato deste card: usar a foto
       // cheia do banco aqui seria baixar uma imagem grande para mostrar 44 por 32 pixels.
-      imgRef: (el) => { if (!el) return; const u = p.thumb || window.CRMData.photoURL(p.image); el.style.backgroundImage = u ? `url('${u}')` : 'none'; if (!u && p.image) el.style.background = 'repeating-linear-gradient(135deg,#e8e0cf,#e8e0cf 5px,#ded4bf 5px,#ded4bf 10px)'; },
+      imgRef: (el) => { if (!el) return; const u = p.thumb || window.CRMData.photoURL(p.image); el.style.backgroundImage = u ? `url('${u}')` : 'none'; if (!u && p.image) el.style.background = '#f1ece0'; },
       onTogglePublished: () => {
         const properties = this.state.properties.map(x => x.id === p.id ? { ...x, published: !(x.published !== false) } : x);
         this.setState({ properties });
@@ -4949,7 +4952,19 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       aiOptions: (pd.aiOptions || null) && pd.aiOptions.map(o => ({ text: o.text, hashtags: o.hashtags, use: this.useAiDescription(o.text) })),
       amenityChips: this.AMENITY_CATALOG.map(name => {
         const active = (pd.amenities || '').split(',').map(s => s.trim()).includes(name);
-        return { label: name, toggle: this.togglePropertyAmenity(name), style: `padding:6px 12px;font-size:12px;border-radius:14px;cursor:pointer;font-family:'Manrope',sans-serif;border:1px solid ${active ? '#1d1a15' : '#ddd3bd'};background:${active ? '#1d1a15' : '#fff'};color:${active ? '#fff' : '#4a4438'}` };
+            // Áudio guardado em pedaços no banco precisa ser remontado antes de tocar, e isso é uma
+    // busca — não dá para resolver na hora de desenhar. Aqui o endereço pronto entra assim
+    // que chega; trocar o src só quando muda evita reiniciar uma reprodução em andamento.
+    const ligarAudio = (el, chave) => {
+      if (!el || !chave) return;
+      const por = (u) => { if (u && el.getAttribute('src') !== u) { el.setAttribute('src', u); el.load(); } };
+      if (String(chave).indexOf('arqdoc:') === 0) {
+        window.CRMData.getDocURL(chave).then(por).catch(() => {});
+        return;
+      }
+      por(window.CRMData.mediaURL ? window.CRMData.mediaURL(chave) : chave);
+    };
+    return { label: name, toggle: this.togglePropertyAmenity(name), style: `padding:6px 12px;font-size:12px;border-radius:14px;cursor:pointer;font-family:'Manrope',sans-serif;border:1px solid ${active ? '#1d1a15' : '#ddd3bd'};background:${active ? '#1d1a15' : '#fff'};color:${active ? '#fff' : '#4a4438'}` };
       }),
       tour: !!pd.tour, onToggleTour: (e) => this.setState({ propertyDraft: { ...this.state.propertyDraft, tour: e.target.checked } }),
       featured: !!pd.featured, onToggleFeatured: (e) => this.setState({ propertyDraft: { ...this.state.propertyDraft, featured: e.target.checked } }),
@@ -5024,11 +5039,7 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
     // Testimonials
     const testimonialCards = s.tab !== 'testimonials' ? [] : (s.testimonials || []).map(t => ({
       text: t.text, name: t.name, role: t.role, hasAudio: !!t.audioUrl,
-      audioRef: (el) => {
-        if (!el || !t.audioUrl) return;
-        const src = window.CRMData.mediaURL(t.audioUrl);
-        if (src && el.getAttribute('src') !== src) { el.setAttribute('src', src); el.load(); }
-      },
+      audioRef: (el) => ligarAudio(el, t.audioUrl),
       onEdit: this.editTestimonial(t)
     }));
     const td = s.testimonialDraft;
@@ -5039,6 +5050,7 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       hasAudio: !!td.audioUrl,
       audioRef: (el) => {
         if (!el || !td.audioUrl) return;
+        if (String(td.audioUrl).indexOf('arqdoc:') === 0) return ligarAudio(el, td.audioUrl);
         const src = window.CRMData.mediaURL(td.audioUrl);
         if (src && el.getAttribute('src') !== src) { el.setAttribute('src', src); el.load(); }
       },
@@ -5418,20 +5430,33 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       onDiagnosticarCorrigir: this.onDiagnosticarCorrigir,
       diagRodando: !!this.state.diagRodando,
       temDiag: !!(this.state.diag && this.state.diag.itens),
+      // O botão só sabe consertar o que é problema de sincronia entre este navegador e o
+      // banco. Senha para trocar, endereço para digitar e arquivo que está em outro
+      // aparelho ninguém conserta daqui — e não dizer isso fazia o botão parecer quebrado
+      // quando ele corrigia zero simplesmente por não haver o que corrigir.
       diagResumo: (() => {
         const d = this.state.diag;
         if (!d || !d.itens) return '';
-        const problemas = d.itens.filter(i => i.situacao !== 'ok').length;
+        const atencao = d.itens.filter(i => i.situacao !== 'ok');
         const partes = [d.itens.length + ' verificação(ões)'];
-        if (d.corrigidos) partes.push(d.corrigidos + ' corrigida(s)');
-        partes.push(problemas ? problemas + ' ponto(s) de atenção' : 'nada fora do lugar');
+        if (d.corrigidos) partes.push(d.corrigidos + ' corrigida(s) agora');
+        if (!atencao.length) { partes.push('nada fora do lugar'); return partes.join(' · '); }
+        partes.push(atencao.length + ' ponto(s) de atenção');
+        if (this.state.diagCorrigiu && !d.corrigidos)
+          partes.push('nenhum deles o site conserta sozinho — veja abaixo o que fazer');
         return partes.join(' · ');
       })(),
-      diagItens: ((this.state.diag && this.state.diag.itens) || []).map(i => ({
-        area: i.area, detalhe: i.detalhe, acao: i.acao, temAcao: !!i.acao,
-        pontoStyle: 'flex:0 0 auto;width:9px;height:9px;border-radius:50%;margin-top:5px;background:' +
-          (i.situacao === 'ok' ? '#3e7a4f' : i.situacao === 'erro' ? '#b4432f' : '#c99a3d')
-      })),
+      diagItens: ((this.state.diag && this.state.diag.itens) || []).map(i => {
+        const feito = /^(Enviado|Alinhado|Endereços quebrados removidos|Marca liberada)/.test(i.acao || '');
+        return {
+          area: i.area, detalhe: i.detalhe,
+          acao: i.acao || (i.situacao === 'ok' ? '' : 'Depende de você — o site não consegue corrigir isto sozinho'),
+          temAcao: !!(i.acao || i.situacao !== 'ok'),
+          acaoStyle: 'font-size:12px;margin-top:2px;color:' + (feito ? '#3e7a4f' : i.acao ? '#8a6d1f' : '#8a7f6a'),
+          pontoStyle: 'flex:0 0 auto;width:9px;height:9px;border-radius:50%;margin-top:5px;background:' +
+            (i.situacao === 'ok' ? '#3e7a4f' : i.situacao === 'erro' ? '#b4432f' : '#c99a3d')
+        };
+      }),
       onLogoWidth: this.updateSiteField('logoWidth'),
       applyReferencePalette: this.applyReferencePalette,
       themeSwatches: [

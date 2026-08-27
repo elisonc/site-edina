@@ -192,7 +192,7 @@
           </sc-if>
           <div style="{{ p.imgStyle }}" ref="{{ p.imgRef }}">
             <sc-if value="{{ p.hasPlaceholderText }}" hint-placeholder-val="{{ true }}">
-              <span>[ foto do imóvel ]</span>
+              
             </sc-if>
           </div>
           <div style="padding:22px">
@@ -555,7 +555,19 @@ class Component extends DCLogic {
         if (slides.length > 1) {
           this.setState(s => {
             const atual = Number.isFinite(s.heroSlideIndex) ? s.heroSlideIndex : 0;
-            return { heroSlideIndex: (atual + 1) % slides.length };
+                // Áudio guardado em pedaços no banco precisa ser remontado antes de tocar, e isso é uma
+    // busca — não dá para resolver na hora de desenhar. Aqui o endereço pronto entra assim
+    // que chega; trocar o src só quando muda evita reiniciar uma reprodução em andamento.
+    const ligarAudio = (el, chave) => {
+      if (!el || !chave) return;
+      const por = (u) => { if (u && el.getAttribute('src') !== u) { el.setAttribute('src', u); el.load(); } };
+      if (String(chave).indexOf('arqdoc:') === 0) {
+        window.CRMData.getDocURL(chave).then(por).catch(() => {});
+        return;
+      }
+      por(window.CRMData.mediaURL ? window.CRMData.mediaURL(chave) : chave);
+    };
+    return { heroSlideIndex: (atual + 1) % slides.length };
           });
         }
       } catch (e) {
@@ -692,24 +704,20 @@ class Component extends DCLogic {
     const properties = this.state.properties || [];
     const blogPosts = this.state.posts || [];
     const testimonialTones = [
-      'background:repeating-linear-gradient(135deg,#e9e1cf,#e9e1cf 6px,#e2d8c2 6px,#e2d8c2 12px);width:44px;height:44px;border-radius:50%',
-      'background:repeating-linear-gradient(135deg,#dfe3da,#dfe3da 6px,#d3d9cc 6px,#d3d9cc 12px);width:44px;height:44px;border-radius:50%',
-      'background:repeating-linear-gradient(135deg,#e6dcdc,#e6dcdc 6px,#dccdcd 6px,#dccdcd 12px);width:44px;height:44px;border-radius:50%'
+      'background:#f1ece0;width:44px;height:44px;border-radius:50%',
+      'background:#eceee9;width:44px;height:44px;border-radius:50%',
+      'background:#efe8e8;width:44px;height:44px;border-radius:50%'
     ];
     const testimonials = (this.state.testimonials || []).map(t => ({
       text: t.text, name: t.name, role: t.role,
       avatarStyle: testimonialTones[(t.tone || 0) % 3],
       hasAudio: !!t.audioUrl,
-      audioRef: (el) => {
-        if (!el || !t.audioUrl) return;
-        // Só reatribui quando muda: trocar o src reinicia a reprodução em andamento.
-        if (el.getAttribute('src') !== t.audioUrl) { el.setAttribute('src', t.audioUrl); el.load(); }
-      }
+      audioRef: (el) => ligarAudio(el, t.audioUrl)
     }));
     const tones = [
-      'repeating-linear-gradient(135deg,#e9e1cf,#e9e1cf 12px,#e2d8c2 12px,#e2d8c2 24px)',
-      'repeating-linear-gradient(135deg,#dfe3da,#dfe3da 12px,#d3d9cc 12px,#d3d9cc 24px)',
-      'repeating-linear-gradient(135deg,#e6dcdc,#e6dcdc 12px,#dccdcd 12px,#dccdcd 24px)'
+      '#f1ece0',
+      '#eceee9',
+      '#efe8e8'
     ];
     const cardImg = (tone, h, img) => img ? `height:${h}px;background-size:cover;background-position:center` : `background:${tones[tone % 3]};height:${h}px;display:flex;align-items:center;justify-content:center;color:#8a7c5c;font-family:monospace;font-size:12px;text-align:center;padding:10px`;
     const cardImgRef = (img) => (el) => { if (el && img) window.__lazyFoto(el, img); };
@@ -737,7 +745,7 @@ class Component extends DCLogic {
       href: `imovel-detalhe.dc.html?id=${spotlightSrc.id || 1}`,
       imgStyle: spImg
         ? `width:100%;height:420px;background-size:cover;background-position:center`
-        : `width:100%;background:repeating-linear-gradient(135deg,#3a352a,#3a352a 12px,#2c281f 12px,#2c281f 24px);height:420px;display:flex;align-items:center;justify-content:center;color:#cfc7b6;font-family:monospace;font-size:12px;text-align:center;padding:10px`,
+        : `width:100%;background:#2f2b22;height:420px;display:flex;align-items:center;justify-content:center;color:#cfc7b6;font-family:monospace;font-size:12px;text-align:center;padding:10px`,
       // O destaque tem 420px de altura e usava o arquivo cheio, o único que ainda vinha em
       // tamanho original. Entra pelo mesmo caminho dos outros cards: versão reduzida e só
       // quando chega perto da tela.
@@ -808,7 +816,7 @@ class Component extends DCLogic {
       heroSectionStyle = `${heroBase};background:#141108`;
       heroSectionRef = () => {};
     } else {
-      heroSectionStyle = `${heroBase};background:repeating-linear-gradient(135deg,#d8cdb2,#d8cdb2 16px,#cfc2a1 16px,#cfc2a1 32px)`;
+      heroSectionStyle = `${heroBase};background:#efe9dc`;
       heroSectionRef = () => {};
     }
 
@@ -841,7 +849,7 @@ class Component extends DCLogic {
       ],
       featuredProperties,
       spotlight,
-      agentImgStyle: `background:repeating-linear-gradient(135deg,#ded2b2,#ded2b2 12px,#d3c39c 12px,#d3c39c 24px);height:520px;display:flex;align-items:center;justify-content:center;color:#8f4a34;font-family:monospace;font-size:12px`,
+      agentImgStyle: `background:#efe9dc;height:520px;display:flex;align-items:center;justify-content:center;color:#8f4a34;font-family:monospace;font-size:12px`,
       services: (site.services && site.services.length === 4 ? site.services : [
         { title: 'Compra e Aluguel de Imóveis', desc: 'Assessoria completa na compra e locação de imóveis de alto padrão no litoral catarinense.' },
         { title: 'Anunciar Meu Imóvel', desc: 'Divulgue sua propriedade com acesso a compradores qualificados do segmento de luxo.' },
@@ -860,7 +868,7 @@ class Component extends DCLogic {
       aboutQuote: site.aboutQuote || 'Bem-vindos ao litoral de alto padrão.',
       aboutP1: site.aboutP1 || 'Especialista em imóveis de alto padrão, Edina Oliveira atua na venda e locação de propriedades exclusivas em Navegantes, Itajaí, Balneário Camboriú e Praia Brava.',
       aboutP2: site.aboutP2 || 'Com atendimento consultivo e discreto, acompanha cada cliente do primeiro contato à assinatura, priorizando transparência e conhecimento profundo do mercado litorâneo.',
-      aboutImgStyle: site.aboutImage ? `width:100%;height:504px;background-size:cover;background-position:center` : `width:100%;height:504px;background:repeating-linear-gradient(135deg,#ded2b2,#ded2b2 12px,#d3c39c 12px,#d3c39c 24px)`,
+      aboutImgStyle: site.aboutImage ? `width:100%;height:504px;background-size:cover;background-position:center` : `width:100%;height:504px;background:#efe9dc`,
       aboutImgRef: (el) => { if (el && site.aboutImage) el.style.backgroundImage = `url('${site.aboutImage}')`; },
       formSent: this.state.formSent,
       formNotSent: !this.state.formSent,

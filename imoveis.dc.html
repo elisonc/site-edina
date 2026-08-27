@@ -233,7 +233,7 @@
             <a href="{{ p.href }}" style="text-decoration:none;color:inherit;display:block">
               <div style="{{ p.imgStyle }}" ref="{{ p.imgRef }}">
                 <sc-if value="{{ p.hasPlaceholderText }}" hint-placeholder-val="{{ true }}">
-                  <span style="position:relative;z-index:1">[ foto do imóvel ]</span>
+                  
                 </sc-if>
                 <div style="{{ p.overlayStyle }}">
                   <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#dba98a;margin-bottom:6px">{{ p.location }}</div>
@@ -434,9 +434,9 @@ class Component extends DCLogic {
     const s = this.state;
     const all = s.properties || [];
     const tones = [
-      'repeating-linear-gradient(135deg,#8a7654,#8a7654 12px,#7c6a49 12px,#7c6a49 24px)',
-      'repeating-linear-gradient(135deg,#5f6b5c,#5f6b5c 12px,#525d50 12px,#525d50 24px)',
-      'repeating-linear-gradient(135deg,#6b5a54,#6b5a54 12px,#5c4d48 12px,#5c4d48 24px)'
+      '#f1ece0',
+      '#f1ece0',
+      '#f1ece0'
     ];
 
     let filtered = all.slice();
