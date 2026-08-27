@@ -452,10 +452,14 @@
       delete pendentesDeEnvio[doc];
       delete temporizadores[doc];
       if (!(window.FirebaseDB && window.FirebaseDB.enabled)) return;
+      // Contatos precisam do caminho próprio, e não do genérico: é ele que tira o anexo de
+      // dentro do documento. Sem esta linha o anexo seguia embutido e o documento de
+      // contatos, que tem 1 MB no total, encheria com dois ou três arquivos.
       const envio = doc === 'properties' ? window.FirebaseDB.saveProperties(dados)
                   : doc === 'site' ? window.FirebaseDB.saveSite(dados)
                   : doc === 'posts' ? window.FirebaseDB.savePosts(dados)
                   : doc === 'testimonials' ? window.FirebaseDB.saveTestimonials(dados)
+                  : doc === 'leads' ? window.FirebaseDB.saveLeads(dados)
                   : window.FirebaseDB.saveDoc(doc, dados);
       clearEditedIfSynced(envio);
     }, AGRUPAR_MS);

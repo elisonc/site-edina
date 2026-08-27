@@ -2985,19 +2985,38 @@ class Component extends DCLogic {
     if (this._reparando || this._reparou) return;
     const D = window.CRMData;
     if (!D || !window.FirebaseDB || !window.FirebaseDB.enabled) return;
-    const preso = (v) => typeof v === 'string' && /^idb/.test(v);
-    const props = D.getPropertiesRaw() || [];
-    const temPreso = props.some(p =>
-      preso(p.image) || (p.images || []).some(preso) || (p.plantas || []).some(preso) ||
-      preso(p.ebookUrl) || preso(p.videoFile));
-    if (!temPreso) { this._reparou = true; return; }
+
+    // Duas coisas precisam sair do dado: o endereço idb…, que só existe neste navegador, e a
+    // imagem embutida inteira, que incha o documento até ele não caber mais no banco.
+    const problema = (v) => typeof v === 'string' &&
+      (/^idb/.test(v) || (v.indexOf('data:') === 0 && v.length > 60 * 1024));
+    const varrer = (o) => {
+      if (typeof o === 'string') return problema(o);
+      if (Array.isArray(o)) return o.some(varrer);
+      if (o && typeof o === 'object') return Object.keys(o).some(k => varrer(o[k]));
+      return false;
+    };
+
+    // Gravar de novo é o que dispara a conversão: o caminho de gravação leva para o banco
+    // tudo o que estiver preso ou embutido. Vale a mesma regra para toda entidade.
+    const tarefas = [
+      ['imóveis',    () => D.getPropertiesRaw(),  (v) => D.saveProperties(v)],
+      ['contatos',   () => D.getLeads(),          (v) => D.saveLeads(v)],
+      ['site',       () => D.getSiteContentRaw(), (v) => D.saveSiteContent(v)],
+      ['blog',       () => D.getPosts(),          (v) => D.savePosts(v)],
+      ['depoimentos',() => D.getTestimonials(),   (v) => D.saveTestimonials(v)]
+    ];
+    const pendentes = tarefas.filter(([, ler]) => { try { return varrer(ler()); } catch (e) { return false; } });
+    if (!pendentes.length) { this._reparou = true; return; }
 
     this._reparando = true;
-    // Grava a lista como está: o caminho de gravação faz a conversão de tudo que der.
-    try { D.saveProperties(props); } catch (e) {}
-    // Uma tentativa por sessão. Insistir num arquivo que não está neste aparelho só
-    // repetiria a mesma gravação para sempre.
-    setTimeout(() => { this._reparando = false; this._reparou = true; }, 15000);
+    pendentes.forEach(([nome, ler, gravar], i) => {
+      // Espaçadas: cinco gravações ao mesmo tempo disputariam a rede e algumas falhariam.
+      setTimeout(() => { try { gravar(ler()); } catch (e) {} }, i * 2500);
+    });
+    // Uma passagem por sessão. Insistir num arquivo que não está neste aparelho repetiria a
+    // mesma gravação para sempre, sem nunca resolver.
+    setTimeout(() => { this._reparando = false; this._reparou = true; }, pendentes.length * 2500 + 15000);
   };
 
   // Conta as fotos que o site realmente tem — percorrendo imóveis, blog, depoimentos e
