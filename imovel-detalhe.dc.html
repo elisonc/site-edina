@@ -370,6 +370,13 @@ class Component extends DCLogic {
     this.loadData();
     this.resolveVideo(id);
     this.resolveEbook(id);
+    // A galeria e as plantas deste imóvel são buscadas aqui, e não na abertura de toda
+    // página: é nesta tela que elas aparecem. Antes o site inteiro baixava a galeria de
+    // todos os imóveis para mostrar miniaturas que já viajavam junto com a ficha.
+    if (window.FirebaseDB && window.FirebaseDB.hidratarImovel) {
+      const alvo = (window.CRMData.getPropertiesRaw() || []).find(x => String(x.id) === String(id));
+      if (alvo) window.FirebaseDB.hidratarImovel(alvo).then(() => this.loadData()).catch(() => {});
+    }
   }
 
   resolveVideo = (id) => {

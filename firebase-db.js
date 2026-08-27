@@ -368,13 +368,23 @@
   async function lerImagens(chave) {
     await ready;
     if (!firebase.apps.length) return [];
+    // Os blocos eram lidos em fila, cada um esperando o anterior — cinco blocos custavam
+    // cinco idas ao banco. Lidos em grupo, custam duas. O grupo para no primeiro bloco que
+    // não existe, então uma ficha pequena continua barata.
+    const POR_GRUPO = 4;
     const fotos = [];
-    for (let n = 0; n < MAX_BLOCOS; n++) {
+    for (let base = 0; base < MAX_BLOCOS; base += POR_GRUPO) {
+      const lote = [];
+      for (let n = base; n < Math.min(base + POR_GRUPO, MAX_BLOCOS); n++) lote.push(DOC(nomeBloco(chave, n)).get());
+      let acabou = false;
       try {
-        const snap = await DOC(nomeBloco(chave, n)).get();
-        if (!snap.exists) break;
-        fotos.push(...(snap.data().data || []));
-      } catch (e) { break; }
+        const snaps = await Promise.all(lote);
+        for (const snap of snaps) {
+          if (!snap.exists) { acabou = true; break; }
+          fotos.push(...(snap.data().data || []));
+        }
+      } catch (e) { acabou = true; }
+      if (acabou) break;
     }
     if (fotos.length) return fotos;
     // Fichas gravadas antes da divisão em blocos.
@@ -401,20 +411,28 @@
     return typeof v === 'string' && v.indexOf('fotodoc:' + rotulo + ':') === 0;
   }
 
-  // As plantas moram num conjunto próprio, então precisam da sua própria busca — sem isto
-  // o botão "Plantas" continuaria sumindo em quem não cadastrou o imóvel.
-  async function carregarPlantas(props) {
-    const comPlantas = (props || []).filter(p => (p.plantas || [])
-      .some(v => typeof v === 'string' && v.indexOf('fotodoc:plantas_' + p.id + ':') === 0));
-    await Promise.all(comPlantas.map(p => carregarParaCache('plantas_' + p.id)));
+
+  // Os cards do site usam a miniatura que viaja junto com a ficha, então baixar a galeria
+  // inteira de todo imóvel em toda página era trabalho jogado fora: dezenas de idas ao banco
+  // para imagens que ninguém ia ver. Aqui entra só quem não tem miniatura e por isso não
+  // conseguiria aparecer de outro jeito. A galeria completa e as plantas são buscadas pela
+  // página do imóvel, que é onde fazem falta.
+  async function hidratarFotos(props) {
+    const comRef = (props || []).filter(p => !p.thumb && usaReferencia(p.image, p.id));
+    await Promise.all(comRef.map(p => carregarParaCache(p.id)));
+    return props;
   }
 
-  async function hidratarFotos(props) {
-    const comRef = (props || []).filter(p =>
-      usaReferencia(p.image, p.id) || (p.images || []).some(i => usaReferencia(i, p.id)));
-    await Promise.all(comRef.map(p => carregarParaCache(p.id)));
-    await carregarPlantas(props);
-    return props;
+  // Tudo o que a página de um imóvel precisa: galeria e plantas, só desse imóvel.
+  async function hidratarImovel(p) {
+    if (!p) return p;
+    const tarefas = [];
+    if (usaReferencia(p.image, p.id) || (p.images || []).some(i => usaReferencia(i, p.id)))
+      tarefas.push(carregarParaCache(p.id));
+    if ((p.plantas || []).some(v => typeof v === 'string' && v.indexOf('fotodoc:plantas_' + p.id + ':') === 0))
+      tarefas.push(carregarParaCache('plantas_' + p.id));
+    await Promise.all(tarefas);
+    return p;
   }
 
   async function hidratarConjunto(alvo, campos, rotulo) {
@@ -870,6 +888,7 @@
     guardarArquivo: guardarArquivo,
     lerArquivo: lerArquivo,
     hidratarFotos: hidratarFotos,
+    hidratarImovel: hidratarImovel,
     fetchAll: fetchAll,
     watch: watch,
     logPageview: logPageview,
