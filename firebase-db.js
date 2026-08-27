@@ -292,6 +292,58 @@
     return gravadas || null;
   }
 
+  // Um ebook ou um vídeo não cabem num documento: o Firestore para em 1 MB e um PDF passa
+  // disso com folga. A gravação inteira era recusada, sem erro visível, e o arquivo
+  // continuava só no aparelho de quem enviou — era por isso que o botão do ebook não fazia
+  // nada nos outros. Agora o conteúdo é cortado em pedaços, um por documento, e remontado
+  // na leitura. Vale para qualquer arquivo, de qualquer tamanho.
+  const TETO_PEDACO = 700 * 1024;
+  const MAX_PEDACOS = 60;                    // cobre um arquivo de cerca de 40 MB
+
+  async function guardarArquivo(rotulo, dataUrl) {
+    await ready;
+    if (!firebase.apps.length) return 0;
+    const txt = String(dataUrl || '');
+    if (txt.indexOf('data:') !== 0) return 0;
+    const pedacos = [];
+    for (let i = 0; i < txt.length; i += TETO_PEDACO) pedacos.push(txt.slice(i, i + TETO_PEDACO));
+    if (!pedacos.length || pedacos.length > MAX_PEDACOS) return 0;
+
+    for (let n = 0; n < pedacos.length; n++) {
+      try { await DOC('arq_' + rotulo + '_' + n).set({ data: pedacos[n], updatedAt: Date.now() }); }
+      catch (e) { mediaErrors.push({ path: 'arq_' + rotulo + '_' + n, code: e && (e.code || e.message) }); return 0; }
+    }
+    // A capa do arquivo é gravada por último: até ela existir, uma leitura no meio do
+    // caminho não encontra um arquivo pela metade.
+    try { await DOC('arq_' + rotulo).set({ partes: pedacos.length, bytes: txt.length, updatedAt: Date.now() }); }
+    catch (e) { return 0; }
+    for (let n = pedacos.length; n < MAX_PEDACOS; n++) {
+      try { await DOC('arq_' + rotulo + '_' + n).delete(); } catch (e) { break; }
+    }
+    try {
+      await DOC('uso_fotos').set({ ['c_' + rotulo]: { fotos: 1, bytes: txt.length, em: Date.now() } },
+                                  { merge: true });
+    } catch (e) {}
+    return pedacos.length;
+  }
+
+  async function lerArquivo(rotulo) {
+    await ready;
+    if (!firebase.apps.length) return '';
+    try {
+      const capa = await DOC('arq_' + rotulo).get();
+      if (!capa.exists) return '';
+      const partes = (capa.data() || {}).partes || 0;
+      let txt = '';
+      for (let i = 0; i < partes; i++) {
+        const d = await DOC('arq_' + rotulo + '_' + i).get();
+        if (!d.exists) return '';                 // pedaço faltando: melhor nada do que corrompido
+        txt += (d.data() || {}).data || '';
+      }
+      return txt;
+    } catch (e) { return ''; }
+  }
+
   // Soma o que está guardado no site inteiro.
   async function usoDeFotos() {
     await ready;
@@ -480,12 +532,17 @@
         let arq = '';
         try { arq = window.CRMData.getDocDataURL ? await window.CRMData.getDocDataURL(q.ebookUrl) : ''; }
         catch (e) {}
-        if (arq) {
-          let gravadas = 0;
-          try { gravadas = await guardarImagens(rotulo, [arq]) || 0; }
-          catch (e) { mediaErrors.push({ path: 'fotos_' + rotulo, code: e && (e.code || e.message) }); }
-          if (gravadas) q.ebookUrl = 'fotodoc:' + rotulo + ':0';
-        }
+        if (arq && await guardarArquivo(rotulo, arq)) q.ebookUrl = 'arqdoc:' + rotulo;
+      }
+
+      // O vídeo do imóvel tinha o mesmo destino do ebook: sem o Storage, ficava preso ao
+      // aparelho. Vai pelos mesmos pedaços.
+      if (q.videoFile && local(q.videoFile)) {
+        const rotulo = 'video_' + q.id;
+        let arq = '';
+        try { arq = window.CRMData.getMediaRaw ? await window.CRMData.getMediaRaw(q.videoFile) : ''; }
+        catch (e) {}
+        if (arq && await guardarArquivo(rotulo, arq)) q.videoFile = 'arqdoc:' + rotulo;
       }
     }
   }
@@ -808,6 +865,8 @@
     guardarImagens: guardarImagens,
     usoDeFotos: usoDeFotos,
     lerImagens: lerImagens,
+    guardarArquivo: guardarArquivo,
+    lerArquivo: lerArquivo,
     hidratarFotos: hidratarFotos,
     fetchAll: fetchAll,
     watch: watch,

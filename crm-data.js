@@ -1066,8 +1066,22 @@
         req.onerror = () => resolve('');
       })).catch(() => '');
     },
+    // Arquivo guardado no banco em pedaços (ebook, vídeo). Vale em qualquer aparelho.
+    lerArquivoDoBanco: function (key) {
+      const rotulo = String(key).slice('arqdoc:'.length);
+      if (!rotulo || !window.FirebaseDB || !window.FirebaseDB.lerArquivo) return Promise.resolve('');
+      const pronto = this._photoCache[key];
+      if (pronto) return Promise.resolve(pronto);
+      const self = this;
+      return window.FirebaseDB.lerArquivo(rotulo).then(txt => {
+        // Guarda em memória: remontar um arquivo grande a cada clique seria lento e caro.
+        if (txt) self._photoCache[key] = txt;
+        return txt || '';
+      }).catch(() => '');
+    },
     getDocURL: function (key) {
       if (!key) return Promise.resolve('');
+      if (key.indexOf('arqdoc:') === 0) return this.lerArquivoDoBanco(key);
       // Endereço do banco: o ebook vale em qualquer aparelho, e não só naquele que o enviou.
       if (key.indexOf('fotodoc:') === 0) {
         const pronto = this.photoURL(key);
@@ -1098,6 +1112,7 @@
     },
     getVideoURL: function (key) {
       if (!key) return Promise.resolve('');
+      if (key.indexOf('arqdoc:') === 0) return this.lerArquivoDoBanco(key);
       if (!key.startsWith('idbvideo:')) return Promise.resolve(key); // legacy data: URL
       return this._openMediaDB().then(db => new Promise((resolve, reject) => {
         const tx = db.transaction('media', 'readonly');

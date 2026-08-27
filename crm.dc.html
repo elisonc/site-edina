@@ -2541,6 +2541,9 @@ class Component extends DCLogic {
 
   componentDidMount() {
     window.CRMData.applyTheme(this.state.siteContent.theme);
+    // Também na abertura, e não só quando o banco muda: o conserto precisa acontecer mesmo
+    // que ninguém edite nada nesta sessão.
+    setTimeout(this.repararArquivosPresos, 6000);
     // Contatos enviados pelo site chegam no banco, não neste navegador — busca os que
     // faltam antes de montar a lista, senão o painel mostra só o que foi digitado aqui.
     // O painel também precisa acompanhar o banco: sem escutar estas mudanças, uma edição
@@ -2548,6 +2551,7 @@ class Component extends DCLogic {
     this._aoAtualizar = () => {
       // O espaço acompanha cada mudança de conteúdo, aqui e nos outros aparelhos.
       setTimeout(this.refreshStorage, 300);
+      setTimeout(this.repararArquivosPresos, 2500);
       this.setState({
         properties: window.CRMData.getPropertiesRaw(),
         leads: window.CRMData.getLeads(),
@@ -2973,6 +2977,29 @@ class Component extends DCLogic {
       .then(key => this.setState({ siteContent: { ...this.state.siteContent, ogImage: key }, siteSaved: false }))
       .catch(() => window.alert('Não foi possível ler essa imagem.'));
   };
+  // Arquivo preso a um aparelho (endereço idb…) só abre no navegador que o enviou. Se ele
+  // existe AQUI, então este navegador é justamente o que consegue mandá-lo para o banco —
+  // e basta gravar de novo, porque a gravação leva para o banco tudo o que estiver preso.
+  // Assim o conserto acontece sozinho, sem depender de alguém lembrar de reenviar.
+  repararArquivosPresos = () => {
+    if (this._reparando || this._reparou) return;
+    const D = window.CRMData;
+    if (!D || !window.FirebaseDB || !window.FirebaseDB.enabled) return;
+    const preso = (v) => typeof v === 'string' && /^idb/.test(v);
+    const props = D.getPropertiesRaw() || [];
+    const temPreso = props.some(p =>
+      preso(p.image) || (p.images || []).some(preso) || (p.plantas || []).some(preso) ||
+      preso(p.ebookUrl) || preso(p.videoFile));
+    if (!temPreso) { this._reparou = true; return; }
+
+    this._reparando = true;
+    // Grava a lista como está: o caminho de gravação faz a conversão de tudo que der.
+    try { D.saveProperties(props); } catch (e) {}
+    // Uma tentativa por sessão. Insistir num arquivo que não está neste aparelho só
+    // repetiria a mesma gravação para sempre.
+    setTimeout(() => { this._reparando = false; this._reparou = true; }, 15000);
+  };
+
   // Conta as fotos que o site realmente tem — percorrendo imóveis, blog, depoimentos e
   // conteúdo do site. O registro do banco sozinho ignorava as fotos que são arquivo do
   // próprio site e não passam por ele, e por isso mostrava um punhado quando havia
