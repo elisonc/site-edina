@@ -774,7 +774,8 @@
   async function lerCliques(meses) {
     await ready;
     if (!firebase.apps.length) return [];
-    const alvos = meses && meses.length ? meses : [diaHoje().slice(0, 7)];
+    // Sem repetir: o mesmo mês pedido duas vezes contaria os cliques duas vezes.
+    const alvos = Array.from(new Set(meses && meses.length ? meses : [diaHoje().slice(0, 7)]));
     const linhas = [];
     for (const m of alvos) {
       try {
