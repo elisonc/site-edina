@@ -394,22 +394,55 @@ class Component extends DCLogic {
       window.CRMData.getDocURL(p.ebookUrl).then(url => this.setState({ ebookObjectUrl: url }));
     }
   };
+  // No celular, abrir o PDF numa aba nova quase nunca funciona: o iPhone recusa navegação de
+  // topo para um endereço de blob, e no Android a aba abre em branco. Entregar como arquivo
+  // faz o próprio sistema mostrar os aplicativos instalados — Drive, Arquivos, o leitor de
+  // PDF que a pessoa usa — e ela escolhe onde abrir. No computador a aba nova continua
+  // melhor, porque o PDF aparece ali mesmo, sem precisar baixar.
+  entregarArquivo = (url, nome) => {
+    if (!url) return;
+    const noCelular = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    if (!noCelular) {
+      const w = window.open(url, '_blank', 'noopener');
+      if (w) return;
+    }
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nome || 'documento.pdf';
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { try { a.remove(); } catch (e) {} }, 2000);
+  };
+
+  nomeDoEbook = (p) => {
+    const bruto = (p && p.ebookName) || ((p && p.title) || 'material') + '.pdf';
+    // Caractere que o sistema de arquivos recusa faria o download falhar sem dizer por quê.
+    const limpo = String(bruto).replace(/[\\/:*?"<>|]/g, '-').trim() || 'material.pdf';
+    return /\.[a-z0-9]{2,5}$/i.test(limpo) ? limpo : limpo + '.pdf';
+  };
+
   openEbook = () => {
     const all = this.state.properties || [];
     const p = all.find(x => x.id === this.state.id) || all[0];
     const key = p && p.ebookUrl;
     if (!key || !window.CRMData) return;
-    // Já resolvido: abre direto, dentro do toque.
-    if (this.state.ebookObjectUrl) { window.open(this.state.ebookObjectUrl, '_blank'); return; }
-    // A aba precisa nascer AGORA, ainda dentro do toque. Abri-la depois, quando o arquivo
-    // chegasse, fazia o celular tratar como janela não pedida e barrar em silêncio — era o
-    // motivo de o botão do ebook não fazer nada no telefone.
-    const aba = window.open('', '_blank');
+    const nome = this.nomeDoEbook(p);
+
+    // O arquivo é buscado quando a página abre, então quase sempre já está aqui — e aí tudo
+    // acontece dentro do toque, que é o que o celular exige.
+    if (this.state.ebookObjectUrl) { this.entregarArquivo(this.state.ebookObjectUrl, nome); return; }
+
+    this.setState({ ebookBuscando: true });
     window.CRMData.getDocURL(key).then(url => {
-      if (!url) { if (aba) aba.close(); return; }
-      if (aba && !aba.closed) aba.location.href = url;
-      else window.location.href = url;   // aba barrada mesmo assim: abre na própria página
-    }).catch(() => { if (aba) aba.close(); });
+      this.setState({ ebookBuscando: false, ebookObjectUrl: url || '' });
+      if (url) this.entregarArquivo(url, nome);
+      else window.alert('Não foi possível abrir o ebook agora. Tente novamente em instantes.');
+    }).catch(() => {
+      this.setState({ ebookBuscando: false });
+      window.alert('Não foi possível abrir o ebook agora. Tente novamente em instantes.');
+    });
   };
 
   loadData = () => {
