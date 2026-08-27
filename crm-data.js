@@ -1330,7 +1330,13 @@
         }
         return v;
       };
-      const iguais = (a, b) => JSON.stringify(normalizar(a)) === JSON.stringify(normalizar(b));
+      // Compara os dois lados depois de tirar a imagem pesada de ambos. O navegador guarda
+      // de propósito uma versão sem ela — a miniatura de 20 KB da capa, por exemplo — então
+      // comparar o dado cru daqui com o do banco apontava diferença que não existe, e o
+      // painel avisava "diferente do banco" para sempre, sem nada para corrigir.
+      const iguais = (a, b) =>
+        JSON.stringify(normalizar(semImagensPesadas(a))) ===
+        JSON.stringify(normalizar(semImagensPesadas(b)));
       const registrar = (o, s, d, a) => itens.push({ area: o, situacao: s, detalhe: d, acao: a || '' });
 
       if (!(window.FirebaseDB && window.FirebaseDB.enabled)) {
