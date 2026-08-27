@@ -696,17 +696,25 @@ class Component extends DCLogic {
   };
 
   renderVals() {
-    // Áudio guardado em pedaços no banco precisa ser remontado antes de tocar, e isso é uma
-    // busca — não dá para resolver na hora de desenhar. Aqui o endereço pronto entra assim
-    // que chega; trocar o src só quando muda evita reiniciar uma reprodução em andamento.
+    // Áudio pode estar em três lugares: já em mãos, guardado no banco (endereço fotodoc: ou
+    // em pedaços arqdoc:) ou só neste navegador. Só o primeiro caso se resolve na hora de
+    // desenhar; os outros são uma ida ao banco. Decidir ali fazia o player nascer mudo e
+    // ficar assim — agora ele recebe o endereço quando chega.
     const ligarAudio = (el, chave) => {
       if (!el || !chave) return;
-      const por = (u) => { if (u && el.getAttribute('src') !== u) { el.setAttribute('src', u); el.load(); } };
-      if (String(chave).indexOf('arqdoc:') === 0) {
-        window.CRMData.getDocURL(chave).then(por).catch(() => {});
+      const D = window.CRMData;
+      const por = (u) => {
+        const pronto = (u && D.paraBlobURL) ? D.paraBlobURL(u) : u;
+        if (pronto && el.getAttribute('src') !== pronto) { el.setAttribute('src', pronto); el.load(); }
+      };
+      const jaEmMaos = D.mediaURL ? D.mediaURL(chave) : '';
+      if (jaEmMaos) return por(jaEmMaos);
+      const s = String(chave);
+      if (s.indexOf('arqdoc:') === 0 || s.indexOf('fotodoc:') === 0) {
+        D.getDocURL(s).then(por).catch(() => {});
         return;
       }
-      por(window.CRMData.mediaURL ? window.CRMData.mediaURL(chave) : chave);
+      if (D.getMediaRaw) D.getMediaRaw(s).then(por).catch(() => {});
     };
     const d = window.SITE_INFO || {};
     const properties = this.state.properties || [];
