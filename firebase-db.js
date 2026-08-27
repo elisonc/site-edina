@@ -112,6 +112,15 @@
   // compartilhado sem expor a senha de ninguém.
   const DOCS = ['properties', 'site', 'posts', 'testimonials', 'leads', 'visits', 'integrations', 'history', 'auth'];
 
+  // O que o site público realmente mostra. Os demais — contatos, agenda, histórico de ações,
+  // usuários e comissão — são do painel, e estavam sendo baixados por TODO visitante junto
+  // com o resto. Além do peso, é dado que não deveria sair do painel: a lista de contatos
+  // tem telefone e e-mail de quem procurou a corretora.
+  const DOCS_PUBLICOS = ['properties', 'site', 'posts', 'testimonials'];
+  // O painel abre com login e precisa de tudo; o site público, só do que exibe.
+  const noPainel = () => /crm/i.test(location.pathname);
+  const docsDaPagina = () => (noPainel() ? DOCS : DOCS_PUBLICOS);
+
   function dataUrlToBlob(dataUrl) {
     const comma = dataUrl.indexOf(',');
     const mime = (dataUrl.match(/^data:([^;]+)/) || [])[1] || 'application/octet-stream';
@@ -906,7 +915,8 @@
     const ok = await ready;
     if (!ok || !firebase.apps.length) return null;
     const out = {};
-    await Promise.all(DOCS.map(name => DOC(name).get().then(snap => {
+    // Só o que esta página mostra. Ver DOCS_PUBLICOS.
+    await Promise.all(docsDaPagina().map(name => DOC(name).get().then(snap => {
       out[name] = snap.exists ? snap.data().data : undefined;
     }).catch(() => {})));
     // Fichas que apontam para o documento de fotos recebem as imagens de volta aqui, para
@@ -932,7 +942,7 @@
   function watch(onChange) {
     ready.then(ok => {
       if (!ok || !firebase.apps.length) return;
-      DOCS.forEach(name => DOC(name).onSnapshot(snap => {
+      docsDaPagina().forEach(name => DOC(name).onSnapshot(snap => {
         if (!snap.exists) return;
         const dados = snap.data().data;
         if (name === 'properties' && Array.isArray(dados)) {
@@ -1010,6 +1020,7 @@
     hidratarFotos: hidratarFotos,
     hidratarImovel: hidratarImovel,
     fetchAll: fetchAll,
+    DOCS_PUBLICOS: DOCS_PUBLICOS,
     watch: watch,
     logPageview: logPageview,
     somarCliques: somarCliques,

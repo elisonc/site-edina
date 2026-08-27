@@ -40,20 +40,10 @@
   // primeiro acesso de quem ainda não tem nada guardado.
   const seedProperties = [];
 
-  const seedLeads = [
-    { id: 1, name: "Ricardo Bastos", phone: "(11) 98888-1010", email: "ricardo.b@email.com", interest: "Cobertura Duplex Vista Mar", stage: "proposta", value: 6800000, channel: "Instagram", date: "18 Jun 2026", status: "aberto", assignedTo: "Elisoncf", timeline: [], attachments: [], offeredProperties: [] },
-    { id: 2, name: "Camila Fontoura", phone: "(47) 99123-2020", email: "camila.f@email.com", interest: "Apartamento Beira-Mar", stage: "visita", value: 4200000, channel: "Indicação", date: "20 Jun 2026", status: "aberto", assignedTo: "gerente", timeline: [], attachments: [], offeredProperties: [] },
-    { id: 3, name: "João Pedro Alves", phone: "(21) 97654-3030", email: "jp.alves@email.com", interest: "Casa em Condomínio", stage: "novo", value: 3100000, channel: "Site", date: "27 Jun 2026", status: "aberto", assignedTo: "corretor", timeline: [], attachments: [], offeredProperties: [] },
-    { id: 4, name: "Fernanda Lacerda", phone: "(41) 96543-4040", email: "fe.lacerda@email.com", interest: "Studio Frente Mar", stage: "contato", value: 1450000, channel: "WhatsApp", date: "25 Jun 2026", status: "aberto", assignedTo: "Elisoncf", timeline: [], attachments: [], offeredProperties: [] },
-    { id: 5, name: "Marcelo Tavares", phone: "(11) 95432-5050", email: "m.tavares@email.com", interest: "Cobertura Panorâmica", stage: "fechado", value: 5500000, channel: "Indicação", date: "02 Jun 2026", status: "ganho", assignedTo: "gerente", timeline: [], attachments: [], offeredProperties: [] },
-    { id: 6, name: "Ana Beatriz Souza", phone: "(48) 94321-6060", email: "ana.souza@email.com", interest: "Apartamento Garden", stage: "contato", value: 2700000, channel: "Instagram", date: "24 Jun 2026", status: "aberto", assignedTo: "corretor", timeline: [], attachments: [], offeredProperties: [] },
-    { id: 7, name: "Diego Herrera", phone: "(51) 93210-7070", email: "diego.h@email.com", interest: "Casa de Praia Assinada", stage: "proposta", value: 7900000, channel: "Facebook Ads", date: "19 Jun 2026", status: "aberto", assignedTo: "Elisoncf", timeline: [], attachments: [], offeredProperties: [] },
-    { id: 8, name: "Larissa Prado", phone: "(47) 92109-8080", email: "larissa.p@email.com", interest: "Flat Mobiliado", stage: "novo", value: 980000, channel: "Facebook Ads", date: "28 Jun 2026", status: "aberto", assignedTo: "gerente", timeline: [], attachments: [], offeredProperties: [] },
-    { id: 9, name: "Bruno Castilho", phone: "(19) 91098-9090", email: "bruno.c@email.com", interest: "Cobertura Duplex Vista Mar", stage: "visita", value: 6800000, channel: "Google Ads", date: "21 Jun 2026", status: "aberto", assignedTo: "corretor", timeline: [], attachments: [], offeredProperties: [] },
-    { id: 10, name: "Patrícia Nunes", phone: "(31) 90987-1212", email: "patricia.n@email.com", interest: "Casa em Condomínio", stage: "fechado", value: 3100000, channel: "Site", date: "30 Mai 2026", status: "ganho", assignedTo: "Elisoncf", timeline: [], attachments: [], offeredProperties: [] },
-    { id: 11, name: "Alexandre Dias", phone: "(47) 99988-1313", email: "alex.dias@email.com", interest: "Apartamento Beira-Mar", stage: "novo", value: 4200000, channel: "Google Ads", date: "29 Jun 2026", status: "aberto", assignedTo: "gerente", timeline: [], attachments: [], offeredProperties: [] },
-    { id: 12, name: "Vitória Ramos", phone: "(11) 98877-1414", email: "vitoria.r@email.com", interest: "Studio Frente Mar", stage: "contato", value: 1450000, channel: "Instagram", date: "26 Jun 2026", status: "aberto", assignedTo: "corretor", timeline: [], attachments: [], offeredProperties: [] }
-  ];
+  // Vazio de propósito, como o catálogo de imóveis: os contatos reais moram no banco e
+  // chegam por ele. Ficavam aqui doze contatos de exemplo que, num navegador sem nada
+  // guardado, apareciam como se fossem de verdade.
+  const seedLeads = [];
 
   const seedPosts = [
     { id: 1, title: "Mercado de alto padrão em Balneário Camboriú bate recorde em 2026", cat: "Mercado", date: "22 Jun 2026", read: "6 min", tone: 0, status: "publicado", excerpt: "Valorização média de imóveis frente-mar acelera puxada pela demanda de compradores de outros estados.", body: "O primeiro semestre de 2026 consolidou Balneário Camboriú como um dos mercados de alto padrão que mais cresce no país.\n\nCorretores da região relatam aumento expressivo na procura por unidades frente-mar, especialmente entre compradores vindos de São Paulo e do Rio Grande do Sul.\n\nEntre os fatores que explicam o movimento estão a infraestrutura urbana recente, a chegada de novos empreendimentos assinados e a percepção de segurança da região.\n\nPara quem pensa em investir, o momento pede atenção: imóveis com metragem generosa e vista desobstruída têm apresentado a valorização mais consistente." },
@@ -1303,13 +1293,36 @@
     getLeads: () => get(LS.leads, seedLeads),
     saveLeads: (arr) => set(LS.leads, arr),
     addLead: (lead) => {
-      const leads = get(LS.leads, seedLeads);
-      const nextId = leads.reduce((m, l) => Math.max(m, l.id), 0) + 1;
       const today = new Date();
       const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
       const dateLabel = `${String(today.getDate()).padStart(2,'0')} ${months[today.getMonth()]} ${today.getFullYear()}`;
       const timeLabel = `${String(today.getHours()).padStart(2,'0')}:${String(today.getMinutes()).padStart(2,'0')}`;
-      const full = { id: nextId, stage: "novo", value: 0, date: dateLabel, time: timeLabel, createdAt: today.toISOString(), status: "aberto", assignedTo: "", timeline: [], attachments: [], offeredProperties: [], ...lead };
+      const base = { stage: "novo", value: 0, date: dateLabel, time: timeLabel, createdAt: today.toISOString(), status: "aberto", assignedTo: "", timeline: [], attachments: [], offeredProperties: [], ...lead };
+
+      // Quem envia o formulário é um visitante, e o navegador dele não tem — nem deve ter —
+      // a lista de contatos. Gravar a lista inteira a partir daqui sobrescreveria o banco
+      // com o que este navegador conhece, que pode ser nada. O acréscimo passa a ser feito
+      // pelo próprio banco, numa operação que lê e grava junto: dois contatos enviados ao
+      // mesmo tempo não se atropelam, e nenhum se perde.
+      if (window.FirebaseDB && window.FirebaseDB.enabled && window.FirebaseDB.appendLead) {
+        window.FirebaseDB.appendLead(base).catch(() => {});
+        // Espelha aqui sem reenviar: é o que faz o contato aparecer na hora para quem
+        // estiver com o painel aberto neste mesmo navegador.
+        try {
+          const leads = get(LS.leads, []);
+          const id = leads.reduce((m, l) => Math.max(m, Number(l.id) || 0), 0) + 1;
+          leads.unshift({ ...base, id });
+          aplicandoDoServidor = true;
+          set(LS.leads, leads);
+          aplicandoDoServidor = false;
+          return { ...base, id };
+        } catch (e) { return base; }
+      }
+
+      // Sem banco, o comportamento antigo: tudo fica neste navegador.
+      const leads = get(LS.leads, seedLeads);
+      const nextId = leads.reduce((m, l) => Math.max(m, l.id), 0) + 1;
+      const full = { id: nextId, ...base };
       leads.unshift(full);
       set(LS.leads, leads);
       return full;
