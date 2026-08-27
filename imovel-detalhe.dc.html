@@ -204,22 +204,25 @@
 
   <sc-if value="{{ lightboxOpen }}" hint-placeholder-val="{{ false }}">
     <div style="position:fixed;inset:0;background:rgba(10,9,6,.94);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center">
-      <button onClick="{{ closeLightbox }}" style="position:absolute;top:24px;right:32px;background:none;border:none;color:#fff;font-size:32px;cursor:pointer;line-height:1">✕</button>
+      <!-- O quadro da foto vem depois no HTML e ficava por cima do X: o clique chegava nele,
+           não no botão, e a janela não fechava. Camada explícita resolve, e o alvo maior
+           torna o toque confortável no celular. -->
+      <button onClick="{{ closeLightbox }}" aria-label="Fechar" style="position:absolute;top:14px;right:14px;z-index:20;width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.25);border-radius:50%;color:#fff;font-size:26px;cursor:pointer;line-height:1">✕</button>
       <sc-if value="{{ hasPlantas }}" hint-placeholder-val="{{ false }}">
-        <div style="position:absolute;top:26px;left:50%;transform:translateX(-50%);display:flex;gap:22px">
+        <div style="position:absolute;top:26px;left:50%;transform:translateX(-50%);display:flex;gap:22px;z-index:20">
           <button onClick="{{ showPhotosTab }}" style="{{ photosTabStyle }}">Fotos</button>
           <button onClick="{{ showPlantasTab }}" style="{{ plantasTabStyle }}">Plantas</button>
         </div>
       </sc-if>
-      <button onClick="{{ prevLightbox }}" style="position:absolute;left:24px;background:none;border:none;color:#fff;font-size:40px;cursor:pointer">‹</button>
-      <div style="{{ lightboxImgStyle }}" ref="{{ lightboxZoomRef }}"></div>
-      <div style="position:absolute;bottom:64px;left:50%;transform:translateX(-50%);display:flex;gap:10px;align-items:center">
+      <button onClick="{{ prevLightbox }}" aria-label="Foto anterior" style="position:absolute;left:10px;z-index:20;width:48px;height:48px;background:rgba(0,0,0,.35);border:none;border-radius:50%;color:#fff;font-size:34px;cursor:pointer;line-height:1">‹</button>
+      <div style="{{ lightboxImgStyle }};z-index:1" ref="{{ lightboxZoomRef }}"></div>
+      <div style="position:absolute;bottom:64px;left:50%;transform:translateX(-50%);display:flex;gap:10px;align-items:center;z-index:20">
         <button onClick="{{ zoomMenos }}" aria-label="Diminuir zoom" style="width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.35);color:#fff;font-size:20px;cursor:pointer;line-height:1">−</button>
         <div style="color:#e9e4d8;font-size:12px;min-width:52px;text-align:center;font-variant-numeric:tabular-nums">{{ zoomRotulo }}</div>
         <button onClick="{{ zoomMais }}" aria-label="Aumentar zoom" style="width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.35);color:#fff;font-size:20px;cursor:pointer;line-height:1">+</button>
       </div>
-      <button onClick="{{ nextLightbox }}" style="position:absolute;right:24px;background:none;border:none;color:#fff;font-size:40px;cursor:pointer">›</button>
-      <div style="position:absolute;bottom:28px;color:#e9e4d8;font-size:13px">{{ lightboxCounter }}</div>
+      <button onClick="{{ nextLightbox }}" aria-label="Próxima foto" style="position:absolute;right:10px;z-index:20;width:48px;height:48px;background:rgba(0,0,0,.35);border:none;border-radius:50%;color:#fff;font-size:34px;cursor:pointer;line-height:1">›</button>
+      <div style="position:absolute;bottom:24px;z-index:20;color:#e9e4d8;font-size:13px">{{ lightboxCounter }}</div>
     </div>
   </sc-if>
 
@@ -817,9 +820,11 @@ class Component extends DCLogic {
     const hasMainPhoto = !!currentSlide.real;
 
     const lb = activeShots[s.lightboxIndex] || activeShots[0] || { real: false, color: tone };
+    // position:relative é o que faz o z-index valer. Sem ele o quadro da foto continuava
+    // por cima dos botões, e o clique de fechar chegava na foto em vez do X.
     const lightboxImgStyle = lb.real
-      ? `width:min(86vw,1100px);height:min(78vh,720px);background-size:contain;background-repeat:no-repeat;background-position:center`
-      : `width:min(86vw,1100px);height:min(78vh,720px);background:#efe9dc`;
+      ? `position:relative;width:min(86vw,1100px);height:min(78vh,720px);background-size:contain;background-repeat:no-repeat;background-position:center`
+      : `position:relative;width:min(86vw,1100px);height:min(78vh,720px);background:#efe9dc`;
     // Qual foto o quadro ampliado mostra. O ref do zoom lê daqui.
     this._fotoAmpliada = lb.real ? lb.src : '';
     const lightboxImgRef = shotRef(lb);
