@@ -986,13 +986,32 @@
     const ok = await ready;
     if (!ok || !firebase.apps.length) return false;
     const ref = DOC('leads');
-    return firebase.firestore().runTransaction(async (tx) => {
-      const snap = await tx.get(ref);
-      const cur = snap.exists ? (snap.data().data || []) : [];
-      const id = cur.reduce((m, l) => Math.max(m, Number(l.id) || 0), 0) + 1;
-      tx.set(ref, { data: [{ ...lead, id }, ...cur], updatedAt: Date.now() });
+    const juntar = (cur) => {
+      const lista = Array.isArray(cur) ? cur : [];
+      const id = lista.reduce((m, l) => Math.max(m, Number(l.id) || 0), 0) + 1;
+      return [{ ...lead, id }, ...lista];
+    };
+
+    // A transação é o caminho certo: lê e grava numa operação só, então dois envios ao
+    // mesmo tempo não se atropelam. Mas ela exige ida ao servidor e pode ser recusada —
+    // observado aqui com o documento sendo escutado por vários aparelhos ao mesmo tempo.
+    try {
+      const feito = await firebase.firestore().runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        tx.set(ref, { data: juntar(snap.exists ? snap.data().data : []), updatedAt: Date.now() });
+        return true;
+      });
+      if (feito) return true;
+    } catch (e) { /* segue para o caminho abaixo */ }
+
+    // Recusada: lê e grava em dois passos. Dois envios no mesmo instante poderiam se
+    // sobrepor — risco pequeno num formulário de contato, e muito menor do que perder o
+    // contato de quem procurou a corretora.
+    try {
+      const snap = await ref.get({ source: 'server' });
+      await ref.set({ data: juntar(snap.exists ? snap.data().data : []), updatedAt: Date.now() });
       return true;
-    }).catch(() => false);
+    } catch (e) { return false; }
   }
 
   window.FirebaseDB = {
