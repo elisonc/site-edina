@@ -1070,6 +1070,27 @@
         req.onerror = () => resolve('');
       })).catch(() => '');
     },
+    // Navegador nenhum abre uma data: URL numa aba — é bloqueio de segurança padrão desde
+    // 2017, e window.open devolve null sem avisar. Era exatamente isso que fazia o botão do
+    // ebook parecer sem função mesmo com o arquivo em mãos. Um endereço de blob aponta para
+    // o mesmo conteúdo e é aceito; de quebra, o navegador consegue pedir o arquivo em
+    // pedaços, que é o que permite um vídeo começar antes de terminar de baixar.
+    paraBlobURL: function (dataUrl) {
+      const d = String(dataUrl || '');
+      if (d.indexOf('data:') !== 0) return d;
+      const m = /^data:([^;,]*)(;base64)?,/.exec(d);
+      if (!m) return d;
+      try {
+        const tipo = m[1] || 'application/octet-stream';
+        const corpo = d.slice(m[0].length);
+        if (!m[2]) return URL.createObjectURL(new Blob([decodeURIComponent(corpo)], { type: tipo }));
+        const bin = atob(corpo);
+        const buf = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+        return URL.createObjectURL(new Blob([buf], { type: tipo }));
+      } catch (e) { return d; }
+    },
+
     // Arquivo guardado no banco em pedaços (ebook, vídeo). Vale em qualquer aparelho.
     lerArquivoDoBanco: function (key) {
       const rotulo = String(key).slice('arqdoc:'.length);
@@ -1078,9 +1099,12 @@
       if (pronto) return Promise.resolve(pronto);
       const self = this;
       return window.FirebaseDB.lerArquivo(rotulo).then(txt => {
-        // Guarda em memória: remontar um arquivo grande a cada clique seria lento e caro.
-        if (txt) self._photoCache[key] = txt;
-        return txt || '';
+        if (!txt) return '';
+        // Guarda o endereço de blob, e não o texto do arquivo: manter 50 MB de texto em
+        // memória a cada clique derrubaria um celular.
+        const url = self.paraBlobURL(txt);
+        self._photoCache[key] = url;
+        return url;
       }).catch(() => '');
     },
     getDocURL: function (key) {
@@ -1101,15 +1125,17 @@
           return (arqs && arqs[i]) || '';
         }).catch(() => '');
       }
-      if (!key.startsWith('idbdoc:')) return Promise.resolve(key); // legacy data: URL
+      if (!key.startsWith('idbdoc:')) return Promise.resolve(this.paraBlobURL(key));
+      const self = this;
       return this._openMediaDB().then(db => new Promise((resolve, reject) => {
         const tx = db.transaction('media', 'readonly');
         const req = tx.objectStore('media').get(key);
         req.onsuccess = () => {
           if (!req.result) return resolve('');
           if (req.result instanceof Blob) return resolve(URL.createObjectURL(req.result));
-          // Ebooks salvos antes da mudança para Blob ficaram como data: URL (string).
-          resolve(typeof req.result === 'string' ? req.result : '');
+          // Ebooks salvos antes da mudança para Blob ficaram como data: URL (string), e uma
+          // data: URL o navegador se recusa a abrir. Vira endereço de blob também.
+          resolve(typeof req.result === 'string' ? self.paraBlobURL(req.result) : '');
         };
         req.onerror = () => reject(req.error);
       })).catch(() => '');
