@@ -664,12 +664,19 @@
             const primeiraCapa = pendentes.findIndex(a => a.slide === 0);
             const base = primeiraCapa >= 0 ? dados[primeiraCapa] : null;
             if (base && window.CRMData && window.CRMData.resizeDataUrl) {
-              try {
-                const previa = await window.CRMData.resizeDataUrl(base, 96, 0.5);
-                // Precisa caber no armazenamento do navegador, senão é descartada na gravação
-                // local e a prévia não estaria lá justamente na abertura, que é quando serve.
-                if (previa && previa.length < 7 * 1024) out.heroPreview = previa;
-              } catch (e) {}
+              // A prévia era de 96px: pintava na hora, mas pequena demais para valer como a
+              // maior pintura da tela. A medição então esperava a foto cheia chegar do banco
+              // — cinco segundos e meio — e contava aquilo. Numa largura de verdade ela cobre
+              // a capa inteira já na primeira pintura, e é ela que a medição conta.
+              // Vai descendo a qualidade até caber no armazenamento do navegador, que
+              // descarta o que passa de 44 KB — e sem caber lá ela não estaria em mãos na
+              // abertura, que é exatamente quando serve.
+              for (const [larg, q] of [[820, 0.5], [820, 0.4], [640, 0.42], [520, 0.4], [96, 0.5]]) {
+                try {
+                  const previa = await window.CRMData.resizeDataUrl(base, larg, q);
+                  if (previa && previa.length < 38 * 1024) { out.heroPreview = previa; break; }
+                } catch (e) {}
+              }
             }
           }
         }
