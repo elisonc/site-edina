@@ -206,7 +206,7 @@
       <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:stretch">
         <sc-if value="{{ hasYoutube }}" hint-placeholder-val="{{ false }}">
           <div style="{{ videoColStyle }}">
-            <div style="position:relative;padding-bottom:56.25%;height:0;background:#000">
+            <div style="{{ videoQuadroStyle }}">
               <iframe ref="{{ videoRef }}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none" allowfullscreen="{{ true }}"></iframe>
             </div>
           </div>
@@ -457,10 +457,23 @@ class Component extends DCLogic {
     }
   };
 
-  youtubeEmbedUrl(url) {
-    if (!url) return '';
-    const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
-    return m ? `https://www.youtube.com/embed/${m[1]}` : '';
+  // Aceita o endereço como a pessoa copia — da barra do navegador ou do botão Compartilhar
+  // — e devolve o que toca dentro da página. Cobre YouTube (vídeo, shorts, ao vivo), Vimeo
+  // e Instagram (publicação ou reel). Endereço que não for de nenhum deles não vira player,
+  // e o botão de assistir fora continua levando ao link original.
+  videoEmbed(url) {
+    const u = String(url || '').trim();
+    if (!u) return null;
+    const yt = u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/))([\w-]{11})/);
+    if (yt) return { src: 'https://www.youtube.com/embed/' + yt[1], proporcao: 56.25, onde: 'YouTube' };
+    const vi = u.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+    if (vi) return { src: 'https://player.vimeo.com/video/' + vi[1], proporcao: 56.25, onde: 'Vimeo' };
+    const ig = u.match(/instagram\.com\/(p|reel|reels|tv)\/([\w-]+)/);
+    // O Instagram serve em pé; 125% deixa o quadro no formato do próprio vídeo, sem faixa
+    // preta em cima e embaixo.
+    if (ig) return { src: 'https://www.instagram.com/' + (ig[1] === 'reels' ? 'reel' : ig[1]) + '/' + ig[2] + '/embed',
+                     proporcao: 125, onde: 'Instagram' };
+    return null;
   }
 
   openLightbox = (idx) => () => this.setState({ lightboxOpen: true, lightboxIndex: idx, lightboxTab: 'fotos' });
@@ -618,7 +631,8 @@ class Component extends DCLogic {
       : `width:min(86vw,1100px);height:min(78vh,720px);background:repeating-linear-gradient(135deg,${lb.color},${lb.color} 16px,${lb.color}cc 16px,${lb.color}cc 32px)`;
     const lightboxImgRef = shotRef(lb);
 
-    const youtubeUrl = this.youtubeEmbedUrl(p.videoUrl);
+    const emb = this.videoEmbed(p.videoUrl);
+    const youtubeUrl = emb ? emb.src : '';
     const property = {
       location: p.location, condo: p.condo, title: p.title, area: p.area, suites: p.suites, baths: p.baths, garage: p.garage,
       typeLabel: p.type, desc: p.desc, descColor: p.descProvisional ? '#a8752f' : '#4a4438', descProvisional: !!p.descProvisional, descBlocks: this.parseDescBlocks(p.desc), priceLabel: this.money(p.price || 0), amenities: p.amenities || [],
@@ -677,6 +691,11 @@ class Component extends DCLogic {
       hasVideo: !!(youtubeUrl || p.videoFile), hasYoutube: !!youtubeUrl, hasVideoFile: !!p.videoFile,
       videoColStyle: (youtubeUrl && p.videoFile) ? 'flex:1 1 340px;min-width:280px' : 'flex:1 1 100%',
       videoRef: (el) => { if (el && youtubeUrl) el.src = youtubeUrl; },
+      // O quadro acompanha o formato de onde o vídeo vem: deitado no YouTube e no Vimeo,
+      // em pé no Instagram.
+      videoQuadroStyle: 'position:relative;padding-bottom:' + (emb ? emb.proporcao : 56.25) +
+                        '%;height:0;background:#000',
+      videoOnde: emb ? emb.onde : '',
       videoFileRef: (el) => { if (el && s.videoObjectUrl) el.src = s.videoObjectUrl; },
       property,
       toggleFav: this.toggleFav,

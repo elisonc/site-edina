@@ -1109,7 +1109,7 @@
             </div>
             <div style="margin-bottom:16px">
               <div style="font-size:12px;color:#746b5c;margin-bottom:8px">Vídeo do imóvel (link do YouTube ou upload de arquivo)</div>
-              <input placeholder="https://www.youtube.com/watch?v=..." value="{{ propertyDraft.videoUrl }}" onChange="{{ propertyDraft.onVideoUrl }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13.5px;box-sizing:border-box;margin-bottom:8px" />
+              <input placeholder="Cole o link do YouTube, Vimeo ou Instagram" value="{{ propertyDraft.videoUrl }}" onChange="{{ propertyDraft.onVideoUrl }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13.5px;box-sizing:border-box;margin-bottom:8px" />
               <input type="file" accept="video/*" onChange="{{ propertyDraft.onVideoFile }}" style="font-size:13px" />
               <sc-if value="{{ propertyDraft.hasVideoFile }}" hint-placeholder-val="{{ false }}">
                 <button onClick="{{ propertyDraft.onRemoveVideoFile }}" style="margin-left:10px;background:none;border:1px solid #ddd3bd;padding:6px 12px;font-size:11.5px;cursor:pointer;font-family:'Manrope',sans-serif">Remover vídeo</button>
@@ -3844,31 +3844,20 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     const MB = file.size / 1048576;
-    // Enquanto o envio de arquivos grandes (Firebase Storage) não estiver ligado, o vídeo
-    // teria de caber no banco de dados — e banco de documentos não é lugar de arquivo
-    // grande. Um vídeo de 50 MB vira 97 documentos, 39 s de envio e 116 MB de memória no
-    // celular, e nada toca antes de tudo chegar. Até 12 MB ainda é honesto; acima disso o
-    // caminho é o Storage, ou um link do YouTube.
-    const TETO_SEM_STORAGE = 12;
-    const temStorage = !!(window.FirebaseDB && window.FirebaseDB.storageAtivo && window.FirebaseDB.storageAtivo());
-    if (!temStorage && MB > TETO_SEM_STORAGE) {
-      const pedacos = Math.ceil(MB * 1.33 * 1024 / 700);
+    // Arquivo enviado aqui e guardado no banco de dados, e banco de documentos nao e lugar
+    // de arquivo grande: um video de 50 MB viraria 97 documentos, ~39 s de envio e ~116 MB
+    // de memoria no celular, e nada tocaria antes de tudo chegar. Dez megabytes e o ponto em
+    // que ainda vale a pena. Acima disso o caminho e o link -- que alem de nao ter limite,
+    // comeca a tocar na hora, porque quem serve o video e o YouTube.
+    const TETO_ARQUIVO_MB = 10;
+    if (MB > TETO_ARQUIVO_MB) {
       window.alert(
-        'Este vídeo tem ' + MB.toFixed(0) + ' MB, e o envio de arquivos grandes ainda não está ligado neste site.
-
-' +
-        'Sem ele, o vídeo precisaria ser fatiado em ' + pedacos + ' pedaços dentro do banco de dados: ' +
-        'levaria cerca de ' + Math.ceil(pedacos * 0.4) + 's para subir, travaria o site no celular ' +
-        'e esgotaria a cota com poucos acessos.
-
-' +
-        'Duas saídas:
-' +
-        '1) Use o campo "Link do vídeo" com um endereço do YouTube ou Vimeo — é grátis, ' +
-        'sem limite de tamanho, e carrega mais rápido do que qualquer arquivo hospedado aqui.
-' +
-        '2) Para hospedar no próprio site (até 5 GB), publique as regras do Storage no ' +
-        'Firebase — o arquivo storage.rules está no projeto.'
+        'Este video tem ' + MB.toFixed(0) + ' MB. O envio de arquivo aqui vai ate ' +
+        TETO_ARQUIVO_MB + ' MB - acima disso o site fica lento no celular e o video demora a comecar.'
+        + String.fromCharCode(10,10) +
+        'Para videos maiores use o campo "Link do video", logo acima: cole o endereco do ' +
+        'YouTube, Vimeo ou Instagram. E gratis, sem limite de tamanho, comeca a tocar na hora, ' +
+        'e o video aparece dentro da pagina do imovel do mesmo jeito.'
       );
       e.target.value = '';
       return;
