@@ -374,11 +374,27 @@ class Component extends DCLogic {
     // A galeria e as plantas deste imóvel são buscadas aqui, e não na abertura de toda
     // página: é nesta tela que elas aparecem. Antes o site inteiro baixava a galeria de
     // todos os imóveis para mostrar miniaturas que já viajavam junto com a ficha.
-    if (window.FirebaseDB && window.FirebaseDB.hidratarImovel) {
-      const alvo = (window.CRMData.getPropertiesRaw() || []).find(x => String(x.id) === String(id));
-      if (alvo) window.FirebaseDB.hidratarImovel(alvo).then(() => this.loadData()).catch(() => {});
-    }
+    this.garantirMidiaDoImovel();
   }
+
+  // Busca a galeria e as plantas deste imóvel assim que a ficha estiver em mãos — e não na
+  // montagem da página, que era o erro: ali os dados ainda não tinham chegado, a ficha não
+  // era encontrada, e as plantas nunca saíam do banco. O botão "Plantas" some quando elas
+  // não resolvem, e era isso que fazia parecer que o imóvel não tinha planta nenhuma.
+  garantirMidiaDoImovel = () => {
+    if (this._midiaPedida) return;
+    const D = window.CRMData;
+    if (!D || !window.FirebaseDB || !window.FirebaseDB.hidratarImovel) return;
+    const alvo = (D.getPropertiesRaw() || []).find(x => String(x.id) === String(this.state.id));
+    if (!alvo) return;                       // ainda sem a ficha: tenta de novo na próxima carga
+    this._midiaPedida = true;
+    window.FirebaseDB.hidratarImovel(alvo)
+      .then(() => this.setState({
+        properties: D.getProperties().filter(x => x.published !== false),
+        site: D.getSiteContent()
+      }))
+      .catch(() => {});
+  };
 
   resolveVideo = (id) => {
     const all = (window.CRMData ? window.CRMData.getProperties() : this.state.properties) || [];
@@ -451,6 +467,9 @@ class Component extends DCLogic {
     if (window.CRMData && !this.state.properties.length) {
       this.setState({ properties: window.CRMData.getProperties().filter(p => p.published !== false) });
     }
+    // A cada chegada de dados, tenta buscar a mídia da ficha. Roda uma vez só, quando a
+    // ficha finalmente aparece.
+    this.garantirMidiaDoImovel();
     if (window.CRMData) {
       const site = window.CRMData.getSiteContent();
       window.CRMData.applyTheme(site.theme);
