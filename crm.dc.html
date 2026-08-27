@@ -2582,7 +2582,10 @@ class Component extends DCLogic {
         properties: window.CRMData.getPropertiesRaw(),
         leads: window.CRMData.getLeads(),
         posts: window.CRMData.getPosts(),
-        testimonials: window.CRMData.getTestimonials(),
+        // Cru, como nos outros dois pontos de leitura: o player precisa saber se HÁ áudio,
+        // e não se o endereço já foi resolvido — resolver é uma ida ao banco que ainda não
+        // aconteceu quando a tela é montada.
+        testimonials: window.CRMData.getTestimonialsRaw(),
         visits: window.CRMData.getVisits(),
         integrations: window.CRMData.getIntegrations(),
         siteContent: window.CRMData.getSiteContentRaw()
