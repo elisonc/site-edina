@@ -1389,6 +1389,30 @@
           }
         } catch (e) {}
 
+        // Arquivo que ficou só no aparelho de quem cadastrou. O endereço idb… aponta para o
+        // banco de mídia daquele navegador, então em qualquer outro aparelho a planta não
+        // abre e o botão do ebook não faz nada. Reenviar o arquivo resolve: pelo caminho de
+        // hoje ele vai para o banco e passa a valer em todos.
+        try {
+          const soNoAparelho = (v) => typeof v === 'string' && /^idb/.test(v);
+          const presos = [];
+          (remoto.properties || []).forEach(x => {
+            const partes = [];
+            if ((x.plantas || []).some(soNoAparelho)) partes.push('plantas');
+            if (soNoAparelho(x.ebookUrl)) partes.push('ebook');
+            if (soNoAparelho(x.image) || (x.images || []).some(soNoAparelho)) partes.push('fotos');
+            if (partes.length) presos.push(x.title + ' (' + partes.join(', ') + ')');
+          });
+          if (presos.length) {
+            registrar('Arquivos presos a um aparelho', 'aviso',
+                      presos.join('; ') + ' — só abrem no navegador que cadastrou. Reenvie por lá.',
+                      'Reenviar na aba Imóveis');
+          } else {
+            registrar('Arquivos presos a um aparelho', 'ok',
+                      'Nenhum: plantas, ebooks e fotos estão todos no banco.');
+          }
+        } catch (e) {}
+
         // Marca de edição presa: faz este navegador ignorar o banco
         if (hasLocalEdits()) {
           registrar('Sincronia deste navegador', 'aviso', 'Este navegador está marcado como "tem alteração não enviada" e por isso ignora o banco.',
