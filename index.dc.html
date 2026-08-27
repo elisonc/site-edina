@@ -555,18 +555,6 @@ class Component extends DCLogic {
         if (slides.length > 1) {
           this.setState(s => {
             const atual = Number.isFinite(s.heroSlideIndex) ? s.heroSlideIndex : 0;
-                // Áudio guardado em pedaços no banco precisa ser remontado antes de tocar, e isso é uma
-    // busca — não dá para resolver na hora de desenhar. Aqui o endereço pronto entra assim
-    // que chega; trocar o src só quando muda evita reiniciar uma reprodução em andamento.
-    const ligarAudio = (el, chave) => {
-      if (!el || !chave) return;
-      const por = (u) => { if (u && el.getAttribute('src') !== u) { el.setAttribute('src', u); el.load(); } };
-      if (String(chave).indexOf('arqdoc:') === 0) {
-        window.CRMData.getDocURL(chave).then(por).catch(() => {});
-        return;
-      }
-      por(window.CRMData.mediaURL ? window.CRMData.mediaURL(chave) : chave);
-    };
     return { heroSlideIndex: (atual + 1) % slides.length };
           });
         }
@@ -700,6 +688,18 @@ class Component extends DCLogic {
   };
 
   renderVals() {
+    // Áudio guardado em pedaços no banco precisa ser remontado antes de tocar, e isso é uma
+    // busca — não dá para resolver na hora de desenhar. Aqui o endereço pronto entra assim
+    // que chega; trocar o src só quando muda evita reiniciar uma reprodução em andamento.
+    const ligarAudio = (el, chave) => {
+      if (!el || !chave) return;
+      const por = (u) => { if (u && el.getAttribute('src') !== u) { el.setAttribute('src', u); el.load(); } };
+      if (String(chave).indexOf('arqdoc:') === 0) {
+        window.CRMData.getDocURL(chave).then(por).catch(() => {});
+        return;
+      }
+      por(window.CRMData.mediaURL ? window.CRMData.mediaURL(chave) : chave);
+    };
     const d = window.SITE_INFO || {};
     const properties = this.state.properties || [];
     const blogPosts = this.state.posts || [];

@@ -4572,6 +4572,18 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
   };
 
   renderVals() {
+    // Áudio guardado em pedaços no banco precisa ser remontado antes de tocar, e isso é uma
+    // busca — não dá para resolver na hora de desenhar. Aqui o endereço pronto entra assim
+    // que chega; trocar o src só quando muda evita reiniciar uma reprodução em andamento.
+    const ligarAudio = (el, chave) => {
+      if (!el || !chave) return;
+      const por = (u) => { if (u && el.getAttribute('src') !== u) { el.setAttribute('src', u); el.load(); } };
+      if (String(chave).indexOf('arqdoc:') === 0) {
+        window.CRMData.getDocURL(chave).then(por).catch(() => {});
+        return;
+      }
+      por(window.CRMData.mediaURL ? window.CRMData.mediaURL(chave) : chave);
+    };
     const s = this.state;
     const stageLabels = { novo: 'Lead Novo', atendimento: 'Atendimento', agendamento: 'Agendamento', visita: 'Visita', proposta: 'Proposta', negociacao_futura: 'Negociação Futura', fechado: 'Fechado' };
     const stageColors = { novo: '#b3a37a', atendimento: 'var(--blue)', agendamento: '#8f6a4a', visita: 'var(--olive)', proposta: 'var(--accent)', negociacao_futura: '#8a7c5c', fechado: '#5c7052' };
@@ -4952,18 +4964,6 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       aiOptions: (pd.aiOptions || null) && pd.aiOptions.map(o => ({ text: o.text, hashtags: o.hashtags, use: this.useAiDescription(o.text) })),
       amenityChips: this.AMENITY_CATALOG.map(name => {
         const active = (pd.amenities || '').split(',').map(s => s.trim()).includes(name);
-            // Áudio guardado em pedaços no banco precisa ser remontado antes de tocar, e isso é uma
-    // busca — não dá para resolver na hora de desenhar. Aqui o endereço pronto entra assim
-    // que chega; trocar o src só quando muda evita reiniciar uma reprodução em andamento.
-    const ligarAudio = (el, chave) => {
-      if (!el || !chave) return;
-      const por = (u) => { if (u && el.getAttribute('src') !== u) { el.setAttribute('src', u); el.load(); } };
-      if (String(chave).indexOf('arqdoc:') === 0) {
-        window.CRMData.getDocURL(chave).then(por).catch(() => {});
-        return;
-      }
-      por(window.CRMData.mediaURL ? window.CRMData.mediaURL(chave) : chave);
-    };
     return { label: name, toggle: this.togglePropertyAmenity(name), style: `padding:6px 12px;font-size:12px;border-radius:14px;cursor:pointer;font-family:'Manrope',sans-serif;border:1px solid ${active ? '#1d1a15' : '#ddd3bd'};background:${active ? '#1d1a15' : '#fff'};color:${active ? '#fff' : '#4a4438'}` };
       }),
       tour: !!pd.tour, onToggleTour: (e) => this.setState({ propertyDraft: { ...this.state.propertyDraft, tour: e.target.checked } }),
