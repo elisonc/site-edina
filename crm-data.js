@@ -76,6 +76,9 @@
     // não ocupa espaço no banco e continua valendo mesmo num navegador que nunca abriu o
     // painel. Continua trocável pelo CRM — o que for salvo lá passa na frente deste padrão.
     logoUrl: "media/logo-edina.png",
+    // Altura dividida pela largura da logo. Guardada para o quadro dela já nascer do
+    // tamanho certo: medir depois que a imagem carrega empurra tudo que vem abaixo.
+    logoRatio: 1,
     faviconUrl: "media/favicon-edina.png",
     // Arquivo versionado junto com o site: a assinatura aparece para qualquer visitante desde
     // a primeira visita, sem depender do que estiver salvo no navegador de quem administra.
@@ -494,7 +497,12 @@
   // O armazenamento do navegador tem poucos megabytes. Uma imagem embutida ocupa centenas
   // de KB, e o catálogo inteiro com fotos passava de 11 MB — daí o "armazenamento cheio".
   // As imagens vivem no banco e em memória; o que fica guardado aqui é a estrutura, sem elas.
-  const TETO_GUARDADO = 8 * 1024;
+  // Teto do que o navegador guarda de imagem embutida. Eram 8 KB, definidos quando fotos
+  // inteiras ainda iam dentro do dado. Hoje só passa por aqui a miniatura da capa, que é
+  // limitada na origem — e cortá-la fazia o card ficar sem imagem no painel, justamente o
+  // lugar para o qual ela foi criada. 44 KB acomoda a miniatura e continua barrando foto
+  // cheia: cinquenta imóveis somam menos de 2 MB, dentro do que o navegador comporta.
+  const TETO_GUARDADO = 44 * 1024;
   function semImagensPesadas(valor) {
     if (typeof valor === 'string') {
       return (valor.indexOf('data:') === 0 && valor.length > TETO_GUARDADO) ? '' : valor;

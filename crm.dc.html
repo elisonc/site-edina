@@ -2930,14 +2930,26 @@ class Component extends DCLogic {
     const refPalette = { accent: '#c1664a', tan: '#c4a886', cream: '#f6f3ec', bgAlt: '#ece5d6', olive: '#8a9463', blue: '#6e93ac', stone: '#cfc7b8', ink: '#241f18', headerBg: '#f6f3ec', footerBg: '#ece5d6' };
     this.setState({ siteContent: { ...this.state.siteContent, theme: refPalette }, siteSaved: false });
   };
+  // Mede a proporção da imagem escolhida e guarda junto com o conteúdo. É o que permite ao
+  // site reservar o espaço da logo antes de ela carregar, em vez de medir depois e empurrar
+  // tudo que vem abaixo — o salto de layout que as medições de desempenho penalizam.
+  proporcaoDaImagem = (url) => new Promise((res) => {
+    if (!url) return res(0);
+    const im = new Image();
+    im.onload = () => res(im.naturalWidth ? im.naturalHeight / im.naturalWidth : 0);
+    im.onerror = () => res(0);
+    im.src = window.CRMData ? (window.CRMData.photoURL(url) || url) : url;
+  });
+
   onLogoFile = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     (window.CRMData ? window.CRMData.resizeImage(file, 480, 0.85, 'png').then(d => window.CRMData.savePhoto(d)) : Promise.resolve(''))
-      .then(dataUrl => this.setState({ siteContent: { ...this.state.siteContent, logoUrl: dataUrl }, siteSaved: false }))
+      .then(dataUrl => this.proporcaoDaImagem(dataUrl).then(r => this.setState({
+        siteContent: { ...this.state.siteContent, logoUrl: dataUrl, logoRatio: r || 0 }, siteSaved: false })))
       .catch(() => window.alert('Não foi possível ler essa imagem (formato não suportado, ex: HEIC do iPhone). Exporte como PNG ou JPEG e tente novamente.'));
   };
-  removeLogo = () => this.setState({ siteContent: { ...this.state.siteContent, logoUrl: '' }, siteSaved: false });
+  removeLogo = () => this.setState({ siteContent: { ...this.state.siteContent, logoUrl: '', logoRatio: 0 }, siteSaved: false });
   onFooterLogoFile = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -4895,8 +4907,10 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       published: p.published !== false,
       leadsCount: (s.leads || []).filter(l => (l.offeredProperties || []).includes(p.id) || l.interest === p.title).length,
       visitsCount: (s.visits || []).filter(v => v.property === p.title).length,
-      imgStyle: p.image ? `width:44px;height:32px;border:1px solid #e5ddcd;background-size:cover;background-position:center;flex:none` : `width:44px;height:32px;background:#f0ead9;flex:none`,
-      imgRef: (el) => { if (!el) return; const u = window.CRMData.photoURL(p.image); el.style.backgroundImage = u ? `url('${u}')` : 'none'; if (!u && p.image) el.style.background = 'repeating-linear-gradient(135deg,#e8e0cf,#e8e0cf 5px,#ded4bf 5px,#ded4bf 10px)'; },
+      imgStyle: (p.thumb || p.image) ? `width:44px;height:32px;border:1px solid #e5ddcd;background-size:cover;background-position:center;flex:none` : `width:44px;height:32px;background:#f0ead9;flex:none`,
+      // A miniatura viaja junto com a ficha e tem o tamanho exato deste card: usar a foto
+      // cheia do banco aqui seria baixar uma imagem grande para mostrar 44 por 32 pixels.
+      imgRef: (el) => { if (!el) return; const u = p.thumb || window.CRMData.photoURL(p.image); el.style.backgroundImage = u ? `url('${u}')` : 'none'; if (!u && p.image) el.style.background = 'repeating-linear-gradient(135deg,#e8e0cf,#e8e0cf 5px,#ded4bf 5px,#ded4bf 10px)'; },
       onTogglePublished: () => {
         const properties = this.state.properties.map(x => x.id === p.id ? { ...x, published: !(x.published !== false) } : x);
         this.setState({ properties });

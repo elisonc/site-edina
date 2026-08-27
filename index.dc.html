@@ -3,6 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Conexões abertas antes de precisar delas. Ficam no <head> do arquivo, e não no
+     <helmet>: o helmet é reaplicado a cada desenho da tela e ia repetindo as mesmas
+     origens — a medição apontava mais de quatro preconnect, o que atrapalha em vez de
+     ajudar. Aqui são escritas uma vez e pronto. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
 <!-- Comprova para o Google que este domínio é seu, liberando o Search Console. Fica no
      <head> do HTML servido, e não no <helmet>: o robô do Google lê a página antes de
      qualquer script rodar, e uma tag inserida depois pode não ser vista na verificação. -->
@@ -21,10 +28,8 @@
   <meta name="twitter:title" content="Edina Oliveira — Imóveis de Alto Padrão">
   <meta name="twitter:description" content="Edina Oliveira — Imóveis de Alto Padrão em Navegantes, Itajaí, Balneário Camboriú e Praia Brava">
   <meta name="description" content="Edina Oliveira — Imóveis de Alto Padrão em Navegantes, Itajaí, Balneário Camboriú e Praia Brava">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
   <!-- O arquivo da fonte vem de outro servidor: sem esta linha, a conexão só começa
        depois que o CSS chega, e o texto fica esperando por isso. -->
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- A capa é a maior imagem da página e determina quando ela parece pronta: o download
        começa junto com o HTML, sem esperar o JavaScript decidir qual foto usar. -->
   <!-- A folha de fontes sai do caminho crítico: entra como "print", que o navegador
@@ -457,7 +462,30 @@ window.__aquecerFotos = function (lista) {
 };
 
 class Component extends DCLogic {
-  state = { favorites: {}, formSent: false, formError: '', formSending: false, properties: [], posts: [], testimonials: [], siteContent: null, fontScale: 100, heroSlideIndex: 0, cicloIniciado: false };
+  // A página nasce com o conteúdo que já está no navegador, em vez de nascer vazia e
+  // esperar o banco responder. Era essa espera que aparecia como "atraso no carregamento
+  // do recurso" de 5 s na medição: a capa só existia depois de carregar o Firebase,
+  // conectar e receber a resposta. Ler do armazenamento local custa cerca de 1 ms e a
+  // primeira pintura já sai com a capa, o texto e os cards no lugar. O banco chega em
+  // seguida e corrige o que tiver mudado.
+  static _inicial() {
+    const vazio = { properties: [], posts: [], testimonials: [], siteContent: null };
+    try {
+      if (!window.CRMData) return vazio;
+      return {
+        properties: window.CRMData.getProperties().filter(p => p.published !== false),
+        posts: window.CRMData.getPosts().filter(p => p.status === 'publicado'),
+        testimonials: window.CRMData.getTestimonials(),
+        siteContent: window.CRMData.getSiteContent()
+      };
+    } catch (e) { return vazio; }
+  }
+
+  state = Object.assign(
+    { favorites: {}, formSent: false, formError: '', formSending: false,
+      fontScale: 100, heroSlideIndex: 0, cicloIniciado: false },
+    Component._inicial()
+  );
 
   componentWillUnmount() {
     if (this._onPub) window.removeEventListener('edina:published-updated', this._onPub); if (this._heroTimer) clearTimeout(this._heroTimer); }
@@ -787,15 +815,18 @@ class Component extends DCLogic {
     // O quadro da logo segue a proporção da própria imagem. Fixá-lo em largura×0,28 supunha
     // uma logo deitada: uma marca quadrada entrava achatada e aparecia bem menor do que o
     // tamanho escolhido no painel. O teto impede que uma marca alta estique o cabeçalho.
-    const alturaDaLogo = (el, url, larg, teto) => {
+    const alturaDaLogo = (el, url, larg, teto, proporcao) => {
       if (!el || !url) return;
-      const im = new Image();
-      im.onload = () => {
-        if (!im.naturalWidth) return;
-        const h = Math.min(Math.round(larg * im.naturalHeight / im.naturalWidth), teto);
+      const aplicar = (r) => {
+        const h = Math.min(Math.round(larg * r), teto);
         el.style.height = h + 'px';
-        el.style.width = Math.round(h * im.naturalWidth / im.naturalHeight) + 'px';
+        el.style.width = Math.round(h / r) + 'px';
       };
+      // Proporção conhecida: o quadro já nasce certo e nada se mexe depois. Era a medição
+      // tardia que empurrava o conteúdo abaixo do cabeçalho a cada carregamento.
+      if (proporcao > 0) return aplicar(proporcao);
+      const im = new Image();
+      im.onload = () => { if (im.naturalWidth) aplicar(im.naturalHeight / im.naturalWidth); };
       im.src = url;
     };
     return {
@@ -843,11 +874,11 @@ class Component extends DCLogic {
       hasLogo: !!site.logoUrl, hasNoLogo: !site.logoUrl,
       logoImgStyle: site.logoUrl ? `width:${site.logoWidth || 210}px;height:${Math.round((site.logoWidth||210)*0.28)}px;background-size:contain;background-repeat:no-repeat;background-position:left center` : `width:0;height:0`,
       logoImgRef: (el) => { if (el && site.logoUrl) { el.style.backgroundImage = `url('${site.logoUrl}')`;
-        alturaDaLogo(el, site.logoUrl, site.logoWidth || 210, 132); } },
+        alturaDaLogo(el, site.logoUrl, site.logoWidth || 210, 132, site.logoRatio); } },
       footerLogoImgStyle: (site.footerLogoUrl || site.logoUrl) ? `width:${site.footerLogoWidth || 170}px;height:${Math.round((site.footerLogoWidth||170)*0.28)}px;background-size:contain;background-repeat:no-repeat;background-position:left center;margin-bottom:16px` : `width:0;height:0`,
       footerLogoImgRef: (el) => { const u = site.footerLogoUrl || site.logoUrl;
         if (el && u) { el.style.backgroundImage = `url('${u}')`;
-        alturaDaLogo(el, u, site.footerLogoWidth || 170, 110); } },
+        alturaDaLogo(el, u, site.footerLogoWidth || 170, 110, site.footerLogoRatio || (site.footerLogoUrl ? 0 : site.logoRatio)); } },
       heroSectionStyle, heroSectionRef, heroSlideItems,
       heroLabel: site.heroLabel || 'Navegantes · Itajaí · Camboriú · Praia Brava',
       heroTitle: site.heroTitle || 'Bem-vindos ao litoral de alto padrão',
