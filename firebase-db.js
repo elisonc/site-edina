@@ -495,6 +495,20 @@
               if (alvo.campo) out[alvo.campo] = ref; else out.heroSlides[alvo.slide] = ref;
               idx++;
             });
+            // Uma prévia minúscula da primeira capa viaja junto com o conteúdo do site, e não
+            // como referência. Ela pinta no mesmo instante em que a página abre, antes de a
+            // foto cheia chegar do banco. Sem ela a capa fica vazia por um momento a cada
+            // recarga — e era esse vão que o site preenchia com a foto de um imóvel.
+            const primeiraCapa = pendentes.findIndex(a => a.slide === 0);
+            const base = primeiraCapa >= 0 ? dados[primeiraCapa] : null;
+            if (base && window.CRMData && window.CRMData.resizeDataUrl) {
+              try {
+                const previa = await window.CRMData.resizeDataUrl(base, 96, 0.5);
+                // Precisa caber no armazenamento do navegador, senão é descartada na gravação
+                // local e a prévia não estaria lá justamente na abertura, que é quando serve.
+                if (previa && previa.length < 7 * 1024) out.heroPreview = previa;
+              } catch (e) {}
+            }
           }
         }
       }

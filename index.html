@@ -480,11 +480,20 @@ class Component extends DCLogic {
     // não havia o que passar. A capa aparecia parada.
     // Olha o dado como está guardado, sem resolver imagem: diz se existe capa configurada
     // mesmo que a foto ainda não tenha chegado do banco.
+    // Lê o conteúdo como está guardado, uma vez por pintura: sem isto o dado seria
+    // desempacotado do armazenamento a cada slide que a capa desenha.
+    this._siteCru = () => {
+      const agora = Date.now();
+      if (this._cruCache && agora - this._cruEm < 400) return this._cruCache;
+      try { this._cruCache = window.CRMData.getSiteContentRaw() || {}; }
+      catch (e) { this._cruCache = {}; }
+      this._cruEm = agora;
+      return this._cruCache;
+    };
+
     this._capasConfiguradas = () => {
-      try {
-        const cru = window.CRMData.getSiteContentRaw() || {};
-        return (cru.heroSlides || []).filter(Boolean).length > 0 || !!cru.heroImage;
-      } catch (e) { return false; }
+      const cru = this._siteCru();
+      return (cru.heroSlides || []).filter(Boolean).length > 0 || !!cru.heroImage;
     };
 
     this._capas = () => {
@@ -494,8 +503,12 @@ class Component extends DCLogic {
       if (site.heroImage) return [site.heroImage];
       // Capa guardada no banco leva um instante para chegar, e até lá ela resolve para vazio.
       // Cair na foto de um imóvel aqui fazia um prédio piscar na capa a cada recarga, no
-      // lugar das praias. Melhor esperar a foto certa do que mostrar a errada.
-      if (this._capasConfiguradas()) return [];
+      // lugar das praias. A prévia — pequena, guardada junto com o conteúdo — cobre esse vão
+      // com a imagem certa, e a foto cheia entra por cima assim que chega.
+      if (this._capasConfiguradas()) {
+        const previa = site.heroPreview || (this._siteCru() || {}).heroPreview;
+        return previa ? [previa] : [];
+      }
       return (this.state.properties || []).map(p => p.image).filter(Boolean).slice(0, 3);
     };
 
