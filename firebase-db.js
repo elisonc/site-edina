@@ -349,10 +349,19 @@
     return typeof v === 'string' && v.indexOf('fotodoc:' + rotulo + ':') === 0;
   }
 
+  // As plantas moram num conjunto próprio, então precisam da sua própria busca — sem isto
+  // o botão "Plantas" continuaria sumindo em quem não cadastrou o imóvel.
+  async function carregarPlantas(props) {
+    const comPlantas = (props || []).filter(p => (p.plantas || [])
+      .some(v => typeof v === 'string' && v.indexOf('fotodoc:plantas_' + p.id + ':') === 0));
+    await Promise.all(comPlantas.map(p => carregarParaCache('plantas_' + p.id)));
+  }
+
   async function hidratarFotos(props) {
     const comRef = (props || []).filter(p =>
       usaReferencia(p.image, p.id) || (p.images || []).some(i => usaReferencia(i, p.id)));
     await Promise.all(comRef.map(p => carregarParaCache(p.id)));
+    await carregarPlantas(props);
     return props;
   }
 
@@ -436,7 +445,49 @@
       if (q.videoFile) q.videoFile = await externalizeMedia(q.videoFile, 'videos', cache);
       out.push(q);
     }
+    await guardarPlantasEEbooks(out);
     return out;
+  }
+
+  // Plantas e ebook iam para o banco como idbphoto:/idbdoc:, que é endereço do banco de
+  // mídia do próprio navegador que enviou o arquivo — não existe em nenhum outro aparelho.
+  // Era por isso que o botão "Plantas" sumia no celular e o ebook não abria: a ficha
+  // apontava para um arquivo que só existia no computador de quem cadastrou.
+  async function guardarPlantasEEbooks(lista) {
+    const local = (v) => typeof v === 'string' && (/^idb/.test(v) || v.indexOf('data:') === 0);
+    for (const q of lista) {
+      if (Array.isArray(q.plantas) && q.plantas.some(local)) {
+        const rotulo = 'plantas_' + q.id;
+        const jaNoBanco = (v) => typeof v === 'string' && v.indexOf('fotodoc:' + rotulo + ':') === 0;
+        const dados = [];
+        let faltou = false;
+        for (const v of q.plantas) {
+          const d = await paraDataUrl(v);
+          if (!d && jaNoBanco(v)) faltou = true;
+          dados.push(d || '');
+        }
+        // Planta já guardada que não abre aqui: regravar renumeraria os blocos e a apagaria.
+        if (!faltou) {
+          let gravadas = 0;
+          try { gravadas = await guardarImagens(rotulo, dados.filter(Boolean)) || 0; }
+          catch (e) { mediaErrors.push({ path: 'fotos_' + rotulo, code: e && (e.code || e.message) }); }
+          if (gravadas) q.plantas = Array.from({ length: gravadas }, (_, i) => 'fotodoc:' + rotulo + ':' + i);
+        }
+      }
+
+      if (q.ebookUrl && local(q.ebookUrl)) {
+        const rotulo = 'ebook_' + q.id;
+        let arq = '';
+        try { arq = window.CRMData.getDocDataURL ? await window.CRMData.getDocDataURL(q.ebookUrl) : ''; }
+        catch (e) {}
+        if (arq) {
+          let gravadas = 0;
+          try { gravadas = await guardarImagens(rotulo, [arq]) || 0; }
+          catch (e) { mediaErrors.push({ path: 'fotos_' + rotulo, code: e && (e.code || e.message) }); }
+          if (gravadas) q.ebookUrl = 'fotodoc:' + rotulo + ':0';
+        }
+      }
+    }
   }
 
   // Todas as imagens do site, e não só o logotipo e a assinatura: a foto da Edina, a de

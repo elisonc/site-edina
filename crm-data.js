@@ -1042,8 +1042,47 @@
         tx.onerror = () => reject(tx.error);
       })).catch(() => '');
     },
+    // Lê um documento deste navegador e devolve como data: URL, que é o formato que vai
+    // para o banco. getDocURL entrega um endereço de blob, que só vale nesta aba.
+    getDocDataURL: function (key) {
+      if (!key) return Promise.resolve('');
+      if (key.indexOf('data:') === 0) return Promise.resolve(key);
+      if (!key.startsWith('idbdoc:')) return Promise.resolve('');
+      return this._openMediaDB().then(db => new Promise((resolve) => {
+        const req = db.transaction('media', 'readonly').objectStore('media').get(key);
+        req.onsuccess = () => {
+          const v = req.result;
+          if (!v) return resolve('');
+          if (typeof v === 'string') return resolve(v);
+          if (v instanceof Blob) {
+            const fr = new FileReader();
+            fr.onload = () => resolve(String(fr.result || ''));
+            fr.onerror = () => resolve('');
+            fr.readAsDataURL(v);
+            return;
+          }
+          resolve('');
+        };
+        req.onerror = () => resolve('');
+      })).catch(() => '');
+    },
     getDocURL: function (key) {
       if (!key) return Promise.resolve('');
+      // Endereço do banco: o ebook vale em qualquer aparelho, e não só naquele que o enviou.
+      if (key.indexOf('fotodoc:') === 0) {
+        const pronto = this.photoURL(key);
+        if (pronto) return Promise.resolve(pronto);
+        if (!window.FirebaseDB || !window.FirebaseDB.lerImagens) return Promise.resolve('');
+        const partes = key.slice('fotodoc:'.length).split(':');
+        const i = parseInt(partes.pop(), 10);
+        const rotulo = partes.join(':');
+        const self = this;
+        return window.FirebaseDB.lerImagens(rotulo).then(arqs => {
+          if (arqs && arqs.length && self.registrarImagensDoBanco)
+            self.registrarImagensDoBanco(rotulo, arqs);
+          return (arqs && arqs[i]) || '';
+        }).catch(() => '');
+      }
       if (!key.startsWith('idbdoc:')) return Promise.resolve(key); // legacy data: URL
       return this._openMediaDB().then(db => new Promise((resolve, reject) => {
         const tx = db.transaction('media', 'readonly');

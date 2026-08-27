@@ -103,6 +103,7 @@
     <nav style="display:flex;align-items:center;gap:14px;flex-wrap:nowrap">
       <a href="imoveis.dc.html" style="color:#1d1a15;text-decoration:none;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase">Portfólio</a>
       <a href="blog.dc.html" style="color:#1d1a15;text-decoration:none;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase">Blog</a>
+      <a href="index.dc.html#sobre" style="color:#1d1a15;text-decoration:none;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase">Sobre</a>
       <a href="index.dc.html#contato" style="color:#1d1a15;text-decoration:none;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase">Contato</a>
       <a href="favoritos.dc.html" style="position:relative;font-size:17px;color:#1d1a15;text-decoration:none" title="Favoritos">♥</a>
       <a href="crm.dc.html" style="color:#746b5c;text-decoration:none;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap" title="Acesso restrito da equipe">🔒 Acesso</a>
@@ -386,13 +387,21 @@ class Component extends DCLogic {
     }
   };
   openEbook = () => {
-    // Resolve de novo na hora do clique (não depende do timing do preload) e abre numa
-    // aba nova — new tab em vez de download força o navegador a exibir o PDF direto.
     const all = this.state.properties || [];
     const p = all.find(x => x.id === this.state.id) || all[0];
     const key = p && p.ebookUrl;
     if (!key || !window.CRMData) return;
-    window.CRMData.getDocURL(key).then(url => { if (url) window.open(url, '_blank'); });
+    // Já resolvido: abre direto, dentro do toque.
+    if (this.state.ebookObjectUrl) { window.open(this.state.ebookObjectUrl, '_blank'); return; }
+    // A aba precisa nascer AGORA, ainda dentro do toque. Abri-la depois, quando o arquivo
+    // chegasse, fazia o celular tratar como janela não pedida e barrar em silêncio — era o
+    // motivo de o botão do ebook não fazer nada no telefone.
+    const aba = window.open('', '_blank');
+    window.CRMData.getDocURL(key).then(url => {
+      if (!url) { if (aba) aba.close(); return; }
+      if (aba && !aba.closed) aba.location.href = url;
+      else window.location.href = url;   // aba barrada mesmo assim: abre na própria página
+    }).catch(() => { if (aba) aba.close(); });
   };
 
   loadData = () => {
