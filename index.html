@@ -477,7 +477,10 @@ class Component extends DCLogic {
       return {
         properties: window.CRMData.getProperties().filter(p => p.published !== false),
         posts: window.CRMData.getPosts().filter(p => p.status === 'publicado'),
-        testimonials: window.CRMData.getTestimonials(),
+        // Cru de propósito: ver a explicação em ligarAudio.
+        testimonials: window.CRMData.getTestimonialsRaw
+          ? window.CRMData.getTestimonialsRaw()
+          : window.CRMData.getTestimonials(),
         siteContent: window.CRMData.getSiteContent()
       };
     } catch (e) { return vazio; }
@@ -622,7 +625,10 @@ class Component extends DCLogic {
       this.setState({
         properties: window.CRMData.getProperties().filter(p => p.published !== false),
         posts: window.CRMData.getPosts().filter(p => p.status === 'publicado'),
-        testimonials: window.CRMData.getTestimonials(),
+        // Cru de propósito: ver a explicação em ligarAudio.
+        testimonials: window.CRMData.getTestimonialsRaw
+          ? window.CRMData.getTestimonialsRaw()
+          : window.CRMData.getTestimonials(),
         siteContent: site
       });
       if (site.metaTitle) document.title = site.metaTitle;
