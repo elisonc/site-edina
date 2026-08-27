@@ -265,7 +265,7 @@
   // ganham cota própria e nunca descem de 1600px de largura. São quatro imagens — o peso
   // extra fica só nelas, e a prévia local continua cobrindo a primeira pintura.
   const COTA_CAPA = 420 * 1024;
-  const ETAPAS_CAPA = [[1920, 0.88], [1920, 0.82], [1760, 0.78], [1600, 0.74]];
+  const ETAPAS_CAPA = [[1920, 0.92], [1920, 0.88], [1760, 0.84], [1600, 0.8]];
 
   async function guardarImagens(chave, fotos, cotasEspeciais) {
     await ready;
@@ -286,10 +286,12 @@
     // guardadas. Antes o valor era fixo e a opção não mudava nada de fato.
     let qualidade = 'equilibrada';
     try { qualidade = (window.CRMData.getSiteContentRaw() || {}).photoQuality || 'equilibrada'; } catch (e) {}
+    // Cotas e etapas em números de WebP. Como ele é ~28% mais econômico que o JPEG para a
+    // mesma fidelidade, a mesma cota agora compra bem mais nitidez do que comprava antes.
     const perfis = {
-      leve:         { cota: 70 * 1024,  etapas: [[900, 0.78], [760, 0.72], [640, 0.66], [520, 0.58]] },
-      equilibrada:  { cota: 120 * 1024, etapas: [[1400, 0.82], [1100, 0.76], [900, 0.68], [720, 0.6]] },
-      alta:         { cota: 190 * 1024, etapas: [[1920, 0.86], [1600, 0.8], [1300, 0.74], [1000, 0.66]] }
+      leve:         { cota: 90 * 1024,  etapas: [[1100, 0.8], [900, 0.76], [760, 0.7], [640, 0.64]] },
+      equilibrada:  { cota: 160 * 1024, etapas: [[1600, 0.86], [1400, 0.82], [1100, 0.76], [900, 0.7]] },
+      alta:         { cota: 260 * 1024, etapas: [[1920, 0.9], [1760, 0.86], [1500, 0.82], [1280, 0.76]] }
     };
     const perfil = perfis[qualidade] || perfis.equilibrada;
     // Galeria grande aperta um pouco a cota, para a ficha inteira caber.

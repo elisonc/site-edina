@@ -170,7 +170,7 @@
     <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,17,10,.15) 0%,rgba(20,17,10,.65) 100%)"></div>
     
     <div style="position:relative;padding:0 64px 54px;color:var(--cream);max-width:900px">
-      <div style="font-size:13px;letter-spacing:.15em;text-transform:uppercase;color:var(--tan);margin-bottom:14px">{{ heroLabel }}</div>
+      <div style="{{ heroLabelStyle }}">{{ heroLabel }}</div>
       <h1 style="font-family:'Cormorant Garamond',serif;font-size:64px;line-height:1.02;font-weight:600;margin:0 0 18px">{{ heroTitle }}</h1>
       <p style="font-size:16px;line-height:1.55;max-width:520px;color:#e9e4d8;margin:0 0 26px">{{ heroSubtitle }}</p>
       <a href="#imoveis" style="display:inline-block;background:var(--accent);color:#fff;padding:16px 32px;text-decoration:none;font-size:14px;letter-spacing:.04em;font-weight:600;border-radius:2px">Explorar Imóveis</a>
@@ -910,6 +910,15 @@ class Component extends DCLogic {
         alturaDaLogo(el, u, site.footerLogoWidth || 170, 110, site.footerLogoRatio || (site.footerLogoUrl ? 0 : site.logoRatio)); } },
       heroSectionStyle, heroSectionRef, heroSlideItems,
       heroLabel: site.heroLabel || 'Navegantes · Itajaí · Camboriú · Praia Brava',
+      // Destaque: faixa na cor de acento atrás da frase — o mesmo contraste que aparece
+      // quando se seleciona o texto. Sobre uma foto clara, texto claro sem fundo some.
+      heroLabelStyle: (() => {
+        const base = 'font-size:13px;letter-spacing:.15em;text-transform:uppercase;margin-bottom:14px;display:inline-block';
+        const peso = site.heroLabelBold ? ';font-weight:700' : '';
+        return site.heroLabelDestaque
+          ? base + peso + ';color:#fff;background:var(--accent);padding:5px 12px;box-decoration-break:clone;-webkit-box-decoration-break:clone'
+          : base + peso + ';color:var(--tan)';
+      })(),
       heroTitle: site.heroTitle || 'Bem-vindos ao litoral de alto padrão',
       heroSubtitle: site.heroSubtitle || 'Os melhores imóveis de alto padrão em Navegantes, Itajaí, Camboriú e Praia Brava, selecionados para quem busca vista, exclusividade e conforto.'
     };

@@ -1996,6 +1996,17 @@
             <div>
               <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Selo acima do título</div>
               <input value="{{ site.heroLabel }}" onChange="{{ onSiteField_heroLabel }}" style="width:100%;padding:12px 14px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:14px;box-sizing:border-box" />
+              <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:8px">
+                <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:#4a4438;cursor:pointer">
+                  <input type="checkbox" checked="{{ site.heroLabelBold }}" onChange="{{ onHeroLabelBold }}" />
+                  <span>Negrito</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:#4a4438;cursor:pointer">
+                  <input type="checkbox" checked="{{ site.heroLabelDestaque }}" onChange="{{ onHeroLabelDestaque }}" />
+                  <span>Destaque (fundo colorido atrás do texto)</span>
+                </label>
+              </div>
+              <div style="font-size:11px;color:#8a7f6a;margin-top:5px">O destaque coloca uma faixa na cor de acento atrás da frase — o mesmo efeito de quando você seleciona o texto, e que dá contraste sobre a foto.</div>
             </div>
             <div>
               <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Título principal</div>
@@ -2885,9 +2896,12 @@ class Component extends DCLogic {
     window.CRMData && window.CRMData.saveSiteContent(siteContent);
   };
   photoPresetFor = (q) => {
-    if (q === 'leve') return { cover: [900, 0.62], gallery: [800, 0.58] };
-    if (q === 'alta') return { cover: [1920, 0.8], gallery: [1600, 0.75] };
-    return { cover: [1400, 0.72], gallery: [1100, 0.66] };
+    // Números calibrados para WebP, que é o formato usado agora. Em WebP, 0,86 rende a
+    // mesma nitidez que 0,92 em JPEG por cerca de 28% menos peso — por isso dá para pedir
+    // mais qualidade sem a foto ficar mais pesada do que era antes.
+    if (q === 'leve') return { cover: [1280, 0.74], gallery: [1100, 0.7] };
+    if (q === 'alta') return { cover: [1920, 0.9], gallery: [1600, 0.86] };
+    return { cover: [1600, 0.84], gallery: [1400, 0.8] };
   };
   reprocessAllPhotos = async () => {
     if (!window.CRMData || this.state.reprocessBusy) return;
@@ -2984,7 +2998,7 @@ class Component extends DCLogic {
   onHeroImageFile = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    (window.CRMData ? window.CRMData.resizeImage(file, 1920, 0.78).then(d => window.CRMData.savePhoto(d)) : Promise.resolve(''))
+    (window.CRMData ? window.CRMData.resizeImage(file, 1920, 0.92).then(d => window.CRMData.savePhoto(d)) : Promise.resolve(''))
       .then(dataUrl => this.setState({ siteContent: { ...this.state.siteContent, heroImage: dataUrl }, siteSaved: false }))
       .catch(() => window.alert('Não foi possível ler essa imagem (formato não suportado, ex: HEIC do iPhone). Exporte como JPEG e tente novamente.'));
   };
@@ -3859,9 +3873,12 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
   };
   photoPreset = () => {
     const q = (this.state.siteContent || {}).photoQuality || 'equilibrada';
-    if (q === 'leve') return { cover: [900, 0.62], gallery: [800, 0.58] };
-    if (q === 'alta') return { cover: [1920, 0.8], gallery: [1600, 0.75] };
-    return { cover: [1400, 0.72], gallery: [1100, 0.66] };
+    // Números calibrados para WebP, que é o formato usado agora. Em WebP, 0,86 rende a
+    // mesma nitidez que 0,92 em JPEG por cerca de 28% menos peso — por isso dá para pedir
+    // mais qualidade sem a foto ficar mais pesada do que era antes.
+    if (q === 'leve') return { cover: [1280, 0.74], gallery: [1100, 0.7] };
+    if (q === 'alta') return { cover: [1920, 0.9], gallery: [1600, 0.86] };
+    return { cover: [1600, 0.84], gallery: [1400, 0.8] };
   };
   onPropertyImageFile = (e) => {
     const file = e.target.files && e.target.files[0];
@@ -5298,6 +5315,7 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
 
       site: {
         heroLabel: site.heroLabel, heroTitle: site.heroTitle, heroSubtitle: site.heroSubtitle,
+        heroLabelBold: !!site.heroLabelBold, heroLabelDestaque: !!site.heroLabelDestaque,
         metaTitle: site.metaTitle, metaDescription: site.metaDescription, metaKeywords: site.metaKeywords,
         brandName: site.brandName, creci: site.creci, phone: site.phone, whatsapp: site.whatsapp,
         email: site.email, address: site.address, footerTagline: site.footerTagline,
@@ -5349,6 +5367,8 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
         signatureImgRef: (el) => { if (el) el.style.backgroundImage = site.signatureUrl ? `url('${window.CRMData.photoURL(site.signatureUrl)}')` : 'none'; }
       },
       onSiteField_heroLabel: this.updateSiteField('heroLabel'),
+      onHeroLabelBold: (e) => this.setState({ siteContent: { ...this.state.siteContent, heroLabelBold: !!e.target.checked }, siteSaved: false }),
+      onHeroLabelDestaque: (e) => this.setState({ siteContent: { ...this.state.siteContent, heroLabelDestaque: !!e.target.checked }, siteSaved: false }),
       onSiteField_formAccessKey: this.updateSiteField('formAccessKey'),
       onSiteField_canonicalUrl: this.updateSiteField('canonicalUrl'),
       onToggleIndexable: (e) => this.setState({ siteContent: { ...this.state.siteContent, seoIndexable: e.target.checked }, siteSaved: false }),
