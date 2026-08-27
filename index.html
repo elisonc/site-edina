@@ -23,7 +23,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- A capa é a maior imagem da página e determina quando ela parece pronta: o download
        começa junto com o HTML, sem esperar o JavaScript decidir qual foto usar. -->
-  <link rel="preload" as="image" href="./media/capa/aura-1.jpg" fetchpriority="high">
   <!-- A folha de fontes sai do caminho crítico: entra como "print", que o navegador
        não espera, e vira estilo assim que chega. -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" media="print" onload="this.media='all';this.onload=null">
@@ -479,11 +478,24 @@ class Component extends DCLogic {
     // decidia por conta própria: a pintura já caía para as fotos do portfólio quando a
     // lista vinha vazia, mas o ciclo continuava olhando a lista original e concluía que
     // não havia o que passar. A capa aparecia parada.
+    // Olha o dado como está guardado, sem resolver imagem: diz se existe capa configurada
+    // mesmo que a foto ainda não tenha chegado do banco.
+    this._capasConfiguradas = () => {
+      try {
+        const cru = window.CRMData.getSiteContentRaw() || {};
+        return (cru.heroSlides || []).filter(Boolean).length > 0 || !!cru.heroImage;
+      } catch (e) { return false; }
+    };
+
     this._capas = () => {
       const site = this.state.siteContent || {};
       const lista = (site.heroSlides || []).filter(Boolean);
       if (lista.length) return lista;
       if (site.heroImage) return [site.heroImage];
+      // Capa guardada no banco leva um instante para chegar, e até lá ela resolve para vazio.
+      // Cair na foto de um imóvel aqui fazia um prédio piscar na capa a cada recarga, no
+      // lugar das praias. Melhor esperar a foto certa do que mostrar a errada.
+      if (this._capasConfiguradas()) return [];
       return (this.state.properties || []).map(p => p.image).filter(Boolean).slice(0, 3);
     };
 
@@ -745,12 +757,17 @@ class Component extends DCLogic {
     } else if (site.heroImage) {
       heroSectionStyle = `${heroBase};background-size:cover;background-position:center`;
       heroSectionRef = (el) => { if (el) el.style.backgroundImage = `url('${site.heroImage}')`; };
+    } else if (this._capasConfiguradas && this._capasConfiguradas()) {
+      // Mesmo tom de fundo de quando a capa está posta: o texto branco continua legível e a
+      // foto entra por cima sem salto de cor.
+      heroSectionStyle = `${heroBase};background:#141108`;
+      heroSectionRef = () => {};
     } else {
       heroSectionStyle = `${heroBase};background:repeating-linear-gradient(135deg,#d8cdb2,#d8cdb2 16px,#cfc2a1 16px,#cfc2a1 32px)`;
       heroSectionRef = () => {};
     }
 
-        // O quadro da logo segue a proporção da própria imagem. Fixá-lo em largura×0,28 supunha
+    // O quadro da logo segue a proporção da própria imagem. Fixá-lo em largura×0,28 supunha
     // uma logo deitada: uma marca quadrada entrava achatada e aparecia bem menor do que o
     // tamanho escolhido no painel. O teto impede que uma marca alta estique o cabeçalho.
     const alturaDaLogo = (el, url, larg, teto) => {
