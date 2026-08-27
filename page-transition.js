@@ -31,18 +31,23 @@
 
   function build() {
     // Sem assinatura configurada no CRM, nenhum arquivo de exemplo aparece no lugar dela.
-    var sigSrc = '';
+    var sigSrc = '', sigChave = '';
     var doorColor = '#c4a886';
     var speedMs = 420;
     try {
-      if (window.CRMData && window.CRMData.getSiteContent) {
-        var sc = window.CRMData.getSiteContent();
-        if (sc && sc.signatureUrl) sigSrc = sc.signatureUrl;
+      var D = window.CRMData;
+      if (D) {
+        // Lê o valor como está guardado. Ler o já resolvido devolvia vazio: a abertura
+        // acontece antes de o banco responder, e a assinatura trocada pelo painel fica lá.
+        // Era por isso que a alteração parecia não ter sido salva.
+        var sc = D.getSiteContentRaw ? D.getSiteContentRaw() : (D.getSiteContent ? D.getSiteContent() : {});
+        sigChave = (sc && sc.signatureUrl) || '';
+        sigSrc = (D.photoURL ? D.photoURL(sigChave) : '') || (/^(fotodoc|arqdoc|idb)/.test(sigChave) ? '' : sigChave);
         if (sc && sc.transitionDoorColor) doorColor = sc.transitionDoorColor;
         if (sc && sc.transitionSpeedMs) speedMs = parseInt(sc.transitionSpeedMs, 10) || 420;
       }
     } catch (e) {}
-    return { sigSrc: sigSrc, doorColor: doorColor, speedMs: speedMs };
+    return { sigSrc: sigSrc, sigChave: sigChave, doorColor: doorColor, speedMs: speedMs };
   }
 
   var overlay = document.createElement('div');
@@ -51,8 +56,19 @@
   overlay.innerHTML =
     '<div class="et-door et-door-l"></div>' +
     '<div class="et-door et-door-r"></div>' +
-    (conf.sigSrc ? '<img class="et-sig" src="' + conf.sigSrc + '" alt="" />' : '');
+    (conf.sigChave ? '<img class="et-sig" src="' + conf.sigSrc + '" alt="" />' : '');
   document.documentElement.appendChild(overlay);
+
+  // Assinatura guardada no banco chega depois. Buscar é uma ida à rede, então o quadro
+  // nasce vazio e recebe a imagem quando ela vem — em vez de ficar sem assinatura para
+  // sempre por ter perguntado cedo demais.
+  if (conf.sigChave && !conf.sigSrc && window.CRMData && window.CRMData.getDocURL) {
+    window.CRMData.getDocURL(conf.sigChave).then(function (u) {
+      if (!u) return;
+      var img = overlay.querySelector('.et-sig');
+      if (img) img.src = u;
+    }).catch(function () {});
+  }
   overlay.querySelectorAll('.et-door').forEach(function (d) { d.style.background = conf.doorColor; });
   applySpeed(conf.speedMs);
 

@@ -963,6 +963,11 @@
                 </select>
               </div>
               <div>
+                <div style="{{ propertyDraft.labelStyle }}">Entrega prevista</div>
+                <input value="{{ propertyDraft.delivery }}" onChange="{{ propertyDraft.onDelivery }}" placeholder="Ex.: Jan 2028, Dez 2026, Imediata" style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13.5px" />
+                <div style="font-size:11px;color:#8a7f6a;margin-top:4px">Aparece em destaque na página do imóvel e no card do portfólio.</div>
+              </div>
+              <div>
                 <div style="{{ propertyDraft.labelStyle }}">Finalidade</div>
                 <select value="{{ propertyDraft.purpose }}" onChange="{{ propertyDraft.onPurpose }}" style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13.5px">
                   <option value="venda">Venda</option>
@@ -1912,6 +1917,9 @@
             <div style="margin:10px 0 0 26px;max-width:340px">
               <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Transparência da marca d'água: <strong>{{ site.watermarkOpacityPct }}%</strong></div>
               <input type="range" min="5" max="90" step="5" value="{{ site.watermarkOpacityPct }}" onChange="{{ onWatermarkOpacity }}" onInput="{{ onWatermarkOpacity }}" style="width:100%;accent-color:var(--accent)" />
+              <div style="font-size:11.5px;color:#746b5c;margin:12px 0 6px">Tamanho da marca d'água: <strong>{{ site.watermarkSizePct }}%</strong> da largura da foto</div>
+              <input type="range" min="8" max="80" step="2" value="{{ site.watermarkSizePct }}" onChange="{{ onWatermarkSize }}" onInput="{{ onWatermarkSize }}" style="width:100%;accent-color:var(--accent)" />
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#8a7f6a;max-width:100%"><span>Discreta</span><span>Grande</span></div>
             </div>
             <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#4a4438;cursor:pointer;margin-top:10px">
               <input type="checkbox" checked="{{ site.watermarkBlog }}" onChange="{{ onToggleWatermarkBlog }}" style="margin-top:2px" />
@@ -3511,12 +3519,12 @@ class Component extends DCLogic {
   startNewProperty = () => {
     if ((this.state.properties || []).length >= (window.CRMData ? window.CRMData.getMaxProperties() : 50)) return;
     const nextId = this.state.properties.reduce((m, p) => Math.max(m, p.id), 0) + 1;
-    this.setState({ propertyDraft: { id: nextId, isNew: true, title: '', location: '', address: '', condo: '', type: '', price: '', area: '', unitOptions: [], suites: '', baths: '', garage: '', desc: '', amenities: '', stage: 'pronto', status: 'ativo', published: true, tone: nextId % 3, region: '', purpose: 'venda', featured: false, tour: false, image: '', images: [], plantas: [], ebookUrl: '', videoUrl: '', videoFile: '' } });
+    this.setState({ propertyDraft: { id: nextId, isNew: true, title: '', location: '', address: '', condo: '', type: '', price: '', area: '', unitOptions: [], suites: '', baths: '', garage: '', desc: '', amenities: '', stage: 'pronto', delivery: '', status: 'ativo', published: true, tone: nextId % 3, region: '', purpose: 'venda', featured: false, tour: false, image: '', images: [], plantas: [], ebookUrl: '', videoUrl: '', videoFile: '' } });
   };
   editProperty = (p) => () => {
     // Carrega a galeria deste imóvel sob demanda (não vem no preload da listagem).
     if (window.CRMData) window.CRMData.warm(window.CRMData.propertyKeys(p.id)).then(() => this.forceUpdate());
-    this.setState({ propertyDraft: { ...p, isNew: false, published: p.published !== false, price: String(p.price), area: String(p.area), suites: String(p.suites), baths: String(p.baths), garage: String(p.garage), amenities: (p.amenities || []).join(', '), address: p.address || '', unitOptions: p.unitOptions || [], image: p.image || '', images: p.images || [], plantas: p.plantas || [], ebookUrl: p.ebookUrl || '', videoUrl: p.videoUrl || '', videoFile: p.videoFile || '' } });
+    this.setState({ propertyDraft: { ...p, isNew: false, published: p.published !== false, price: String(p.price), area: String(p.area), suites: String(p.suites), baths: String(p.baths), garage: String(p.garage), amenities: (p.amenities || []).join(', '), address: p.address || '', delivery: p.delivery || '', unitOptions: p.unitOptions || [], image: p.image || '', images: p.images || [], plantas: p.plantas || [], ebookUrl: p.ebookUrl || '', videoUrl: p.videoUrl || '', videoFile: p.videoFile || '' } });
   };
   deleteProperty = (id) => () => {
     if (!window.confirm('Excluir este imóvel definitivamente?')) return;
@@ -3992,7 +4000,10 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       price: parseFloat(d.price) || 0, area: parseFloat(d.area) || 0, suites: parseInt(d.suites, 10) || 0,
       baths: parseInt(d.baths, 10) || 0, garage: parseInt(d.garage, 10) || 0, desc: d.desc, status: d.status, descProvisional: !!d.descProvisional,
       amenities: (d.amenities || '').split(',').map(s => s.trim()).filter(Boolean),
-      tone: d.tone || 0, region: d.region || '', purpose: d.purpose || 'venda', stage: d.stage || 'pronto', featured: !!d.featured, tour: !!d.tour,
+      tone: d.tone || 0, region: d.region || '', purpose: d.purpose || 'venda', stage: d.stage || 'pronto',
+      // Entrega prevista: texto livre porque a incorporadora anuncia de formas diferentes
+      // — "Jan 2028", "2º semestre de 2027", "Imediata". Data fixa não caberia em todas.
+      delivery: (d.delivery || '').trim(), featured: !!d.featured, tour: !!d.tour,
       published: d.published !== false,
       commission: d.commission !== '' && d.commission != null ? parseFloat(d.commission) : null,
       address: d.address || '', unitOptions: (d.unitOptions || []).filter(Boolean), image: d.image || '', images: d.images || [], plantas: d.plantas || [], ebookUrl: d.ebookUrl || '', ebookName: d.ebookName || '', videoUrl: d.videoUrl || '', videoFile: d.videoFile || ''
@@ -5004,6 +5015,7 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       onCommission: this.updatePropertyDraft('commission'),
       defaultCommission: `padrão: ${(s.integrations || {}).commission != null ? s.integrations.commission : 6}%`,
       stage: pd.stage || 'pronto', onStage: this.updatePropertyDraft('stage'),
+      delivery: pd.delivery || '', onDelivery: this.updatePropertyDraft('delivery'),
       imgStyle: pd.image ? `width:100px;height:70px;border:1px solid #ddd3bd;background-size:cover;background-position:center` : `width:100px;height:70px;border:1px dashed #ddd3bd;background:#f4eee0`,
       imgRef: (el) => { if (el) el.style.backgroundImage = pd.image ? `url('${window.CRMData.photoURL(pd.image)}')` : 'none'; },
       onImageFile: this.onPropertyImageFile,
@@ -5300,6 +5312,8 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
         footerLogoImgRef: (el) => { if (el && (site.footerLogoUrl || site.logoUrl)) el.style.backgroundImage = `url('${window.CRMData.photoURL(site.footerLogoUrl || site.logoUrl)}')`; },
         statYears: site.statYears || '+12 anos', statSold: site.statSold || '+180', statRating: site.statRating || '4.9/5', statFamilies: site.statFamilies || '+950',
         watermarkOpacityPct: Math.round((site.watermarkOpacity != null ? site.watermarkOpacity : 0.32) * 100),
+        // Largura da marca em relação à foto. Trinta por cento era o valor fixo de antes.
+        watermarkSizePct: site.watermarkSize != null ? site.watermarkSize : 30,
         watermarkEnabled: !!site.watermarkEnabled,
         watermarkBlog: !!site.watermarkBlog,
         hasHeroImage: !!site.heroImage,
@@ -5519,6 +5533,7 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
         onDesc: (e) => { const arr = [...(this.state.siteContent.services || this.defaultServices())]; arr[i] = { ...arr[i], desc: e.target.value }; this.setState({ siteContent: { ...this.state.siteContent, services: arr }, siteSaved: false }); }
       })),
       onWatermarkOpacity: (e) => this.setState({ siteContent: { ...this.state.siteContent, watermarkOpacity: parseInt(e.target.value, 10) / 100 }, siteSaved: false }),
+      onWatermarkSize: (e) => this.setState({ siteContent: { ...this.state.siteContent, watermarkSize: parseInt(e.target.value, 10) || 30 }, siteSaved: false }),
       onToggleWatermark: (e) => this.setState({ siteContent: { ...this.state.siteContent, watermarkEnabled: e.target.checked }, siteSaved: false }),
       onToggleWatermarkBlog: (e) => this.setState({ siteContent: { ...this.state.siteContent, watermarkBlog: e.target.checked }, siteSaved: false }),
       onHeroImageFile: this.onHeroImageFile, removeHeroImage: this.removeHeroImage,

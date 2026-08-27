@@ -260,7 +260,14 @@
   const MAX_BLOCOS = 20;
   const nomeBloco = (chave, n) => 'fotos_' + chave + '_' + n;
 
-  async function guardarImagens(chave, fotos) {
+  // Capas ocupam a tela inteira e são a primeira coisa que se vê: espremer uma foto de
+  // 1920px em 190 KB deixa marca visível, ainda mais esticada num monitor grande. Elas
+  // ganham cota própria e nunca descem de 1600px de largura. São quatro imagens — o peso
+  // extra fica só nelas, e a prévia local continua cobrindo a primeira pintura.
+  const COTA_CAPA = 420 * 1024;
+  const ETAPAS_CAPA = [[1920, 0.88], [1920, 0.82], [1760, 0.78], [1600, 0.74]];
+
+  async function guardarImagens(chave, fotos, cotasEspeciais) {
     await ready;
     if (!firebase.apps.length) return null;
 
@@ -292,10 +299,14 @@
     const blocos = [[]];
     let usadoNoBloco = 0;
     let total = 0;
-    for (const original of validas) {
-      let f = original;
-      for (let i = 0; i < etapas.length && f.length > cota; i++) {
-        f = await reduzir(f, etapas[i][0], etapas[i][1]);
+    for (let idx = 0; idx < validas.length; idx++) {
+      let f = validas[idx];
+      // Imagem marcada como capa segue a régua dela; as demais, a da qualidade escolhida.
+      const ehCapa = !!(cotasEspeciais && cotasEspeciais[idx]);
+      const cotaDesta = ehCapa ? COTA_CAPA : cota;
+      const etapasDesta = ehCapa ? ETAPAS_CAPA : etapas;
+      for (let i = 0; i < etapasDesta.length && f.length > cotaDesta; i++) {
+        f = await reduzir(f, etapasDesta[i][0], etapasDesta[i][1]);
       }
       if (usadoNoBloco + f.length > TETO_BLOCO) {
         if (blocos.length >= MAX_BLOCOS) break;
@@ -655,8 +666,12 @@
         // Não deu para ler alguma que já estava guardada? Regravar renumeraria os blocos e a
         // apagaria. Melhor não mexer: a nova continua neste navegador para a próxima vez.
         if (!faltou) {
+          // Marca quais das imagens enviadas são capas, para elas seguirem a régua própria.
+          // A lista precisa acompanhar a mesma filtragem aplicada às imagens.
+          const ehCapa = [];
+          pendentes.forEach((alvo, i) => { if (dados[i]) ehCapa.push(alvo.slide !== undefined); });
           let gravadas = 0;
-          try { gravadas = await guardarImagens('site', dados.filter(Boolean)) || 0; }
+          try { gravadas = await guardarImagens('site', dados.filter(Boolean), ehCapa) || 0; }
           catch (e) { mediaErrors.push({ path: 'fotos_site', code: e && (e.code || e.message) }); }
           if (gravadas) {
             let idx = 0;

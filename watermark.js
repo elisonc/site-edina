@@ -21,7 +21,7 @@
     return false;
   }
 
-  function makeMark(logo, brand, opacity) {
+  function makeMark(logo, brand, opacity, tam) {
     var mark;
     var op = (opacity != null && !isNaN(opacity)) ? opacity : 0.32;
     if (logo) {
@@ -33,7 +33,13 @@
       // Dimensões declaradas: sem elas o navegador não sabe quanto espaço a marca vai ocupar
       // e reposiciona o conteúdo quando ela carrega — e são sete por página.
       mark.width = 300; mark.height = 300;
-      mark.style.cssText = 'width:auto;height:auto;max-width:30%;max-height:55%;object-fit:contain;opacity:' + op + ';filter:drop-shadow(0 1px 5px rgba(0,0,0,.45))';
+      // O tamanho era fixo em 30% da largura da foto. Agora vem do painel, para a marca
+      // caber bem tanto numa foto deitada quanto numa em pé. A altura acompanha na mesma
+      // proporção, então a marca nunca fica esticada.
+      var larg = Math.max(8, Math.min(80, parseInt(tam, 10) || 30));
+      mark.style.cssText = 'width:auto;height:auto;max-width:' + larg + '%;max-height:' +
+        Math.round(larg * 1.8) + '%;object-fit:contain;opacity:' + op +
+        ';filter:drop-shadow(0 1px 5px rgba(0,0,0,.45))';
     } else {
       mark = document.createElement('div');
       mark.textContent = brand;
@@ -61,7 +67,7 @@
       if (el.querySelector('[style*="background-image"], [style*="background-size:cover"]')) return;
       if (shouldSkip(el, site)) return;
       if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
-      el.appendChild(makeMark(logo, brand, site.watermarkOpacity));
+      el.appendChild(makeMark(logo, brand, site.watermarkOpacity, site.watermarkSize));
     });
   }
 
