@@ -4047,8 +4047,12 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
   onTestimonialAudioFile = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    if (file.size > 3 * 1024 * 1024) {
-      window.alert('Áudio muito grande (máx. recomendado 3MB) — pode não salvar por limite de armazenamento do navegador. Tente um arquivo menor.');
+    // O aviso de 3 MB era da época em que o áudio precisava caber num documento só. Agora
+    // ele é cortado em pedaços e o tamanho deixou de ser problema; 25 MB é bem mais do que
+    // qualquer depoimento falado, e o teto existe só para evitar envio errado de arquivo.
+    if (file.size > 25 * 1024 * 1024) {
+      window.alert('Este áudio tem ' + (file.size / 1048576).toFixed(0) + ' MB. ' +
+        'Depoimento falado costuma ter menos de 5 MB — confira se o arquivo é o certo.');
     }
     const reader = new FileReader();
     reader.onload = () => {
