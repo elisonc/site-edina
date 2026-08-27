@@ -231,6 +231,20 @@ class Component extends DCLogic {
     }));
 
     const site = s.site || {};
+        // O quadro da logo segue a proporção da própria imagem. Fixá-lo em largura×0,28 supunha
+    // uma logo deitada: uma marca quadrada entrava achatada e aparecia bem menor do que o
+    // tamanho escolhido no painel. O teto impede que uma marca alta estique o cabeçalho.
+    const alturaDaLogo = (el, url, larg, teto) => {
+      if (!el || !url) return;
+      const im = new Image();
+      im.onload = () => {
+        if (!im.naturalWidth) return;
+        const h = Math.min(Math.round(larg * im.naturalHeight / im.naturalWidth), teto);
+        el.style.height = h + 'px';
+        el.style.width = Math.round(h * im.naturalWidth / im.naturalHeight) + 'px';
+      };
+      im.src = url;
+    };
     return {
       onFontDec: this.adjustFont(-10), onFontInc: this.adjustFont(10), onFontReset: this.resetFont,
       whatsappFloatLink: site.contactMode === 'link' && site.contactLink ? site.contactLink : `https://wa.me/${site.whatsapp || '5547999991234'}?text=${encodeURIComponent('Olá! Vim pelo site, favoritei alguns imóveis e gostaria de mais informações. Poderia me ajudar?')}`,
@@ -238,7 +252,8 @@ class Component extends DCLogic {
       brandName: site.brandName || 'Edina Oliveira', creci: site.creci || 'CRECI 00.000-F',
       hasLogo: !!site.logoUrl, hasNoLogo: !site.logoUrl,
       logoImgStyle: site.logoUrl ? `width:${site.logoWidth || 210}px;height:${Math.round((site.logoWidth||210)*0.28)}px;background-size:contain;background-repeat:no-repeat;background-position:left center` : `width:0;height:0`,
-      logoImgRef: (el) => { if (el && site.logoUrl) el.style.backgroundImage = `url('${site.logoUrl}')`; },
+      logoImgRef: (el) => { if (el && site.logoUrl) { el.style.backgroundImage = `url('${site.logoUrl}')`;
+        alturaDaLogo(el, site.logoUrl, site.logoWidth || 210, 132); } },
       hasItems: favoriteCards.length > 0,
       hasNoItems: favoriteCards.length === 0,
       favoriteCards

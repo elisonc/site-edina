@@ -750,6 +750,20 @@ class Component extends DCLogic {
       heroSectionRef = () => {};
     }
 
+        // O quadro da logo segue a proporção da própria imagem. Fixá-lo em largura×0,28 supunha
+    // uma logo deitada: uma marca quadrada entrava achatada e aparecia bem menor do que o
+    // tamanho escolhido no painel. O teto impede que uma marca alta estique o cabeçalho.
+    const alturaDaLogo = (el, url, larg, teto) => {
+      if (!el || !url) return;
+      const im = new Image();
+      im.onload = () => {
+        if (!im.naturalWidth) return;
+        const h = Math.min(Math.round(larg * im.naturalHeight / im.naturalWidth), teto);
+        el.style.height = h + 'px';
+        el.style.width = Math.round(h * im.naturalWidth / im.naturalHeight) + 'px';
+      };
+      im.src = url;
+    };
     return {
       whatsappLink: site.contactMode === 'link' && site.contactLink ? site.contactLink : `https://wa.me/${site.whatsapp || d.whatsapp}?text=${encodeURIComponent('Olá! Gostaria de conhecer os imóveis da ' + (site.brandName || d.brand) + '.')}`,
       onFontDec: this.adjustFont(-10), onFontInc: this.adjustFont(10), onFontReset: this.resetFont,
@@ -794,9 +808,12 @@ class Component extends DCLogic {
       hasFavorites: Object.values(this.state.favorites || {}).filter(Boolean).length > 0,
       hasLogo: !!site.logoUrl, hasNoLogo: !site.logoUrl,
       logoImgStyle: site.logoUrl ? `width:${site.logoWidth || 210}px;height:${Math.round((site.logoWidth||210)*0.28)}px;background-size:contain;background-repeat:no-repeat;background-position:left center` : `width:0;height:0`,
-      logoImgRef: (el) => { if (el && site.logoUrl) el.style.backgroundImage = `url('${site.logoUrl}')`; },
+      logoImgRef: (el) => { if (el && site.logoUrl) { el.style.backgroundImage = `url('${site.logoUrl}')`;
+        alturaDaLogo(el, site.logoUrl, site.logoWidth || 210, 132); } },
       footerLogoImgStyle: (site.footerLogoUrl || site.logoUrl) ? `width:${site.footerLogoWidth || 170}px;height:${Math.round((site.footerLogoWidth||170)*0.28)}px;background-size:contain;background-repeat:no-repeat;background-position:left center;margin-bottom:16px` : `width:0;height:0`,
-      footerLogoImgRef: (el) => { if (el && (site.footerLogoUrl || site.logoUrl)) el.style.backgroundImage = `url('${site.footerLogoUrl || site.logoUrl}')`; },
+      footerLogoImgRef: (el) => { const u = site.footerLogoUrl || site.logoUrl;
+        if (el && u) { el.style.backgroundImage = `url('${u}')`;
+        alturaDaLogo(el, u, site.footerLogoWidth || 170, 110); } },
       heroSectionStyle, heroSectionRef, heroSlideItems,
       heroLabel: site.heroLabel || 'Navegantes · Itajaí · Camboriú · Praia Brava',
       heroTitle: site.heroTitle || 'Bem-vindos ao litoral de alto padrão',

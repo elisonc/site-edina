@@ -4977,7 +4977,7 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
     this._leadEditPropertyIndex = {};
     (s.properties || []).forEach(p => { if (p.title) this._leadEditPropertyIndex[p.title.trim().toLowerCase()] = { id: p.id, price: p.price || 0 }; });
 
-    return {
+        return {
       isLoggedIn: !!s.session, isLoggedOut: !s.session,
       sessionUser: s.session ? s.session.username : '',
       isMasterViewAs: role === 'master',
