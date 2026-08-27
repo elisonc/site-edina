@@ -3041,38 +3041,63 @@ class Component extends DCLogic {
     if (this._reparando || this._reparou) return;
     const D = window.CRMData;
     if (!D || !window.FirebaseDB || !window.FirebaseDB.enabled) return;
+    this._reparando = true;
 
-    // Duas coisas precisam sair do dado: o endereço idb…, que só existe neste navegador, e a
-    // imagem embutida inteira, que incha o documento até ele não caber mais no banco.
-    const problema = (v) => typeof v === 'string' &&
-      (/^idb/.test(v) || (v.indexOf('data:') === 0 && v.length > 60 * 1024));
-    const varrer = (o) => {
-      if (typeof o === 'string') return problema(o);
-      if (Array.isArray(o)) return o.some(varrer);
-      if (o && typeof o === 'object') return Object.keys(o).some(k => varrer(o[k]));
+    const preso = (v) => typeof v === 'string' && /^idb/.test(v);
+    const pesado = (v) => typeof v === 'string' && v.indexOf('data:') === 0 && v.length > 60 * 1024;
+    const varrer = (o, teste) => {
+      if (typeof o === 'string') return teste(o);
+      if (Array.isArray(o)) return o.some(x => varrer(x, teste));
+      if (o && typeof o === 'object') return Object.keys(o).some(k => varrer(o[k], teste));
       return false;
     };
 
-    // Gravar de novo é o que dispara a conversão: o caminho de gravação leva para o banco
-    // tudo o que estiver preso ou embutido. Vale a mesma regra para toda entidade.
-    const tarefas = [
-      ['imóveis',    () => D.getPropertiesRaw(),  (v) => D.saveProperties(v)],
-      ['contatos',   () => D.getLeads(),          (v) => D.saveLeads(v)],
-      ['site',       () => D.getSiteContentRaw(), (v) => D.saveSiteContent(v)],
-      ['blog',       () => D.getPosts(),          (v) => D.savePosts(v)],
-      ['depoimentos',() => D.getTestimonials(),   (v) => D.saveTestimonials(v)]
-    ];
-    const pendentes = tarefas.filter(([, ler]) => { try { return varrer(ler()); } catch (e) { return false; } });
-    if (!pendentes.length) { this._reparou = true; return; }
+    // Reunir as chaves presas para descobrir se ESTE navegador tem os arquivos. Insistir
+    // num arquivo que não está aqui não conserta nada — e a gravação ainda arriscaria
+    // empurrar dado velho por cima do bom.
+    const chaves = [];
+    const juntar = (o) => {
+      if (typeof o === 'string') { if (preso(o)) chaves.push(o); return; }
+      if (Array.isArray(o)) return o.forEach(juntar);
+      if (o && typeof o === 'object') Object.keys(o).forEach(k => juntar(o[k]));
+    };
+    juntar(D.getPropertiesRaw());
 
-    this._reparando = true;
-    pendentes.forEach(([nome, ler, gravar], i) => {
-      // Espaçadas: cinco gravações ao mesmo tempo disputariam a rede e algumas falhariam.
-      setTimeout(() => { try { gravar(ler()); } catch (e) {} }, i * 2500);
-    });
-    // Uma passagem por sessão. Insistir num arquivo que não está neste aparelho repetiria a
-    // mesma gravação para sempre, sem nunca resolver.
-    setTimeout(() => { this._reparando = false; this._reparou = true; }, pendentes.length * 2500 + 15000);
+    const temOsArquivos = () => {
+      if (!chaves.length) return Promise.resolve(false);
+      return Promise.all(chaves.slice(0, 6).map(k => D.getMediaRaw ? D.getMediaRaw(k).catch(() => '') : ''))
+        .then(rs => rs.some(Boolean)).catch(() => false);
+    };
+
+    // Parte SEMPRE do que está no banco, e nunca da cópia deste navegador. Esta era a
+    // falha: um aparelho com a lista atrasada regravava por cima do que outro tinha
+    // acabado de arrumar, e o ebook voltava a apontar para o arquivo que só existia aqui.
+    window.FirebaseDB.fetchAll().then(remoto => {
+      if (!remoto) return;
+      return temOsArquivos().then(podeResgatar => {
+        const tarefas = [];
+        const naoPodeEsperar = (nome, dados, gravar) => {
+          if (!dados) return;
+          if (varrer(dados, pesado)) tarefas.push([nome, dados, gravar]);
+        };
+        // Imagem embutida incha o documento e vale regravar de qualquer aparelho.
+        naoPodeEsperar('imóveis', remoto.properties, v => D.saveProperties(v));
+        naoPodeEsperar('contatos', remoto.leads, v => D.saveLeads(v));
+        naoPodeEsperar('site', remoto.site, v => D.saveSiteContent(v));
+        naoPodeEsperar('blog', remoto.posts, v => D.savePosts(v));
+        naoPodeEsperar('depoimentos', remoto.testimonials, v => D.saveTestimonials(v));
+        // Arquivo preso só este aparelho resgata, e só se ele de fato o tiver.
+        if (podeResgatar && varrer(remoto.properties, preso))
+          tarefas.push(['arquivos presos', remoto.properties, v => D.saveProperties(v)]);
+
+        if (!tarefas.length) { this._reparou = true; this._reparando = false; return; }
+        tarefas.forEach(([, dados, gravar], i) => {
+          // Espaçadas: várias gravações ao mesmo tempo disputariam a rede.
+          setTimeout(() => { try { gravar(dados); } catch (e) {} }, i * 2500);
+        });
+        setTimeout(() => { this._reparando = false; this._reparou = true; }, tarefas.length * 2500 + 12000);
+      });
+    }).catch(() => { this._reparando = false; });
   };
 
   // Conta as fotos que o site realmente tem — percorrendo imóveis, blog, depoimentos e
