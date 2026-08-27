@@ -3843,8 +3843,48 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
   onPropertyVideoFile = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
+    const MB = file.size / 1048576;
+    // Enquanto o envio de arquivos grandes (Firebase Storage) não estiver ligado, o vídeo
+    // teria de caber no banco de dados — e banco de documentos não é lugar de arquivo
+    // grande. Um vídeo de 50 MB vira 97 documentos, 39 s de envio e 116 MB de memória no
+    // celular, e nada toca antes de tudo chegar. Até 12 MB ainda é honesto; acima disso o
+    // caminho é o Storage, ou um link do YouTube.
+    const TETO_SEM_STORAGE = 12;
+    const temStorage = !!(window.FirebaseDB && window.FirebaseDB.storageAtivo && window.FirebaseDB.storageAtivo());
+    if (!temStorage && MB > TETO_SEM_STORAGE) {
+      const pedacos = Math.ceil(MB * 1.33 * 1024 / 700);
+      window.alert(
+        'Este vídeo tem ' + MB.toFixed(0) + ' MB, e o envio de arquivos grandes ainda não está ligado neste site.
+
+' +
+        'Sem ele, o vídeo precisaria ser fatiado em ' + pedacos + ' pedaços dentro do banco de dados: ' +
+        'levaria cerca de ' + Math.ceil(pedacos * 0.4) + 's para subir, travaria o site no celular ' +
+        'e esgotaria a cota com poucos acessos.
+
+' +
+        'Duas saídas:
+' +
+        '1) Use o campo "Link do vídeo" com um endereço do YouTube ou Vimeo — é grátis, ' +
+        'sem limite de tamanho, e carrega mais rápido do que qualquer arquivo hospedado aqui.
+' +
+        '2) Para hospedar no próprio site (até 5 GB), publique as regras do Storage no ' +
+        'Firebase — o arquivo storage.rules está no projeto.'
+      );
+      e.target.value = '';
+      return;
+    }
+    this.setState({ videoUploading: true, videoUploadMsg: 'Enviando vídeo de ' + MB.toFixed(0) + ' MB…' });
     (window.CRMData ? window.CRMData.saveVideoFile(file) : Promise.resolve(''))
-      .then(key => this.setState({ propertyDraft: { ...this.state.propertyDraft, videoFile: key } }));
+      .then(key => {
+        if (!key) throw new Error('sem chave');
+        this.setState({ propertyDraft: { ...this.state.propertyDraft, videoFile: key },
+                        videoUploading: false, videoUploadMsg: '' });
+        this.refreshStorage();
+      })
+      .catch(() => {
+        this.setState({ videoUploading: false, videoUploadMsg: '' });
+        window.alert('Não foi possível guardar o vídeo. Tente um arquivo menor, ou use o campo "Link do vídeo".');
+      });
   };
   removePropertyVideoFile = () => this.setState({ propertyDraft: { ...this.state.propertyDraft, videoFile: '' } });
   cancelPropertyDraft = () => this.setState({ propertyDraft: null });
