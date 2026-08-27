@@ -21,14 +21,46 @@
     });
   }
 
-  const ready = Promise.all([
-    loadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js'),
-    loadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js'),
-    loadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js')
-  ]).then(() => {
-    firebase.initializeApp(cfg);
-    return true;
-  }).catch(() => false);
+  const SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
+
+  // A biblioteca do banco pesa cerca de 100 KB e leva tempo para ser interpretada. Ela não
+  // é necessária para a primeira tela: a página já nasce com o que está guardado no
+  // navegador. Buscá-la antes da primeira pintura atrasava a maior imagem da tela e
+  // prendia a linha principal do navegador. Agora espera a página terminar de desenhar, e
+  // vai no primeiro momento de folga — com teto, para nunca deixar de carregar.
+  function quandoDerFolga() {
+    return new Promise((resolve) => {
+      let feito = false;
+      const ir = () => { if (feito) return; feito = true; resolve(); };
+      const agendar = () => (window.requestIdleCallback
+        ? requestIdleCallback(ir, { timeout: 1000 })
+        : setTimeout(ir, 120));
+      if (document.readyState === 'complete') agendar();
+      else window.addEventListener('load', agendar, { once: true });
+      setTimeout(ir, 2500);
+    });
+  }
+
+  const ready = quandoDerFolga()
+    .then(() => Promise.all([
+      loadScript(SDK + 'firebase-app-compat.js'),
+      loadScript(SDK + 'firebase-firestore-compat.js')
+    ]))
+    .then(() => { firebase.initializeApp(cfg); return true; })
+    .catch(() => false);
+
+  // O Storage só é buscado quando alguém realmente vai enviar um arquivo por ele. São mais
+  // 30 KB que o visitante nunca precisa — e que, com o Storage recusando a origem como
+  // hoje, ninguém usava.
+  let storagePronto = null;
+  function garantirStorage() {
+    if (storagePronto) return storagePronto;
+    storagePronto = ready
+      .then(ok => (ok ? loadScript(SDK + 'firebase-storage-compat.js') : null))
+      .then(() => !!(window.firebase && firebase.storage))
+      .catch(() => false);
+    return storagePronto;
+  }
 
   // Prazo máximo de um envio ao Storage. Passou disso, seguimos sem a imagem: é preferível
   // publicar o imóvel sem foto a deixar o cadastro inteiro esperando por ela.
@@ -139,6 +171,10 @@
       return (await guardarNoDocumento(value, dataUrl, cache)) || value;
     }
     try {
+      if (!(await garantirStorage())) {
+        storageIndisponivel = true;
+        return (await guardarNoDocumento(value, dataUrl, cache)) || value;
+      }
       const ref = firebase.storage().ref(path);
       // O envio precisa de prazo. Quando o Storage recusa a origem, o SDK não devolve erro:
       // fica retentando em silêncio e a promessa nunca se resolve — a gravação do imóvel
