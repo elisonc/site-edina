@@ -3,7 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="./support.js"></script>
+<!-- defer: o navegador busca em paralelo e executa nesta ordem antes de a página ficar
+     pronta, sem parar a leitura do HTML. Os dados vêm antes do framework, então ele já
+     encontra tudo no lugar na hora de desenhar a primeira tela. -->
+<script src="./firebase-config.js" defer></script>
+<script src="./firebase-db.js" defer></script>
+<script src="./crm-data.js" defer></script>
+<script src="./support.js" defer></script>
 </head>
 <body>
 <x-dc>
@@ -113,9 +119,6 @@
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <script src="./facebook-login.js"></script>
   <script src="./google-login.js"></script>
-  <script src="./firebase-config.js"></script>
-  <script src="./firebase-db.js"></script>
-  <script src="./crm-data.js"></script>
   <script src="./favicon.js"></script>
   <script src="./docx-import.js"></script>
   <script src="./publish.js"></script>

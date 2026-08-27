@@ -79,8 +79,12 @@
     overlay.style.visibility = 'visible';
     overlay.style.pointerEvents = 'auto';
     overlay.classList.remove('et-sig-visible');
-    void overlay.offsetWidth;
-    overlay.classList.add('et-sig-visible');
+    // Ler offsetWidth aqui reiniciava a transição, mas obriga o navegador a recalcular o
+    // layout na hora — parada de milissegundos bem no momento em que a página abre. Esperar
+    // dois quadros tem o mesmo efeito e não interrompe nada.
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { overlay.classList.add('et-sig-visible'); });
+    });
     setTimeout(function () {
       overlay.classList.add('et-open');
       setTimeout(function () {

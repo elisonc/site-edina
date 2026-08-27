@@ -14,7 +14,13 @@
      <head> do HTML servido, e não no <helmet>: o robô do Google lê a página antes de
      qualquer script rodar, e uma tag inserida depois pode não ser vista na verificação. -->
 <meta name="google-site-verification" content="VgsX67vTxBNdKw2pUx2xfKiwNRdNp-YLiCyYaax52a8">
-<script src="./support.js"></script>
+<!-- defer: o navegador busca em paralelo e executa nesta ordem antes de a página ficar
+     pronta, sem parar a leitura do HTML. Os dados vêm antes do framework, então ele já
+     encontra tudo no lugar na hora de desenhar a primeira tela. -->
+<script src="./firebase-config.js" defer></script>
+<script src="./firebase-db.js" defer></script>
+<script src="./crm-data.js" defer></script>
+<script src="./support.js" defer></script>
 </head>
 <body>
 <x-dc>
@@ -100,9 +106,6 @@
       h1{font-size:clamp(24px,8vw,32px) !important}
     }
   </style>
-  <script src="./firebase-config.js"></script>
-  <script src="./firebase-db.js"></script>
-  <script src="./crm-data.js"></script>
   <script src="./favicon.js" defer></script>
   <script src="./seo.js" defer></script>
   <script src="./analytics.js" defer></script>
@@ -301,7 +304,6 @@
           <div style="font-family:'Cormorant Garamond',serif;font-size:34px;color:var(--tan);line-height:1;margin-bottom:10px">"</div>
           <p style="font-size:14.5px;line-height:1.7;color:#3a3529;margin:0 0 22px;font-style:italic">{{ t.text }}</p>
           <div style="display:flex;align-items:center;gap:12px;border-top:1px solid var(--bg-alt);padding-top:16px">
-            <div style="{{ t.avatarStyle }}"></div>
             <div style="flex:1">
               <div style="font-size:13.5px;font-weight:700">{{ t.name }}</div>
               <div style="font-size:12px;color:#746b5c">{{ t.role }}</div>
@@ -703,14 +705,8 @@ class Component extends DCLogic {
     const d = window.SITE_INFO || {};
     const properties = this.state.properties || [];
     const blogPosts = this.state.posts || [];
-    const testimonialTones = [
-      'background:#f1ece0;width:44px;height:44px;border-radius:50%',
-      'background:#eceee9;width:44px;height:44px;border-radius:50%',
-      'background:#efe8e8;width:44px;height:44px;border-radius:50%'
-    ];
     const testimonials = (this.state.testimonials || []).map(t => ({
       text: t.text, name: t.name, role: t.role,
-      avatarStyle: testimonialTones[(t.tone || 0) % 3],
       hasAudio: !!t.audioUrl,
       audioRef: (el) => ligarAudio(el, t.audioUrl)
     }));
