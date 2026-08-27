@@ -620,6 +620,28 @@
             </div>
           </div>
 
+          <div style="margin-top:22px;border-top:1px solid #eee4d0;padding-top:18px">
+            <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+              <div style="font-size:13px;font-weight:700;color:#4a4438">Botões mais clicados</div>
+              <div style="font-size:12px;color:#8a7f6a">{{ cliques.resumo }}</div>
+            </div>
+            <div style="font-size:11.5px;color:#8a7f6a;margin-bottom:12px">Conta os cliques dos visitantes no site — WhatsApp, agendar visita, ebook, mapa, cards de imóvel.</div>
+            <div style="display:grid;gap:6px">
+              <sc-for list="{{ cliques.lista }}" as="cq" hint-placeholder-count="5">
+                <div style="display:flex;align-items:center;gap:12px;font-size:13px">
+                  <div style="flex:0 0 190px;color:#4a4438;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ cq.nome }}</div>
+                  <div style="flex:1;height:16px;background:#f0e9da;position:relative;min-width:60px">
+                    <div style="{{ cq.barraStyle }}"></div>
+                  </div>
+                  <div style="flex:0 0 76px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums">{{ cq.rotulo }}</div>
+                </div>
+              </sc-for>
+              <sc-if value="{{ cliques.vazio }}" hint-placeholder-val="{{ true }}">
+                <div style="color:#7d7157;font-size:13px">Nenhum clique registrado ainda. Os números aparecem conforme os visitantes usam o site.</div>
+              </sc-if>
+            </div>
+          </div>
+
           <div style="margin-top:20px">
             <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:#4a4438">Acessos por horário do dia</div>
             <div style="display:grid;grid-template-columns:repeat(24,1fr);gap:2px;align-items:end;height:60px">
@@ -2544,6 +2566,7 @@ class Component extends DCLogic {
     // Também na abertura, e não só quando o banco muda: o conserto precisa acontecer mesmo
     // que ninguém edite nada nesta sessão.
     setTimeout(this.repararArquivosPresos, 6000);
+    setTimeout(this.carregarCliques, 1500);
     // Contatos enviados pelo site chegam no banco, não neste navegador — busca os que
     // faltam antes de montar a lista, senão o painel mostra só o que foi digitado aqui.
     // O painel também precisa acompanhar o banco: sem escutar estas mudanças, uma edição
@@ -2981,6 +3004,17 @@ class Component extends DCLogic {
   // existe AQUI, então este navegador é justamente o que consegue mandá-lo para o banco —
   // e basta gravar de novo, porque a gravação leva para o banco tudo o que estiver preso.
   // Assim o conserto acontece sozinho, sem depender de alguém lembrar de reenviar.
+  // Busca os cliques do mês atual e do anterior — a virada de mês não pode zerar o painel.
+  carregarCliques = () => {
+    if (!window.FirebaseDB || !window.FirebaseDB.lerCliques) return;
+    const d = new Date();
+    const chave = (dt) => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0');
+    const anterior = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+    window.FirebaseDB.lerCliques([chave(anterior), chave(d)])
+      .then(r => this.setState({ cliques: r }))
+      .catch(() => {});
+  };
+
   repararArquivosPresos = () => {
     if (this._reparando || this._reparou) return;
     const D = window.CRMData;
@@ -5102,6 +5136,24 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       discardReason: s.discardReason || '', onDiscardReasonChange: this.onDiscardReasonChange,
       isDiscardReasonOther: s.discardReason === 'Outro', discardReasonOther: s.discardReasonOther || '', onDiscardReasonOtherChange: this.onDiscardReasonOtherChange,
       confirmDiscard: this.confirmDiscard,
+      cliques: (() => {
+        const dados = s.cliques || { total: 0, botoes: [] };
+        const lista = (dados.botoes || []).slice(0, 8);
+        const maior = lista.length ? lista[0].cliques : 0;
+        return {
+          vazio: !lista.length,
+          resumo: dados.total ? dados.total.toLocaleString('pt-BR') + ' cliques nos últimos 2 meses' : '',
+          lista: lista.map(b => ({
+            nome: b.nome,
+            rotulo: b.cliques.toLocaleString('pt-BR') +
+                    (dados.total ? '  ' + Math.round(b.cliques / dados.total * 100) + '%' : ''),
+            // A barra compara com o mais clicado, que é a leitura útil: mostra a distância
+            // entre o primeiro e os demais.
+            barraStyle: 'position:absolute;left:0;top:0;bottom:0;background:var(--accent);width:' +
+                        (maior ? Math.max(3, Math.round(b.cliques / maior * 100)) : 0) + '%'
+          }))
+        };
+      })(),
       isDashboard: s.tab === 'dashboard' && !s.selectedLeadId, isKanban: s.tab === 'kanban' && !s.selectedLeadId, isTable: s.tab === 'table' && !s.selectedLeadId,
       isProperties: s.tab === 'properties' && !s.selectedLeadId, isImport: s.tab === 'import' && !s.selectedLeadId, isBlogAdmin: s.tab === 'blog' && !s.selectedLeadId, isTestimonials: s.tab === 'testimonials' && !s.selectedLeadId,
       isIntegrations: s.tab === 'integrations' && perms.integrations && !s.selectedLeadId, isAgenda: s.tab === 'agenda' && !s.selectedLeadId,

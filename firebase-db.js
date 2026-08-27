@@ -742,6 +742,51 @@
     return lista;
   }
 
+  // Cliques nos botões. Um documento por mês, com um campo por botão, somado com increment
+  // — dois visitantes clicando ao mesmo tempo não sobrescrevem a conta um do outro, porque
+  // quem soma é o banco e não o navegador. Doze documentos por ano é todo o custo.
+  function mesAtual() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+
+  async function somarCliques(lote) {
+    await ready;
+    if (!firebase.apps.length || !lote) return false;
+    const campos = {};
+    Object.keys(lote).forEach(k => {
+      if (!k || !lote[k]) return;
+      campos['b_' + k] = firebase.firestore.FieldValue.increment(lote[k]);
+    });
+    if (!Object.keys(campos).length) return false;
+    campos.atualizadoEm = Date.now();
+    await DOC('cliques_' + mesAtual()).set(campos, { merge: true });
+    return true;
+  }
+
+  // Lê os meses pedidos e devolve a lista ordenada do mais clicado para o menos.
+  async function lerCliques(meses) {
+    await ready;
+    if (!firebase.apps.length) return { total: 0, botoes: [] };
+    const alvos = meses && meses.length ? meses : [mesAtual()];
+    const soma = {};
+    for (const m of alvos) {
+      try {
+        const snap = await DOC('cliques_' + m).get();
+        if (!snap.exists) continue;
+        const d = snap.data() || {};
+        Object.keys(d).forEach(k => {
+          if (k.indexOf('b_') !== 0) return;
+          const nome = k.slice(2);
+          soma[nome] = (soma[nome] || 0) + (d[k] || 0);
+        });
+      } catch (e) {}
+    }
+    const botoes = Object.keys(soma).map(n => ({ nome: n, cliques: soma[n] }))
+      .sort((a, b) => b.cliques - a.cliques);
+    return { total: botoes.reduce((t, b) => t + b.cliques, 0), botoes: botoes };
+  }
+
   async function save(name, payload) {
     await ready;
     if (!firebase.apps.length) return false;
@@ -892,6 +937,8 @@
     fetchAll: fetchAll,
     watch: watch,
     logPageview: logPageview,
+    somarCliques: somarCliques,
+    lerCliques: lerCliques,
     fetchAnalytics: fetchAnalytics,
     watchAnalytics: watchAnalytics
   };
