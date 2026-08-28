@@ -911,6 +911,8 @@
     },
     resizeImage,
     resizeDataUrl,
+    // Usado pelo painel para desenhar a prévia do realce sem gravar nada.
+    realcarNitidezEm: realcarNitidez,
     // ---- Photo storage (IndexedDB) ----
     // 50 empreendimentos x 50 fotos como base64 em localStorage estoura a cota (5-10MB).
     // As fotos vão para o IndexedDB (centenas de MB) e no registro do imóvel fica só a

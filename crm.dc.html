@@ -1851,9 +1851,22 @@
           </div>
           <div style="font-size:12.5px;color:#3e7a4f;margin-top:12px;font-weight:600">{{ photoQualityMsg }}</div>
           <div style="margin-top:20px;border-top:1px solid #eee4d0;padding-top:16px">
-            <div style="font-size:12.5px;color:#746b5c;margin-bottom:6px">Nitidez: <strong>{{ nitidezRotulo }}</strong></div>
-            <input type="range" min="0" max="120" step="5" value="{{ nitidezValor }}" onChange="{{ onNitidez }}" onInput="{{ onNitidez }}" style="width:100%;max-width:520px;accent-color:var(--accent)" />
+            <div style="font-size:12.5px;color:#746b5c;margin-bottom:6px">Nitidez: <strong>{{ site.nitidezRotulo }}</strong></div>
+            <input type="range" min="0" max="120" step="5" value="{{ site.nitidezValor }}" onChange="{{ onNitidez }}" onInput="{{ onNitidez }}" style="width:100%;max-width:520px;accent-color:var(--accent)" />
             <div style="display:flex;justify-content:space-between;max-width:520px;font-size:11px;color:#8a7f6a"><span>Sem realce</span><span>Forte</span></div>
+            <!-- Prévia com uma foto de verdade do site, para não precisar sair da tela,
+                 reprocessar tudo e voltar só para ver se o realce ficou bom. -->
+            <div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap;align-items:flex-start">
+              <div>
+                <div style="font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#8a7f6a;margin-bottom:5px">Sem realce</div>
+                <canvas ref="{{ previaNitidezAntes }}" width="240" height="150" style="width:240px;height:150px;border:1px solid #ddd3bd;background:#f1ece0;display:block"></canvas>
+              </div>
+              <div>
+                <div style="font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:5px">Com o realce atual</div>
+                <canvas ref="{{ previaNitidezDepois }}" width="240" height="150" style="width:240px;height:150px;border:1px solid var(--accent);background:#f1ece0;display:block"></canvas>
+              </div>
+            </div>
+            <div style="font-size:11px;color:#8a7f6a;margin-top:6px">Recorte ampliado de uma foto do próprio site — é onde a diferença aparece.</div>
             <div style="font-size:11.5px;color:#746b5c;margin-top:6px;max-width:520px">Reduzir uma foto sempre suaviza as bordas — é da natureza do processo. O realce devolve essa definição. Em excesso cria um contorno claro em volta dos objetos, por isso há um teto.</div>
           </div>
 
@@ -1862,6 +1875,7 @@
             <div data-crm-actions="true" style="display:flex;gap:8px;flex-wrap:wrap">
               <button onClick="{{ reprocessarImoveis }}" disabled="{{ reprocessBusy }}" style="background:var(--accent);color:#fff;border:none;padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Só os imóveis</button>
               <button onClick="{{ reprocessarBlog }}" disabled="{{ reprocessBusy }}" style="background:none;border:1px solid #ddd3bd;color:#4a4438;padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Só o blog</button>
+              <button onClick="{{ reprocessarCapas }}" disabled="{{ reprocessBusy }}" style="background:none;border:1px solid #ddd3bd;color:#4a4438;padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Só as capas da home</button>
               <button onClick="{{ reprocessarDepoimentos }}" disabled="{{ reprocessBusy }}" style="background:none;border:1px solid #ddd3bd;color:#4a4438;padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Só os depoimentos</button>
               <button onClick="{{ reprocessAllPhotos }}" disabled="{{ reprocessBusy }}" style="background:none;border:1px solid var(--accent);color:var(--accent);padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">{{ reprocessButtonLabel }}</button>
             </div>
@@ -2915,6 +2929,51 @@ class Component extends DCLogic {
     if (q === 'alta') return { cover: [1920, 0.9], gallery: [1600, 0.86] };
     return { cover: [1600, 0.84], gallery: [1400, 0.8] };
   };
+  // Prévia do realce, com uma foto de verdade do site. Sem ela seria preciso reprocessar
+  // tudo, sair da tela e voltar só para descobrir se o ajuste ficou bom.
+  _fotoDaPrevia = () => {
+    const D = window.CRMData;
+    const sc = D.getSiteContentRaw() || {};
+    const candidatas = (sc.heroSlides || []).concat(
+      (D.getPropertiesRaw() || []).flatMap(p => [p.image].concat(p.images || [])));
+    for (const c of candidatas) {
+      const u = c && D.photoURL(c);
+      if (u) return u;
+    }
+    return '';
+  };
+
+  desenharPrevia = (el, comRealce) => {
+    if (!el) return;
+    const fonte = this._fotoDaPrevia();
+    if (!fonte) return;
+    const forca = comRealce
+      ? (() => { const v = (this.state.siteContent || {}).sharpen; return v == null ? 0.35 : v; })()
+      : 0;
+    // Não redesenha se nada mudou — o deslizador dispara muitos eventos seguidos.
+    const marca = fonte.slice(-40) + '|' + forca;
+    if (el.__marca === marca) return;
+    el.__marca = marca;
+
+    const im = new Image();
+    im.onload = () => {
+      const ctx = el.getContext('2d');
+      const L = el.width, A = el.height;
+      // Recorte do meio, ampliado: é onde a diferença de definição se enxerga.
+      const larguraFonte = Math.min(im.naturalWidth, Math.round(im.naturalWidth * 0.34));
+      const alturaFonte = Math.round(larguraFonte * A / L);
+      ctx.drawImage(im,
+        Math.round((im.naturalWidth - larguraFonte) / 2),
+        Math.round((im.naturalHeight - alturaFonte) / 2),
+        larguraFonte, alturaFonte, 0, 0, L, A);
+      if (forca > 0 && window.CRMData.realcarNitidezEm) {
+        window.CRMData.realcarNitidezEm(ctx, L, A, forca);
+      }
+    };
+    im.onerror = () => {};
+    im.src = fonte;
+  };
+
   // Reprocessar por grupo: refazer tudo de uma vez pode levar minutos com muitas fotos, e
   // quase sempre o ajuste interessa a um grupo só — as fotos dos imóveis, ou só o blog.
   reprocessarGrupo = (alvo) => () => this.reprocessAllPhotos(alvo);
@@ -2973,8 +3032,24 @@ class Component extends DCLogic {
       this.setState({ testimonials });
       }
 
+      if (fazer('capas')) {
+        // As capas seguem a régua própria delas: 1920px e qualidade alta, porque ocupam a
+        // tela inteira. Reprocessá-las junto com o resto as trataria como foto comum.
+        const sc = { ...(this.state.siteContent || {}) };
+        const capas = [...(sc.heroSlides || [])];
+        for (let i = 0; i < capas.length; i++) {
+          this.setState({ reprocessProgress: `Capas: ${i + 1} de ${capas.length}…` });
+          capas[i] = await reshoot(capas[i], 1920, 0.92);
+        }
+        sc.heroSlides = capas;
+        if (sc.logoUrl) sc.logoUrl = await reshoot(sc.logoUrl, 680, 0.92);
+        D.saveSiteContent(sc);
+        this.setState({ siteContent: sc });
+      }
+
       const nomes = { tudo: 'Todas as fotos', imoveis: 'As fotos dos imóveis',
-                      blog: 'As imagens do blog', depoimentos: 'As imagens dos depoimentos' };
+                      blog: 'As imagens do blog', depoimentos: 'As imagens dos depoimentos',
+                      capas: 'As capas da home' };
       this.setState({ reprocessBusy: false,
         reprocessProgress: (nomes[grupo] || 'As fotos') + ' foram refeitas com a qualidade e a nitidez atuais.' });
       this.logAction('Reprocessou fotos existentes', `grupo: ${grupo}, qualidade: ${q}`);
@@ -5601,6 +5676,9 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       reprocessarImoveis: this.reprocessarGrupo('imoveis'),
       reprocessarBlog: this.reprocessarGrupo('blog'),
       reprocessarDepoimentos: this.reprocessarGrupo('depoimentos'),
+      reprocessarCapas: this.reprocessarGrupo('capas'),
+      previaNitidezAntes: (el) => this.desenharPrevia(el, false),
+      previaNitidezDepois: (el) => this.desenharPrevia(el, true),
       onToggleWatermark: (e) => this.setState({ siteContent: { ...this.state.siteContent, watermarkEnabled: e.target.checked }, siteSaved: false }),
       onToggleWatermarkBlog: (e) => this.setState({ siteContent: { ...this.state.siteContent, watermarkBlog: e.target.checked }, siteSaved: false }),
       onHeroImageFile: this.onHeroImageFile, removeHeroImage: this.removeHeroImage,
