@@ -1850,9 +1850,21 @@
             </sc-for>
           </div>
           <div style="font-size:12.5px;color:#3e7a4f;margin-top:12px;font-weight:600">{{ photoQualityMsg }}</div>
-          <div style="margin-top:14px">
-            <button onClick="{{ reprocessAllPhotos }}" disabled="{{ reprocessBusy }}" style="background:none;border:1px solid var(--accent);color:var(--accent);padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">{{ reprocessButtonLabel }}</button>
-            <div style="font-size:11.5px;color:#746b5c;margin-top:6px;max-width:520px">Reprocessa TODAS as fotos já cadastradas (imóveis, blog, depoimentos) para o tamanho escolhido acima — não só os próximos envios.</div>
+          <div style="margin-top:20px;border-top:1px solid #eee4d0;padding-top:16px">
+            <div style="font-size:12.5px;color:#746b5c;margin-bottom:6px">Nitidez: <strong>{{ nitidezRotulo }}</strong></div>
+            <input type="range" min="0" max="120" step="5" value="{{ nitidezValor }}" onChange="{{ onNitidez }}" onInput="{{ onNitidez }}" style="width:100%;max-width:520px;accent-color:var(--accent)" />
+            <div style="display:flex;justify-content:space-between;max-width:520px;font-size:11px;color:#8a7f6a"><span>Sem realce</span><span>Forte</span></div>
+            <div style="font-size:11.5px;color:#746b5c;margin-top:6px;max-width:520px">Reduzir uma foto sempre suaviza as bordas — é da natureza do processo. O realce devolve essa definição. Em excesso cria um contorno claro em volta dos objetos, por isso há um teto.</div>
+          </div>
+
+          <div style="margin-top:16px">
+            <div style="font-size:12.5px;color:#746b5c;margin-bottom:8px;max-width:520px">Refaz fotos <strong>já cadastradas</strong> com a qualidade e a nitidez acima. Escolha o grupo — refazer tudo pode levar alguns minutos.</div>
+            <div data-crm-actions="true" style="display:flex;gap:8px;flex-wrap:wrap">
+              <button onClick="{{ reprocessarImoveis }}" disabled="{{ reprocessBusy }}" style="background:var(--accent);color:#fff;border:none;padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Só os imóveis</button>
+              <button onClick="{{ reprocessarBlog }}" disabled="{{ reprocessBusy }}" style="background:none;border:1px solid #ddd3bd;color:#4a4438;padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Só o blog</button>
+              <button onClick="{{ reprocessarDepoimentos }}" disabled="{{ reprocessBusy }}" style="background:none;border:1px solid #ddd3bd;color:#4a4438;padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Só os depoimentos</button>
+              <button onClick="{{ reprocessAllPhotos }}" disabled="{{ reprocessBusy }}" style="background:none;border:1px solid var(--accent);color:var(--accent);padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">{{ reprocessButtonLabel }}</button>
+            </div>
             <sc-if value="{{ reprocessProgress }}" hint-placeholder-val="{{ false }}">
               <div style="font-size:12px;color:var(--accent);margin-top:8px">{{ reprocessProgress }}</div>
             </sc-if>
@@ -2903,7 +2915,13 @@ class Component extends DCLogic {
     if (q === 'alta') return { cover: [1920, 0.9], gallery: [1600, 0.86] };
     return { cover: [1600, 0.84], gallery: [1400, 0.8] };
   };
-  reprocessAllPhotos = async () => {
+  // Reprocessar por grupo: refazer tudo de uma vez pode levar minutos com muitas fotos, e
+  // quase sempre o ajuste interessa a um grupo só — as fotos dos imóveis, ou só o blog.
+  reprocessarGrupo = (alvo) => () => this.reprocessAllPhotos(alvo);
+
+  reprocessAllPhotos = async (alvo) => {
+    const grupo = typeof alvo === 'string' ? alvo : 'tudo';
+    const fazer = (g) => grupo === 'tudo' || grupo === g;
     if (!window.CRMData || this.state.reprocessBusy) return;
     const D = window.CRMData;
     const q = (this.state.siteContent || {}).photoQuality || 'equilibrada';
@@ -2922,6 +2940,7 @@ class Component extends DCLogic {
       } catch (e) { return key; }
     };
     try {
+      if (fazer('imoveis')) {
       const properties = JSON.parse(JSON.stringify(this.state.properties || []));
       for (let i = 0; i < properties.length; i++) {
         const p = properties[i];
@@ -2932,7 +2951,9 @@ class Component extends DCLogic {
       }
       D.saveProperties(properties);
       this.setState({ properties });
+      }
 
+      if (fazer('blog')) {
       const posts = JSON.parse(JSON.stringify(this.state.posts || []));
       for (let i = 0; i < posts.length; i++) {
         this.setState({ reprocessProgress: `Blog: ${i + 1} de ${posts.length}…` });
@@ -2940,7 +2961,9 @@ class Component extends DCLogic {
       }
       D.savePosts && D.savePosts(posts);
       this.setState({ posts });
+      }
 
+      if (fazer('depoimentos')) {
       const testimonials = JSON.parse(JSON.stringify(this.state.testimonials || []));
       for (let i = 0; i < testimonials.length; i++) {
         this.setState({ reprocessProgress: `Depoimentos: ${i + 1} de ${testimonials.length}…` });
@@ -2948,9 +2971,13 @@ class Component extends DCLogic {
       }
       D.saveTestimonials && D.saveTestimonials(testimonials);
       this.setState({ testimonials });
+      }
 
-      this.setState({ reprocessBusy: false, reprocessProgress: 'Concluído! Todas as fotos foram ajustadas para essa qualidade.' });
-      this.logAction('Reprocessou fotos existentes', `qualidade: ${q}`);
+      const nomes = { tudo: 'Todas as fotos', imoveis: 'As fotos dos imóveis',
+                      blog: 'As imagens do blog', depoimentos: 'As imagens dos depoimentos' };
+      this.setState({ reprocessBusy: false,
+        reprocessProgress: (nomes[grupo] || 'As fotos') + ' foram refeitas com a qualidade e a nitidez atuais.' });
+      this.logAction('Reprocessou fotos existentes', `grupo: ${grupo}, qualidade: ${q}`);
       this.autoPublish('fotos reprocessadas');
     } catch (e) {
       this.setState({ reprocessBusy: false, reprocessProgress: 'Falha ao reprocessar: ' + (e.message || e) });
@@ -5339,6 +5366,15 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
         watermarkOpacityPct: Math.round((site.watermarkOpacity != null ? site.watermarkOpacity : 0.32) * 100),
         // Largura da marca em relação à foto. Trinta por cento era o valor fixo de antes.
         watermarkSizePct: site.watermarkSize != null ? site.watermarkSize : 30,
+        nitidezValor: Math.round((site.sharpen != null ? site.sharpen : 0.35) * 100),
+        nitidezRotulo: (() => {
+          const v = site.sharpen != null ? site.sharpen : 0.35;
+          if (v <= 0.02) return 'sem realce';
+          if (v < 0.25) return 'leve';
+          if (v < 0.55) return 'média (recomendada)';
+          if (v < 0.85) return 'alta';
+          return 'forte — confira se não criou contorno';
+        })(),
         watermarkEnabled: !!site.watermarkEnabled,
         watermarkBlog: !!site.watermarkBlog,
         hasHeroImage: !!site.heroImage,
@@ -5561,6 +5597,10 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       })),
       onWatermarkOpacity: (e) => this.setState({ siteContent: { ...this.state.siteContent, watermarkOpacity: parseInt(e.target.value, 10) / 100 }, siteSaved: false }),
       onWatermarkSize: (e) => this.setState({ siteContent: { ...this.state.siteContent, watermarkSize: parseInt(e.target.value, 10) || 30 }, siteSaved: false }),
+      onNitidez: (e) => this.setState({ siteContent: { ...this.state.siteContent, sharpen: (parseInt(e.target.value, 10) || 0) / 100 }, siteSaved: false }),
+      reprocessarImoveis: this.reprocessarGrupo('imoveis'),
+      reprocessarBlog: this.reprocessarGrupo('blog'),
+      reprocessarDepoimentos: this.reprocessarGrupo('depoimentos'),
       onToggleWatermark: (e) => this.setState({ siteContent: { ...this.state.siteContent, watermarkEnabled: e.target.checked }, siteSaved: false }),
       onToggleWatermarkBlog: (e) => this.setState({ siteContent: { ...this.state.siteContent, watermarkBlog: e.target.checked }, siteSaved: false }),
       onHeroImageFile: this.onHeroImageFile, removeHeroImage: this.removeHeroImage,

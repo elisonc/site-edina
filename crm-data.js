@@ -578,6 +578,44 @@
     });
   }
 
+  // Realce de nitidez. Reduzir uma foto sempre suaviza um pouco as bordas — é da natureza
+  // da reamostragem. Um realce leve devolve a definição perdida. Passar da conta cria
+  // contorno claro em volta dos objetos, o famoso "serrilhado", por isso a força é limitada.
+  //
+  // O filtro compara cada ponto com os quatro vizinhos: onde há borda, aumenta a diferença;
+  // onde a área é lisa (céu, parede), quase nada muda — que é o que evita realçar ruído.
+  function realcarNitidez(ctx, largura, altura, forca) {
+    const f = Math.max(0, Math.min(1.2, Number(forca) || 0));
+    if (!f || largura < 8 || altura < 8) return;
+    let dados;
+    try { dados = ctx.getImageData(0, 0, largura, altura); } catch (e) { return; }
+    const src = dados.data;
+    const orig = new Uint8ClampedArray(src);
+    const centro = 1 + 4 * f;
+    for (let y = 1; y < altura - 1; y++) {
+      for (let x = 1; x < largura - 1; x++) {
+        const i = (y * largura + x) * 4;
+        for (let c = 0; c < 3; c++) {
+          const v = orig[i + c] * centro
+            - f * (orig[i - 4 + c] + orig[i + 4 + c]
+                 + orig[i - largura * 4 + c] + orig[i + largura * 4 + c]);
+          src[i + c] = v < 0 ? 0 : (v > 255 ? 255 : v);
+        }
+      }
+    }
+    ctx.putImageData(dados, 0, 0);
+  }
+
+  // Força escolhida no painel. Guardada junto com o conteúdo do site para valer em qualquer
+  // aparelho que envie foto.
+  function forcaDeNitidez() {
+    try {
+      const n = (window.CRMData && window.CRMData.getSiteContentRaw)
+        ? window.CRMData.getSiteContentRaw().sharpen : null;
+      return n == null ? 0.35 : Math.max(0, Math.min(1.2, Number(n)));
+    } catch (e) { return 0.35; }
+  }
+
   // Uma imagem de fundo vazado — logo, selo, marca d'água — não pode virar JPEG: o formato
   // não guarda transparência e o canvas pinta o vazado de preto. Era o que colocava um
   // retângulo escuro atrás da logo toda vez que ela era salva.
@@ -634,6 +672,7 @@
           ctx.drawImage(img, 0, 0, width, height);
           try {
             if (format === 'png') { resolve(canvas.toDataURL('image/png')); return; }
+            realcarNitidez(ctx, width, height, forcaDeNitidez());
             resolve(codificar(canvas, ctx, width, height, quality));
           } catch (e) {
             reject(new Error('encode-failed'));
@@ -666,6 +705,7 @@
         ctx.drawImage(img, 0, 0, width, height);
         try {
           if (format === 'png') { resolve(canvas.toDataURL('image/png')); return; }
+          realcarNitidez(ctx, width, height, forcaDeNitidez());
           resolve(codificar(canvas, ctx, width, height, quality));
         } catch (e) {
           reject(new Error('encode-failed'));
