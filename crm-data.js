@@ -671,10 +671,14 @@
     ctx.drawImage(img, 0, 0, width, height);
   }
 
-  function resizeImage(file, maxDim, quality, format) {
+  // realcar vem ligado por padrão: no envio comum o realce é o comportamento esperado.
+  // Desligado, devolve a foto reduzida e mais nada — é assim que se guarda o original de
+  // uma capa, para o botão "Resetar" ter para onde voltar.
+  function resizeImage(file, maxDim, quality, format, realcar) {
     maxDim = maxDim || 1280;
     quality = quality || 0.75;
     format = format || 'jpeg';
+    if (realcar === undefined) realcar = true;
     return toDecodableBlob(file).then(decodableFile => new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onerror = () => reject(new Error('read-failed'));
@@ -693,7 +697,7 @@
           desenharReduzido(ctx, img, width, height);
           try {
             if (format === 'png') { resolve(canvas.toDataURL('image/png')); return; }
-            realcarNitidez(ctx, width, height, forcaDeNitidez());
+            if (realcar) realcarNitidez(ctx, width, height, forcaDeNitidez());
             resolve(codificar(canvas, ctx, width, height, quality));
           } catch (e) {
             reject(new Error('encode-failed'));

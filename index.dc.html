@@ -801,6 +801,10 @@ class Component extends DCLogic {
     // termina, senão as três disputam a rede e a capa demora a aparecer — era o que
     // segurava a maior pintura da tela.
     const opacidadeDaCapa = site.heroOpacity != null ? Math.max(0.2, Math.min(1, Number(site.heroOpacity))) : 1;
+    // Cor que aparece por tras da capa. Com a foto em 100% ela nao se ve; abaixo disso e ela
+    // que a foto deixa transparecer, entao quem escolhe a opacidade precisa escolher tambem
+    // com o que a foto se mistura.
+    const fundoDaCapa = /^#[0-9a-fA-F]{3,8}$/.test(String(site.heroBackdrop || '')) ? site.heroBackdrop : '#141108';
     const COM_VERSAO_LEVE = { 'media/aura-1.jpg': 1, 'media/praia-brava-cobertura-1.jpg': 1, 'media/urban-1.jpg': 1 };
     const heroSlideItems = capasVisiveis.map((img, iRel) => ({
       // A opacidade da capa vem do painel. O slide que nao esta a vista continua em zero —
@@ -832,7 +836,7 @@ class Component extends DCLogic {
     }));
     let heroSectionStyle, heroSectionRef;
     if (useSlides) {
-      heroSectionStyle = `${heroBase};background:#141108`;
+      heroSectionStyle = `${heroBase};background:${fundoDaCapa}`;
       heroSectionRef = () => {};
     } else if (site.heroImage) {
       heroSectionStyle = `${heroBase};background-size:cover;background-position:center`;
@@ -840,7 +844,7 @@ class Component extends DCLogic {
     } else if (this._capasConfiguradas && this._capasConfiguradas()) {
       // Mesmo tom de fundo de quando a capa está posta: o texto branco continua legível e a
       // foto entra por cima sem salto de cor.
-      heroSectionStyle = `${heroBase};background:#141108`;
+      heroSectionStyle = `${heroBase};background:${fundoDaCapa}`;
       heroSectionRef = () => {};
     } else {
       heroSectionStyle = `${heroBase};background:#efe9dc`;

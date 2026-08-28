@@ -1068,6 +1068,7 @@
     guardarImagens: guardarImagens,
     usoDeFotos: usoDeFotos,
     lerImagens: lerImagens,
+    guardarImagens: guardarImagens,
     // O painel precisa saber se o Storage responde para decidir o que aceitar de vídeo.
     storageAtivo: () => !storageIndisponivel && !storageMarcadoFora(),
     guardarArquivo: guardarArquivo,

@@ -1881,7 +1881,8 @@
             <sc-if value="{{ reprocessAsk }}" hint-placeholder-val="{{ false }}">
               <div style="margin-top:12px;background:#fff8f0;border:1px solid #e0b0a0;padding:16px 18px;max-width:560px">
                 <div style="font-size:13px;font-weight:700;color:#b4432f;margin-bottom:8px">Refazer {{ reprocessAskLabel }} com a nitidez atual?</div>
-                <div style="font-size:12.5px;color:#8a5040;line-height:1.55;margin-bottom:6px">O realce entra <strong>por cima</strong> do que a foto já tem. Apertar duas vezes empilha dois realces, e não dá para desfazer.</div>
+                <div style="font-size:12.5px;color:#8a5040;line-height:1.55;margin-bottom:6px">Onde existe o original guardado — as capas enviadas a partir de agora — o realce sai sempre do original, e apertar de novo não empilha.</div>
+                <div style="font-size:12.5px;color:#8a5040;line-height:1.55;margin-bottom:6px">Nas demais, o realce entra <strong>por cima</strong> do que a foto já tem: apertar duas vezes empilha dois realces, e não dá para desfazer.</div>
                 <div style="font-size:12.5px;color:#8a5040;line-height:1.55;margin-bottom:14px">Refazer não aumenta a resolução: uma foto pequena continua pequena. Para ganhar definição de verdade, reenvie o arquivo original.</div>
                 <div data-crm-actions="true" style="display:flex;gap:8px;flex-wrap:wrap">
                   <button onClick="{{ confirmarReprocesso }}" style="background:#b4432f;color:#fff;border:none;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Refazer agora</button>
@@ -2072,7 +2073,16 @@
                 <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Opacidade das imagens: <strong>{{ site.heroOpacityPct }}%</strong></div>
                 <input type="range" min="20" max="100" step="5" value="{{ site.heroOpacityPct }}" onChange="{{ onHeroOpacity }}" onInput="{{ onHeroOpacity }}" style="width:100%;max-width:360px;accent-color:var(--accent)" />
                 <div style="display:flex;justify-content:space-between;max-width:360px;font-size:11px;color:#8a7f6a"><span>Mais apagada</span><span>Cheia</span></div>
-                <div style="font-size:11.5px;color:#746b5c;margin-top:6px;max-width:420px;line-height:1.5">Abaixo de 100% a foto se mistura com o fundo escuro da capa. Deixa a imagem mais discreta e o texto branco mais legível por cima dela.</div>
+                <div style="font-size:11.5px;color:#746b5c;margin-top:6px;max-width:420px;line-height:1.5">Abaixo de 100% a foto se mistura com a cor de fundo escolhida abaixo. Deixa a imagem mais discreta e o texto branco mais legível por cima dela.</div>
+              </div>
+              <div style="margin-bottom:16px">
+                <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Cor do fundo da capa</div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                  <input type="color" value="{{ site.heroBackdrop }}" onChange="{{ onHeroBackdrop }}" onInput="{{ onHeroBackdrop }}" style="width:52px;height:36px;padding:0;border:1px solid #ddd3bd;background:none;cursor:pointer" />
+                  <span style="font-family:monospace;font-size:12px;color:#746b5c">{{ site.heroBackdrop }}</span>
+                  <button onClick="{{ resetHeroBackdrop }}" style="background:none;border:1px solid #ddd3bd;color:#4a4438;padding:6px 12px;font-size:11px;cursor:pointer;font-family:'Manrope',sans-serif">Voltar ao padrão</button>
+                </div>
+                <div style="font-size:11.5px;color:#746b5c;margin-top:6px;max-width:420px;line-height:1.5">É esta cor que aparece através da foto. Com a opacidade em 100% ela não se vê.</div>
               </div>
               <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;min-width:0">
                 <sc-for list="{{ site.heroSlideThumbs }}" as="hslot" hint-placeholder-count="4">
@@ -2084,10 +2094,22 @@
                       <sc-if value="{{ hslot.hasImage }}" hint-placeholder-val="{{ false }}">
                         <button onClick="{{ hslot.remove }}" style="background:none;border:1px solid #ddd3bd;padding:6px 10px;font-size:11px;cursor:pointer;font-family:'Manrope',sans-serif">Remover</button>
                       </sc-if>
+                      <sc-if value="{{ hslot.hasOriginal }}" hint-placeholder-val="{{ false }}">
+                        <button onClick="{{ hslot.reset }}" style="background:none;border:1px solid var(--accent);color:var(--accent);padding:6px 10px;font-size:11px;cursor:pointer;font-family:'Manrope',sans-serif">Resetar</button>
+                      </sc-if>
                     </div>
+                    <sc-if value="{{ hslot.hasOriginal }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:10.5px;color:#8a7f6a;margin-top:6px">Original guardado — "Resetar" devolve a foto como ela subiu, sem realce.</div>
+                    </sc-if>
+                    <sc-if value="{{ hslot.semOriginal }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:10.5px;color:#b4432f;margin-top:6px">Enviada antes do original passar a ser guardado. Reenvie uma vez e o "Resetar" passa a valer para ela.</div>
+                    </sc-if>
                   </div>
                 </sc-for>
               </div>
+              <sc-if value="{{ heroResetMsg }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:12px;color:var(--accent);margin-top:10px">{{ heroResetMsg }}</div>
+              </sc-if>
             </div>
           </div>
         </div>
@@ -3101,9 +3123,14 @@ class Component extends DCLogic {
         // tela inteira. Reprocessá-las junto com o resto as trataria como foto comum.
         const sc = { ...(this.state.siteContent || {}) };
         const capas = [...(sc.heroSlides || [])];
+        const originaisDasCapas = sc.heroSlidesOriginais || [];
         for (let i = 0; i < capas.length; i++) {
           this.setState({ reprocessProgress: `Capas: ${i + 1} de ${capas.length}…` });
-          capas[i] = await reshoot(capas[i], 1920, 0.92);
+          // Parte do ORIGINAL sempre que ele existe. Partindo da capa que está no ar, cada
+          // passada somava um realce em cima do anterior — foi assim que as capas viraram
+          // aquele contorno. Do original, o resultado é o mesmo não importa quantas vezes
+          // você aperte.
+          capas[i] = await reshoot(originaisDasCapas[i] || capas[i], 1920, 0.92);
         }
         sc.heroSlides = capas;
         if (sc.logoUrl) sc.logoUrl = await reshoot(sc.logoUrl, 680, 0.92);
@@ -3177,16 +3204,70 @@ class Component extends DCLogic {
       .catch(() => window.alert('Não foi possível ler essa imagem (formato não suportado, ex: HEIC do iPhone). Exporte como JPEG e tente novamente.'));
   };
   removeHeroImage = () => this.setState({ siteContent: { ...this.state.siteContent, heroImage: '' }, siteSaved: false });
+  // O rótulo do original de cada capa. Um conjunto por capa, e não um só para as quatro:
+  // assim trocar uma capa não obriga a reescrever as outras três.
+  rotuloDoOriginal = (idx) => 'capa_original_' + idx;
+
   onHeroSlideFile = (idx) => (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    (window.CRMData ? window.CRMData.resizeImage(file, 1920, 0.78).then(d => window.CRMData.savePhoto(d)) : Promise.resolve(''))
-      .then(dataUrl => {
+    const D = window.CRMData;
+    if (!D) return;
+    // Duas versões saem do mesmo envio. O ORIGINAL é a foto só reduzida, sem realce
+    // nenhum, e fica guardado à parte — é para onde "Resetar" volta, sem você precisar
+    // reenviar o arquivo. A MOSTRADA é o original com a nitidez escolhida por cima.
+    //
+    // A qualidade do envio era 0,78. Numa imagem que ocupa a tela inteira isso já entra
+    // marcado, e a régua das capas nem chegava a ser usada: a foto já vinha abaixo dela.
+    D.resizeImage(file, 1920, 0.92, null, false)
+      .then(async (original) => {
+        let ref = '';
+        const F = window.FirebaseDB;
+        if (F && F.guardarImagens) {
+          try {
+            const rotulo = this.rotuloDoOriginal(idx);
+            const n = await F.guardarImagens(rotulo, [original], [true]);
+            if (n) {
+              ref = 'fotodoc:' + rotulo + ':0';
+              D.registrarImagensDoBanco(rotulo, [original]);
+            }
+          } catch (err) {}
+        }
+        const mostrada = await D.resizeDataUrl(original, 1920, 0.92, null, true);
+        const chave = await D.savePhoto(mostrada);
         const slides = [...(this.state.siteContent.heroSlides || [])];
-        slides[idx] = dataUrl;
-        this.setState({ siteContent: { ...this.state.siteContent, heroSlides: slides }, siteSaved: false });
+        const originais = [...(this.state.siteContent.heroSlidesOriginais || [])];
+        slides[idx] = chave;
+        originais[idx] = ref;
+        this.setState({ siteContent: { ...this.state.siteContent, heroSlides: slides, heroSlidesOriginais: originais }, siteSaved: false });
       })
       .catch(() => window.alert('Não foi possível ler essa imagem (formato não suportado, ex: HEIC do iPhone). Exporte como JPEG e tente novamente.'));
+  };
+
+  // Devolve a capa ao arquivo que foi enviado, sem realce nenhum. É o desfazer que faltava:
+  // o realce entra por cima da foto e não tem como ser retirado dela depois, então a saída
+  // é guardar o original e voltar nele.
+  resetarCapa = (idx) => async () => {
+    const D = window.CRMData, F = window.FirebaseDB;
+    const ref = (this.state.siteContent.heroSlidesOriginais || [])[idx];
+    if (!ref || !F || !F.lerImagens) return;
+    this.setState({ heroResetMsg: 'Buscando o original…' });
+    try {
+      const rotulo = this.rotuloDoOriginal(idx);
+      let original = D.photoURL(ref);
+      if (!original) {
+        const imgs = await F.lerImagens(rotulo);
+        if (imgs && imgs.length) D.registrarImagensDoBanco(rotulo, imgs);
+        original = D.photoURL(ref);
+      }
+      if (!original) { this.setState({ heroResetMsg: 'O original desta capa não foi encontrado.' }); return; }
+      const slides = [...(this.state.siteContent.heroSlides || [])];
+      slides[idx] = original;
+      this.setState({ siteContent: { ...this.state.siteContent, heroSlides: slides }, siteSaved: false,
+                      heroResetMsg: 'Capa devolvida ao original. Salve as alterações para valer no site.' });
+    } catch (err) {
+      this.setState({ heroResetMsg: 'Não deu para buscar o original: ' + (err.message || err) });
+    }
   };
   removeHeroSlide = (idx) => () => {
     const slides = [...(this.state.siteContent.heroSlides || [])];
@@ -5534,6 +5615,7 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
         hasHeroImage: !!site.heroImage,
         heroSlideInterval: site.heroSlideInterval || 1,
         heroOpacityPct: site.heroOpacity != null ? Math.round(site.heroOpacity * 100) : 100,
+        heroBackdrop: site.heroBackdrop || '#141108',
         formAccessKey: site.formAccessKey || '', canonicalUrl: site.canonicalUrl || '',
         servicesEyebrow: site.servicesEyebrow || '', servicesTitle: site.servicesTitle || '',
         heroSlideThumbs: ['Navegantes', 'Itajaí', 'Camboriú', 'Praia Brava'].map((label, i) => {
@@ -5542,7 +5624,10 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
             label, hasImage: !!img,
             imgStyle: img ? `width:56px;height:40px;border:1px solid #ddd3bd;background-size:cover;background-position:center` : `width:56px;height:40px;border:1px dashed #ddd3bd;background:#f4eee0`,
             imgRef: (el) => { if (el) el.style.backgroundImage = img ? `url('${window.CRMData.photoURL(img)}')` : 'none'; },
-            onFile: this.onHeroSlideFile(i), remove: this.removeHeroSlide(i)
+            hasOriginal: !!(site.heroSlidesOriginais || [])[i],
+            semOriginal: !!img && !(site.heroSlidesOriginais || [])[i],
+            onFile: this.onHeroSlideFile(i), remove: this.removeHeroSlide(i),
+            reset: this.resetarCapa(i)
           };
         }),
         spotlightLabel: site.spotlightLabel || '', spotlightTitle: site.spotlightTitle || '', spotlightDesc: site.spotlightDesc || '',
@@ -5596,6 +5681,9 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       reprocessButtonLabel: s.reprocessBusy ? 'Reprocessando…' : 'Aplicar essa qualidade às fotos já enviadas',
       reprocessProgress: s.reprocessProgress || '',
       onSiteField_heroSlideInterval: this.updateSiteField('heroSlideInterval'),
+      heroResetMsg: s.heroResetMsg || '',
+      onHeroBackdrop: (e) => this.setState({ siteContent: { ...this.state.siteContent, heroBackdrop: e.target.value }, siteSaved: false }),
+      resetHeroBackdrop: () => this.setState({ siteContent: { ...this.state.siteContent, heroBackdrop: '#141108' }, siteSaved: false }),
       onHeroOpacity: (e) => this.setState({ siteContent: { ...this.state.siteContent, heroOpacity: (parseInt(e.target.value, 10) || 100) / 100 }, siteSaved: false }),
       onSiteField_spotlightLabel: this.updateSiteField('spotlightLabel'),
       onSiteField_spotlightTitle: this.updateSiteField('spotlightTitle'),
