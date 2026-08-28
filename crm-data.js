@@ -704,7 +704,19 @@
 
   // Reprocessa uma foto JÁ salva (data: URL) para um novo tamanho/qualidade — usado quando
   // o usuário muda a "Qualidade das fotos" e quer aplicar aos envios anteriores também.
-  function resizeDataUrl(dataUrl, maxDim, quality, format) {
+  //
+  // O realce de nitidez NAO entra por padrao aqui, e essa e a diferenca importante em
+  // relacao a resizeImage. A foto que chega nesta funcao ja passou pelo realce quando foi
+  // enviada; realcar de novo empilha o efeito e, pior, engorda o arquivo -- o realce cria
+  // detalhe fino, e detalhe fino e exatamente o que o compressor cobra caro para guardar.
+  //
+  // Medido na capa de Navegantes com o realce em 50%: as etapas que existem para ENCOLHER
+  // a imagem faziam ela crescer a cada passo -- 743 KB, 928, 1045, 1106. A cota nunca era
+  // alcancada e as cinco reducoes eram trabalho jogado fora.
+  //
+  // Quem quer o realce pede por ele: e o caso dos botoes de reprocessar do painel, onde
+  // aplicar a nitidez atual as fotos ja enviadas e justamente a funcao.
+  function resizeDataUrl(dataUrl, maxDim, quality, format, realcar) {
     maxDim = maxDim || 1280;
     quality = quality || 0.75;
     format = format || 'jpeg';
@@ -723,7 +735,7 @@
         desenharReduzido(ctx, img, width, height);
         try {
           if (format === 'png') { resolve(canvas.toDataURL('image/png')); return; }
-          realcarNitidez(ctx, width, height, forcaDeNitidez());
+          if (realcar) realcarNitidez(ctx, width, height, forcaDeNitidez());
           resolve(codificar(canvas, ctx, width, height, quality));
         } catch (e) {
           reject(new Error('encode-failed'));

@@ -2997,7 +2997,9 @@ class Component extends DCLogic {
       }
       if (!dataUrl || dataUrl.indexOf('data:') !== 0) return key;
       try {
-        const resized = await D.resizeDataUrl(dataUrl, dim, quality);
+        // true: aqui o realce E o pedido -- e o botao que aplica a nitidez escolhida as
+        // fotos ja enviadas. Nas demais chamadas de resizeDataUrl ele fica de fora.
+        const resized = await D.resizeDataUrl(dataUrl, dim, quality, null, true);
         return await D.savePhoto(resized);
       } catch (e) { return key; }
     };
