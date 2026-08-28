@@ -477,11 +477,10 @@ class Component extends DCLogic {
     this.setState({ zoomEscala: e });
   };
 
-  // Guarda a foto que o quadro ampliado deve mostrar. Trocar de foto reinicia a ampliação:
-  // continuar ampliado na foto seguinte mostraria um pedaço qualquer dela.
-  _pintarFoto = (el) => {
+  // Pinta a foto pedida. Trocar de foto reinicia a ampliação: continuar ampliado na
+  // seguinte mostraria um pedaço qualquer dela.
+  _pintarFoto = (el, fonte) => {
     if (!el) return;
-    const fonte = this._fotoAmpliada || '';
     el.style.backgroundImage = fonte ? "url('" + fonte + "')" : 'none';
     if (this._fotoAnterior !== fonte) {
       this._fotoAnterior = fonte;
@@ -493,11 +492,16 @@ class Component extends DCLogic {
     }
   };
 
-  lightboxZoomRef = (el) => {
+  // Recebe a foto atual como argumento, e não de uma propriedade guardada: quem monta a
+  // tela cria esta chamada a cada desenho, e é isso que faz o framework executá-la de novo
+  // quando a foto muda. Como função fixa ela rodava uma vez só — o contador avançava e a
+  // foto continuava a mesma.
+  ligarQuadroAmpliado = (el, fonte) => {
     this._zoomEl = el || this._zoomEl;
-    if (!el || el.__zoomLigado) { if (el) this._pintarFoto(el); return; }
+    if (!el) return;
+    if (el.__zoomLigado) { this._pintarFoto(el, fonte); return; }
     el.__zoomLigado = true;
-    this._pintarFoto(el);
+    this._pintarFoto(el, fonte);
     const z = () => this._zoom || { escala: 1, x: 50, y: 50 };
 
     el.addEventListener('wheel', (ev) => {
@@ -825,8 +829,6 @@ class Component extends DCLogic {
     const lightboxImgStyle = lb.real
       ? `position:relative;width:min(86vw,1100px);height:min(78vh,720px);background-size:contain;background-repeat:no-repeat;background-position:center`
       : `position:relative;width:min(86vw,1100px);height:min(78vh,720px);background:#efe9dc`;
-    // Qual foto o quadro ampliado mostra. O ref do zoom lê daqui.
-    this._fotoAmpliada = lb.real ? lb.src : '';
     const lightboxImgRef = shotRef(lb);
 
     const emb = this.videoEmbed(p.videoUrl);
@@ -904,7 +906,8 @@ class Component extends DCLogic {
         alturaDaLogo(el, site.logoUrl, site.logoWidth || 210, 132, site.logoRatio); } },
       mainImgStyle, mainImgRef, hasNoMainPhoto: !hasMainPhoto,
       lightboxImgRef,
-      lightboxZoomRef: this.lightboxZoomRef,
+      // Função nova a cada desenho, de propósito — ver ligarQuadroAmpliado.
+      lightboxZoomRef: (el) => this.ligarQuadroAmpliado(el, lb.real ? lb.src : ''),
       zoomMais: this.zoomMais, zoomMenos: this.zoomMenos,
       zoomRotulo: Math.round((s.zoomEscala || 1) * 100) + '%',
       lightboxOpen: s.lightboxOpen, closeLightbox: this.closeLightbox,
