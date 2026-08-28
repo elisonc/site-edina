@@ -800,6 +800,7 @@ class Component extends DCLogic {
     // Só a foto à vista entra junto com a página: as outras são baixadas depois que ela
     // termina, senão as três disputam a rede e a capa demora a aparecer — era o que
     // segurava a maior pintura da tela.
+    const COM_VERSAO_LEVE = { 'media/aura-1.jpg': 1, 'media/praia-brava-cobertura-1.jpg': 1, 'media/urban-1.jpg': 1 };
     const heroSlideItems = capasVisiveis.map((img, iRel) => ({
       style: `position:absolute;inset:0;background-size:cover;background-position:center;opacity:${(this.state.cicloIniciado ? iRel : hIdx) === hIdx ? 1 : 0};transition:opacity .8s ease;z-index:0`,
       ref: (el) => {
@@ -807,12 +808,14 @@ class Component extends DCLogic {
         const i = this.state.cicloIniciado ? iRel : hIdx;
         // Versão de 1400px para a capa: basta para qualquer tela e evita baixar o arquivo
         // cheio, que é a maior imagem da página e define quando ela parece pronta.
-        const leve = /^media\/[^/]+\.jpg$/.test(img) ? img.replace('media/', 'media/capa/') : img;
+        //
+        // Só estas três têm versão leve. A regra antiga aceitava qualquer media/*.jpg e
+        // pedia uma versão que não existe: três 404 por carregamento, e no ramo adiado —
+        // que não tem reserva — o slide ficava sem imagem nenhuma. Com a lista, a foto sem
+        // versão leve já entra pelo arquivo cheio, sem ida perdida à rede.
+        const leve = COM_VERSAO_LEVE[img] ? img.replace('media/', 'media/capa/') : img;
         if (i === hIdx) {
-          const teste = new Image();
-          teste.onload = () => { el.style.backgroundImage = `url('${leve}')`; };
-          teste.onerror = () => { el.style.backgroundImage = `url('${img}')`; };
-          teste.src = leve;
+          el.style.backgroundImage = `url('${leve}')`;
           return;
         }
         if (el.dataset.adiado === img) return;
