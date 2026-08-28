@@ -963,6 +963,20 @@
         tx.onerror = () => reject(tx.error);
       })).catch(() => dataUrl);
     },
+    // Regrava uma foto POR CIMA da chave que ela já tem, em vez de criar outra. savePhoto
+    // sorteia uma chave nova a cada chamada, e nada apagava a anterior: refazer as fotos
+    // três vezes deixava três cópias de cada uma no armazenamento do navegador, e só a
+    // última era usada. Reprocessar passa por aqui e o endereço da foto não muda.
+    replacePhoto: function (key, dataUrl) {
+      if (!key || !dataUrl || key.indexOf('idbphoto:') !== 0) return Promise.resolve(dataUrl);
+      const self = this;
+      return this._openMediaDB().then(db => new Promise((resolve, reject) => {
+        const tx = db.transaction('media', 'readwrite');
+        tx.objectStore('media').put(dataUrl, key);
+        tx.oncomplete = () => { self._photoCache[key] = dataUrl; resolve(key); };
+        tx.onerror = () => reject(tx.error);
+      })).catch(() => dataUrl);
+    },
     // Áudio/vídeo em data: URL não permite busca (seek) e a reprodução costuma parar no
     // meio, porque o navegador não conhece a duração. Convertendo para blob: URL o arquivo
     // passa a ter tamanho conhecido e toca inteiro, com barra de progresso funcional.

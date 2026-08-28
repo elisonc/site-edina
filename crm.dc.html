@@ -1876,9 +1876,19 @@
               <button onClick="{{ reprocessarImoveis }}" disabled="{{ reprocessBusy }}" style="background:var(--accent);color:#fff;border:none;padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Só os imóveis</button>
               <button onClick="{{ reprocessarBlog }}" disabled="{{ reprocessBusy }}" style="background:none;border:1px solid #ddd3bd;color:#4a4438;padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Só o blog</button>
               <button onClick="{{ reprocessarCapas }}" disabled="{{ reprocessBusy }}" style="background:none;border:1px solid #ddd3bd;color:#4a4438;padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Só as capas da home</button>
-              <button onClick="{{ reprocessarDepoimentos }}" disabled="{{ reprocessBusy }}" style="background:none;border:1px solid #ddd3bd;color:#4a4438;padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Só os depoimentos</button>
-              <button onClick="{{ reprocessAllPhotos }}" disabled="{{ reprocessBusy }}" style="background:none;border:1px solid var(--accent);color:var(--accent);padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">{{ reprocessButtonLabel }}</button>
+              <button onClick="{{ reprocessarTudo }}" disabled="{{ reprocessBusy }}" style="background:none;border:1px solid var(--accent);color:var(--accent);padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">{{ reprocessButtonLabel }}</button>
             </div>
+            <sc-if value="{{ reprocessAsk }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:12px;background:#fff8f0;border:1px solid #e0b0a0;padding:16px 18px;max-width:560px">
+                <div style="font-size:13px;font-weight:700;color:#b4432f;margin-bottom:8px">Refazer {{ reprocessAskLabel }} com a nitidez atual?</div>
+                <div style="font-size:12.5px;color:#8a5040;line-height:1.55;margin-bottom:6px">O realce entra <strong>por cima</strong> do que a foto já tem. Apertar duas vezes empilha dois realces, e não dá para desfazer.</div>
+                <div style="font-size:12.5px;color:#8a5040;line-height:1.55;margin-bottom:14px">Refazer não aumenta a resolução: uma foto pequena continua pequena. Para ganhar definição de verdade, reenvie o arquivo original.</div>
+                <div data-crm-actions="true" style="display:flex;gap:8px;flex-wrap:wrap">
+                  <button onClick="{{ confirmarReprocesso }}" style="background:#b4432f;color:#fff;border:none;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Refazer agora</button>
+                  <button onClick="{{ cancelarReprocesso }}" style="background:none;border:1px solid #ddd3bd;color:#4a4438;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Cancelar</button>
+                </div>
+              </div>
+            </sc-if>
             <sc-if value="{{ reprocessProgress }}" hint-placeholder-val="{{ false }}">
               <div style="font-size:12px;color:var(--accent);margin-top:8px">{{ reprocessProgress }}</div>
             </sc-if>
@@ -2057,6 +2067,12 @@
               <div style="margin-bottom:16px">
                 <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Tempo de troca: <strong>{{ site.heroSlideInterval }} segundo(s)</strong></div>
                 <input type="range" min="1" max="5" step="1" value="{{ site.heroSlideInterval }}" onChange="{{ onSiteField_heroSlideInterval }}" onInput="{{ onSiteField_heroSlideInterval }}" style="width:100%;max-width:360px;accent-color:var(--accent)" />
+              </div>
+              <div style="margin-bottom:16px">
+                <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Opacidade das imagens: <strong>{{ site.heroOpacityPct }}%</strong></div>
+                <input type="range" min="20" max="100" step="5" value="{{ site.heroOpacityPct }}" onChange="{{ onHeroOpacity }}" onInput="{{ onHeroOpacity }}" style="width:100%;max-width:360px;accent-color:var(--accent)" />
+                <div style="display:flex;justify-content:space-between;max-width:360px;font-size:11px;color:#8a7f6a"><span>Mais apagada</span><span>Cheia</span></div>
+                <div style="font-size:11.5px;color:#746b5c;margin-top:6px;max-width:420px;line-height:1.5">Abaixo de 100% a foto se mistura com o fundo escuro da capa. Deixa a imagem mais discreta e o texto branco mais legível por cima dela.</div>
               </div>
               <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;min-width:0">
                 <sc-for list="{{ site.heroSlideThumbs }}" as="hslot" hint-placeholder-count="4">
@@ -2979,23 +2995,22 @@ class Component extends DCLogic {
 
   // Reprocessar por grupo: refazer tudo de uma vez pode levar minutos com muitas fotos, e
   // quase sempre o ajuste interessa a um grupo só — as fotos dos imóveis, ou só o blog.
-  reprocessarGrupo = (alvo) => () => this.reprocessAllPhotos(alvo);
+  // A confirmacao e desenhada na propria tela, e nao com window.confirm. No celular o aviso
+  // do navegador pode ser recusado sozinho -- basta o visitante ter marcado "impedir esta
+  // pagina de criar mais caixas" alguma vez -- e a funcao voltava sem fazer nada: o botao
+  // parecia morto. Uma caixa da propria pagina nao depende disso.
+  reprocessarGrupo = (alvo) => () => this.setState({ reprocessAsk: alvo, reprocessProgress: '' });
+  cancelarReprocesso = () => this.setState({ reprocessAsk: '' });
+  confirmarReprocesso = () => {
+    const grupo = this.state.reprocessAsk;
+    this.setState({ reprocessAsk: '' });
+    if (grupo) this.reprocessAllPhotos(grupo);
+  };
 
   reprocessAllPhotos = async (alvo) => {
     const grupo = typeof alvo === 'string' ? alvo : 'tudo';
     const fazer = (g) => grupo === 'tudo' || grupo === g;
     if (!window.CRMData || this.state.reprocessBusy) return;
-    // Refazer aplica o realce POR CIMA do que a foto ja tem, e nao ha como desfazer. Apertar
-    // duas vezes empilha dois realces. O aviso e curto de proposito: quem entendeu segue.
-    const nomeGrupo = { tudo: 'todas as fotos', imoveis: 'as fotos dos imóveis',
-                        blog: 'as imagens do blog', depoimentos: 'as imagens dos depoimentos',
-                        capas: 'as capas da home' }[grupo] || 'as fotos';
-    const ok = window.confirm('Refazer ' + nomeGrupo + ' com a nitidez atual.' +
-      String.fromCharCode(10, 10) +
-      'O realce entra POR CIMA do que a foto já tem — apertar duas vezes empilha dois realces, e não dá para desfazer.' +
-      String.fromCharCode(10, 10) +
-      'Refazer não aumenta a resolução: uma foto pequena continua pequena. Para ganhar definição de verdade, reenvie o arquivo original.');
-    if (!ok) return;
     const D = window.CRMData;
     const q = (this.state.siteContent || {}).photoQuality || 'equilibrada';
     const preset = this.photoPresetFor(q);
@@ -3036,9 +3051,15 @@ class Component extends DCLogic {
         // true: aqui o realce E o pedido -- e o botao que aplica a nitidez escolhida as
         // fotos ja enviadas. Nas demais chamadas de resizeDataUrl ele fica de fora.
         const resized = await D.resizeDataUrl(dataUrl, dim, quality, null, true);
-        const nova = await D.savePhoto(resized);
-        if (nova) { contas.refeitas++; return nova; }
-        return key;
+        if (!resized) { contas.ilegiveis++; return key; }
+        contas.refeitas++;
+        // A foto refeita ocupa o lugar da anterior, nao um lugar novo. Quando ela veio do
+        // banco ('fotodoc:'), devolver a imagem em si basta: a gravacao reescreve o conjunto
+        // inteiro de blocos e a referencia continua a mesma. Quando veio do armazenamento
+        // deste navegador, regrava na mesma chave. Antes, os dois casos sorteavam uma chave
+        // nova e deixavam a copia velha para tras a cada passada.
+        if (key.indexOf('idbphoto:') === 0) return await D.replacePhoto(key, resized);
+        return resized;
       } catch (e) { contas.ilegiveis++; return key; }
     };
     try {
@@ -3094,10 +3115,13 @@ class Component extends DCLogic {
                       blog: 'As imagens do blog', depoimentos: 'As imagens dos depoimentos',
                       capas: 'As capas da home' };
       const partes = [];
-      if (contas.refeitas) partes.push(contas.refeitas + (contas.refeitas === 1 ? ' foto refeita' : ' fotos refeitas') + ' com a qualidade e a nitidez atuais.');
-      else partes.push('Nenhuma foto foi alterada.');
-      if (contas.doServidor) partes.push(contas.doServidor + ' que vieram junto com o site nao entram: sao arquivos do servidor, ja prontos, e o ajuste de nitidez nao alcanca elas.');
-      if (contas.ilegiveis) partes.push(contas.ilegiveis + ' nao pode(m) ser lida(s) neste navegador.');
+      const uma = (n, sing, plur) => n + ' ' + (n === 1 ? sing : plur);
+      if (contas.refeitas) partes.push(uma(contas.refeitas, 'foto refeita', 'fotos refeitas') + ' com a qualidade e a nitidez atuais.');
+      else partes.push('nenhuma foto foi alterada.');
+      if (contas.doServidor) partes.push(contas.doServidor + (contas.doServidor === 1
+        ? ' imagem que veio junto com o site ficou de fora — é um arquivo do servidor, já pronto, que o ajuste de nitidez não alcança.'
+        : ' imagens que vieram junto com o site ficaram de fora — são arquivos do servidor, já prontos, que o ajuste de nitidez não alcança.'));
+      if (contas.ilegiveis) partes.push(uma(contas.ilegiveis, 'não pôde ser lida', 'não puderam ser lidas') + ' neste navegador.');
       this.setState({ reprocessBusy: false,
         reprocessProgress: (nomes[grupo] || 'As fotos') + ': ' + partes.join(' ') });
       this.logAction('Reprocessou fotos existentes', `grupo: ${grupo}, qualidade: ${q}`);
@@ -5509,6 +5533,7 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
         watermarkBlog: !!site.watermarkBlog,
         hasHeroImage: !!site.heroImage,
         heroSlideInterval: site.heroSlideInterval || 1,
+        heroOpacityPct: site.heroOpacity != null ? Math.round(site.heroOpacity * 100) : 100,
         formAccessKey: site.formAccessKey || '', canonicalUrl: site.canonicalUrl || '',
         servicesEyebrow: site.servicesEyebrow || '', servicesTitle: site.servicesTitle || '',
         heroSlideThumbs: ['Navegantes', 'Itajaí', 'Camboriú', 'Praia Brava'].map((label, i) => {
@@ -5562,10 +5587,16 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
         style: `display:flex;align-items:flex-start;gap:10px;cursor:pointer;border:1px solid ${(site.photoQuality || 'equilibrada') === o.v ? 'var(--accent)' : '#e5ddcd'};background:${(site.photoQuality || 'equilibrada') === o.v ? '#fbf6ec' : '#fff'};padding:12px 14px;border-radius:3px`,
         select: this.setPhotoQuality(o.v)
       })),
-      reprocessAllPhotos: this.reprocessAllPhotos, reprocessBusy: !!s.reprocessBusy,
+      reprocessarTudo: this.reprocessarGrupo('tudo'), reprocessBusy: !!s.reprocessBusy,
+      reprocessAsk: !!s.reprocessAsk,
+      reprocessAskLabel: ({ tudo: 'todas as fotos', imoveis: 'as fotos dos imóveis',
+                            blog: 'as imagens do blog', depoimentos: 'as imagens dos depoimentos',
+                            capas: 'as capas da home' })[s.reprocessAsk] || 'as fotos',
+      confirmarReprocesso: this.confirmarReprocesso, cancelarReprocesso: this.cancelarReprocesso,
       reprocessButtonLabel: s.reprocessBusy ? 'Reprocessando…' : 'Aplicar essa qualidade às fotos já enviadas',
       reprocessProgress: s.reprocessProgress || '',
       onSiteField_heroSlideInterval: this.updateSiteField('heroSlideInterval'),
+      onHeroOpacity: (e) => this.setState({ siteContent: { ...this.state.siteContent, heroOpacity: (parseInt(e.target.value, 10) || 100) / 100 }, siteSaved: false }),
       onSiteField_spotlightLabel: this.updateSiteField('spotlightLabel'),
       onSiteField_spotlightTitle: this.updateSiteField('spotlightTitle'),
       onSiteField_spotlightDesc: this.updateSiteField('spotlightDesc'),
@@ -5730,7 +5761,6 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       onNitidez: (e) => this.setState({ siteContent: { ...this.state.siteContent, sharpen: (parseInt(e.target.value, 10) || 0) / 100 }, siteSaved: false }),
       reprocessarImoveis: this.reprocessarGrupo('imoveis'),
       reprocessarBlog: this.reprocessarGrupo('blog'),
-      reprocessarDepoimentos: this.reprocessarGrupo('depoimentos'),
       reprocessarCapas: this.reprocessarGrupo('capas'),
       previaNitidezAntes: (el) => this.desenharPrevia(el, false),
       previaNitidezDepois: (el) => this.desenharPrevia(el, true),

@@ -800,9 +800,12 @@ class Component extends DCLogic {
     // Só a foto à vista entra junto com a página: as outras são baixadas depois que ela
     // termina, senão as três disputam a rede e a capa demora a aparecer — era o que
     // segurava a maior pintura da tela.
+    const opacidadeDaCapa = site.heroOpacity != null ? Math.max(0.2, Math.min(1, Number(site.heroOpacity))) : 1;
     const COM_VERSAO_LEVE = { 'media/aura-1.jpg': 1, 'media/praia-brava-cobertura-1.jpg': 1, 'media/urban-1.jpg': 1 };
     const heroSlideItems = capasVisiveis.map((img, iRel) => ({
-      style: `position:absolute;inset:0;background-size:cover;background-position:center;opacity:${(this.state.cicloIniciado ? iRel : hIdx) === hIdx ? 1 : 0};transition:opacity .8s ease;z-index:0`,
+      // A opacidade da capa vem do painel. O slide que nao esta a vista continua em zero —
+      // e a travessia entre eles; o que esta a vista para no valor escolhido em vez de 1.
+      style: `position:absolute;inset:0;background-size:cover;background-position:center;opacity:${(this.state.cicloIniciado ? iRel : hIdx) === hIdx ? opacidadeDaCapa : 0};transition:opacity .8s ease;z-index:0`,
       ref: (el) => {
         if (!el || !img) return;
         const i = this.state.cicloIniciado ? iRel : hIdx;
