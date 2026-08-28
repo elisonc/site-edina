@@ -453,12 +453,50 @@ class Component extends DCLogic {
   // melhor, porque o PDF aparece ali mesmo, sem precisar baixar.
   // Tela cheia de verdade, pelo próprio navegador. Onde não houver (iPhone só permite em
   // vídeo, não em qualquer elemento), abre a publicação na origem, que lá já ocupa a tela.
+  // Em tela cheia o navegador esconde a barra e a página inteira some — sem um jeito visível
+  // de voltar, a pessoa fica presa. Esc funciona no computador, mas no celular não há Esc.
+  // Um botão de sair é acrescentado sobre o vídeo enquanto ele estiver em tela cheia.
+  _botaoSair = () => {
+    if (this._sairEl) return this._sairEl;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', 'Sair da tela cheia');
+    b.textContent = '✕';
+    b.style.cssText = 'position:absolute;top:14px;right:14px;z-index:2147483647;width:48px;height:48px;' +
+      'display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid rgba(255,255,255,.3);' +
+      'background:rgba(0,0,0,.5);color:#fff;font-size:24px;line-height:1;cursor:pointer;font-family:sans-serif';
+    b.onclick = (ev) => { ev.stopPropagation(); this.sairVideoCheio(); };
+    this._sairEl = b;
+    return b;
+  };
+
+  sairVideoCheio = () => {
+    const sair = document.exitFullscreen || document.webkitExitFullscreen;
+    if (sair) { try { sair.call(document); } catch (e) {} }
+  };
+
   abrirVideoCheio = () => {
     const el = this._quadroVideo;
     const pedir = el && (el.requestFullscreen || el.webkitRequestFullscreen || el.webkitEnterFullscreen);
     if (pedir) {
-      try { pedir.call(el); return; } catch (e) {}
+      try {
+        pedir.call(el);
+        if (!this._ouvindoTelaCheia) {
+          this._ouvindoTelaCheia = true;
+          const aoMudar = () => {
+            const cheio = document.fullscreenElement || document.webkitFullscreenElement;
+            const alvo = this._quadroVideo;
+            if (cheio && alvo) { alvo.appendChild(this._botaoSair()); }
+            else if (this._sairEl && this._sairEl.parentElement) this._sairEl.remove();
+          };
+          document.addEventListener('fullscreenchange', aoMudar);
+          document.addEventListener('webkitfullscreenchange', aoMudar);
+        }
+        return;
+      } catch (e) {}
     }
+    // iPhone só permite tela cheia no vídeo em si, não num quadro qualquer: abre na origem,
+    // que lá já ocupa a tela e tem o próprio jeito de voltar.
     const all = this.state.properties || [];
     const p = all.find(x => x.id === this.state.id) || all[0] || {};
     if (p.videoUrl) window.open(p.videoUrl, '_blank', 'noopener');
@@ -941,11 +979,14 @@ class Component extends DCLogic {
       similarProperties: similar.map(sp => ({
         href: `imovel-detalhe.dc.html?id=${sp.id}`,
         location: sp.location, title: sp.title, priceLabel: this.money(sp.price),
-        noImg: !sp.image,
-        imgStyle: sp.image
+        // A miniatura viaja junto com a ficha; a foto cheia só é buscada para o imóvel que
+        // está aberto. Usar apenas a foto cheia deixava estes cards vazios — buscar a
+        // galeria dos três só para mostrar um card seria pior ainda.
+        noImg: !(sp.thumb || sp.image),
+        imgStyle: (sp.thumb || sp.image)
           ? `height:170px;background-size:cover;background-position:center`
-          : `background:${tones[sp.tone % 3]};height:170px;display:flex;align-items:center;justify-content:center;color:#e9e4d8bb;font-family:monospace;font-size:12px`,
-        imgRef: (el) => { if (el && sp.image) el.style.backgroundImage = `url('${sp.image}')`; }
+          : `background:#f1ece0;height:170px`,
+        imgRef: (el) => { const u = sp.thumb || sp.image; if (el && u) el.style.backgroundImage = `url('${u}')`; }
       }))
     };
   }

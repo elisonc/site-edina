@@ -3538,6 +3538,13 @@ class Component extends DCLogic {
   editProperty = (p) => () => {
     // Carrega a galeria deste imóvel sob demanda (não vem no preload da listagem).
     if (window.CRMData) window.CRMData.warm(window.CRMData.propertyKeys(p.id)).then(() => this.forceUpdate());
+    // Traz as fotos deste imóvel do banco antes de editar. Sem isto a galeria de edição
+    // aparece com quadros vazios: a foto cheia só é buscada para quem vai exibi-la.
+    if (window.FirebaseDB && window.FirebaseDB.hidratarImovel) {
+      window.FirebaseDB.hidratarImovel(p)
+        .then(() => this.setState({ properties: window.CRMData.getPropertiesRaw() }))
+        .catch(() => {});
+    }
     this.setState({ propertyDraft: { ...p, isNew: false, published: p.published !== false, price: String(p.price), area: String(p.area), suites: String(p.suites), baths: String(p.baths), garage: String(p.garage), amenities: (p.amenities || []).join(', '), address: p.address || '', delivery: p.delivery || '', unitOptions: p.unitOptions || [], image: p.image || '', images: p.images || [], plantas: p.plantas || [], ebookUrl: p.ebookUrl || '', videoUrl: p.videoUrl || '', videoFile: p.videoFile || '' } });
   };
   deleteProperty = (id) => () => {
