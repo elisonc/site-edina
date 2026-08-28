@@ -1030,9 +1030,16 @@
     },
     // Guarda no cache as imagens que vieram do banco.
     registrarImagensDoBanco: function (rotulo, imagens) {
+      let entrou = 0;
       (imagens || []).forEach((img, i) => {
-        if (img) this._photoCache['fotodoc:' + rotulo + ':' + i] = img;
+        if (img) { this._photoCache['fotodoc:' + rotulo + ':' + i] = img; entrou++; }
       });
+      // Quem estiver na tela precisa saber que a imagem chegou. Sem este aviso, a página só
+      // trocava a prévia pela foto cheia se alguma outra coisa forçasse um redesenho —
+      // e quando nada forçava, a capa ficava na prévia de 820px até a próxima visita.
+      if (entrou) {
+        try { window.dispatchEvent(new CustomEvent('edina:midia-chegou', { detail: rotulo })); } catch (e) {}
+      }
     },
     // Carrega no cache APENAS as chaves pedidas. Nada de varrer o banco inteiro: com 50
     // empreendimentos x 50 fotos isso seriam centenas de MB residentes em memória.

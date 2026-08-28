@@ -500,7 +500,10 @@ class Component extends DCLogic {
   );
 
   componentWillUnmount() {
-    if (this._onPub) window.removeEventListener('edina:published-updated', this._onPub); if (this._heroTimer) clearTimeout(this._heroTimer); }
+    if (this._onPub) window.removeEventListener('edina:published-updated', this._onPub);
+    if (this._onMidia) window.removeEventListener('edina:midia-chegou', this._onMidia);
+    if (this._redesenhoPendente) clearTimeout(this._redesenhoPendente);
+    if (this._heroTimer) clearTimeout(this._heroTimer); }
 
   componentDidMount() {
     try {
@@ -517,6 +520,18 @@ class Component extends DCLogic {
       this.loadData();
     };
     window.addEventListener('edina:published-updated', this._onPub);
+    // As fotos do banco chegam depois da página desenhada. Um redesenho curto atrás de cada
+    // chegada é o que troca a prévia pela capa cheia; agrupado em 60 ms para não redesenhar
+    // uma vez por bloco de imagens.
+    this._onMidia = () => {
+      if (this._redesenhoPendente) return;
+      this._redesenhoPendente = setTimeout(() => {
+        this._redesenhoPendente = null;
+        this._cruCache = null;
+        this.setState({ midiaEm: Date.now() });
+      }, 60);
+    };
+    window.addEventListener('edina:midia-chegou', this._onMidia);
     this.loadData();
     // Quais capas usar — uma resposta só, para o ciclo e para a pintura. Antes cada um
     // decidia por conta própria: a pintura já caía para as fotos do portfólio quando a
@@ -542,6 +557,20 @@ class Component extends DCLogic {
 
     this._capas = () => {
       const site = this.state.siteContent || {};
+      // As referências são resolvidas A CADA PINTURA, e não uma única vez quando os dados
+      // chegaram. Uma referência do banco resolve para vazio enquanto a imagem não chegou;
+      // esse vazio ficava guardado no estado e a capa parava na prévia de 820px — que é
+      // baixa de propósito, ela existe só para cobrir o primeiro instante. A capa cheia só
+      // aparecia por acaso, quando outra coisa forçava um redesenho depois. Era isso que
+      // fazia a nitidez sumir em algumas atualizações da página e voltar em outras.
+      const refs = ((this._siteCru() || {}).heroSlides || []).filter(Boolean);
+      if (refs.length) {
+        const prontas = refs.map(r => {
+          if (typeof r === 'string' && r.indexOf('data:') === 0) return r;
+          try { return (window.CRMData && window.CRMData.photoURL(r)) || ''; } catch (e) { return ''; }
+        }).filter(Boolean);
+        if (prontas.length) return prontas;
+      }
       const lista = (site.heroSlides || []).filter(Boolean);
       if (lista.length) return lista;
       if (site.heroImage) return [site.heroImage];
