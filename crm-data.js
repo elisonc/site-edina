@@ -612,8 +612,11 @@
     try {
       const n = (window.CRMData && window.CRMData.getSiteContentRaw)
         ? window.CRMData.getSiteContentRaw().sharpen : null;
-      return n == null ? 0.35 : Math.max(0, Math.min(1.2, Number(n)));
-    } catch (e) { return 0.35; }
+      // 0,18 e o padrao medido: a reducao para 1920px custa definicao (energia de bordas cai
+      // de 57 para 46) e este valor devolve o que foi perdido, sem passar do ponto. Acima de
+      // ~0,26 a imagem fica com mais contorno do que a foto tinha, o que aparece como halo.
+      return n == null ? 0.18 : Math.max(0, Math.min(1.2, Number(n)));
+    } catch (e) { return 0.18; }
   }
 
   // Uma imagem de fundo vazado — logo, selo, marca d'água — não pode virar JPEG: o formato

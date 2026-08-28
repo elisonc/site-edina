@@ -2985,23 +2985,61 @@ class Component extends DCLogic {
     const grupo = typeof alvo === 'string' ? alvo : 'tudo';
     const fazer = (g) => grupo === 'tudo' || grupo === g;
     if (!window.CRMData || this.state.reprocessBusy) return;
+    // Refazer aplica o realce POR CIMA do que a foto ja tem, e nao ha como desfazer. Apertar
+    // duas vezes empilha dois realces. O aviso e curto de proposito: quem entendeu segue.
+    const nomeGrupo = { tudo: 'todas as fotos', imoveis: 'as fotos dos imóveis',
+                        blog: 'as imagens do blog', depoimentos: 'as imagens dos depoimentos',
+                        capas: 'as capas da home' }[grupo] || 'as fotos';
+    const ok = window.confirm('Refazer ' + nomeGrupo + ' com a nitidez atual.' +
+      String.fromCharCode(10, 10) +
+      'O realce entra POR CIMA do que a foto já tem — apertar duas vezes empilha dois realces, e não dá para desfazer.' +
+      String.fromCharCode(10, 10) +
+      'Refazer não aumenta a resolução: uma foto pequena continua pequena. Para ganhar definição de verdade, reenvie o arquivo original.');
+    if (!ok) return;
     const D = window.CRMData;
     const q = (this.state.siteContent || {}).photoQuality || 'equilibrada';
     const preset = this.photoPresetFor(q);
     this.setState({ reprocessBusy: true, reprocessProgress: 'Preparando…' });
+    // Fotos que vieram junto com o site (media/*.jpg) sao arquivos do servidor: nao passam
+    // pelo banco, ja tem versao reduzida pronta, e puxa-las para dentro do Firestore
+    // deixaria o site mais pesado em vez de mais nitido. Ficam de fora, e o aviso final diz
+    // quantas foram -- em vez de anunciar sucesso sobre uma foto que nao mudou.
+    const contas = { refeitas: 0, doServidor: 0, ilegiveis: 0 };
     const reshoot = async (key, dim, quality) => {
       if (!key || typeof key !== 'string') return key;
-      let dataUrl = key;
-      if (/^idb(photo):/.test(key)) {
-        try { dataUrl = await D.getMediaRaw(key); } catch (e) { return key; }
+      let dataUrl = '';
+      if (key.indexOf('data:') === 0) {
+        dataUrl = key;
+      } else if (/^idb(photo):/.test(key)) {
+        try { dataUrl = await D.getMediaRaw(key); } catch (e) { contas.ilegiveis++; return key; }
+      } else if (key.indexOf('fotodoc:') === 0) {
+        // O dado guarda so a referencia; a imagem mora no banco. Sem resolver isto, a chave
+        // nao comecava com 'data:' e a funcao devolvia a foto intacta -- era por isso que os
+        // botoes diziam que tinham refeito tudo sem ter mexido em nada.
+        dataUrl = D.photoURL(key);
+        if (!dataUrl && window.FirebaseDB && window.FirebaseDB.lerImagens) {
+          const partes = key.slice('fotodoc:'.length).split(':');
+          partes.pop();
+          const rotulo = partes.join(':');
+          try {
+            const imgs = await window.FirebaseDB.lerImagens(rotulo);
+            if (imgs && imgs.length) D.registrarImagensDoBanco(rotulo, imgs);
+          } catch (e) {}
+          dataUrl = D.photoURL(key);
+        }
+      } else {
+        contas.doServidor++;
+        return key;
       }
-      if (!dataUrl || dataUrl.indexOf('data:') !== 0) return key;
+      if (!dataUrl || dataUrl.indexOf('data:') !== 0) { contas.ilegiveis++; return key; }
       try {
         // true: aqui o realce E o pedido -- e o botao que aplica a nitidez escolhida as
         // fotos ja enviadas. Nas demais chamadas de resizeDataUrl ele fica de fora.
         const resized = await D.resizeDataUrl(dataUrl, dim, quality, null, true);
-        return await D.savePhoto(resized);
-      } catch (e) { return key; }
+        const nova = await D.savePhoto(resized);
+        if (nova) { contas.refeitas++; return nova; }
+        return key;
+      } catch (e) { contas.ilegiveis++; return key; }
     };
     try {
       if (fazer('imoveis')) {
@@ -3055,8 +3093,13 @@ class Component extends DCLogic {
       const nomes = { tudo: 'Todas as fotos', imoveis: 'As fotos dos imóveis',
                       blog: 'As imagens do blog', depoimentos: 'As imagens dos depoimentos',
                       capas: 'As capas da home' };
+      const partes = [];
+      if (contas.refeitas) partes.push(contas.refeitas + (contas.refeitas === 1 ? ' foto refeita' : ' fotos refeitas') + ' com a qualidade e a nitidez atuais.');
+      else partes.push('Nenhuma foto foi alterada.');
+      if (contas.doServidor) partes.push(contas.doServidor + ' que vieram junto com o site nao entram: sao arquivos do servidor, ja prontos, e o ajuste de nitidez nao alcanca elas.');
+      if (contas.ilegiveis) partes.push(contas.ilegiveis + ' nao pode(m) ser lida(s) neste navegador.');
       this.setState({ reprocessBusy: false,
-        reprocessProgress: (nomes[grupo] || 'As fotos') + ' foram refeitas com a qualidade e a nitidez atuais.' });
+        reprocessProgress: (nomes[grupo] || 'As fotos') + ': ' + partes.join(' ') });
       this.logAction('Reprocessou fotos existentes', `grupo: ${grupo}, qualidade: ${q}`);
       this.autoPublish('fotos reprocessadas');
     } catch (e) {
@@ -5446,14 +5489,21 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
         watermarkOpacityPct: Math.round((site.watermarkOpacity != null ? site.watermarkOpacity : 0.32) * 100),
         // Largura da marca em relação à foto. Trinta por cento era o valor fixo de antes.
         watermarkSizePct: site.watermarkSize != null ? site.watermarkSize : 30,
-        nitidezValor: Math.round((site.sharpen != null ? site.sharpen : 0.35) * 100),
+        nitidezValor: Math.round((site.sharpen != null ? site.sharpen : 0.18) * 100),
+        // Faixas medidas, nao estimadas. Numa capa de 1920px, a energia de bordas da foto
+        // original reduzida sem realce nenhum e 57. O realce leva esse numero a 66 em 20%,
+        // 78 em 35% e 89 em 50% -- ou seja, a partir de ~25% a imagem ja tem mais contorno
+        // do que a foto tinha, e isso aparece como halo claro em volta dos objetos. O ponto
+        // que devolve a definicao natural fica perto de 12%. A faixa recomendada foi movida
+        // para onde a medicao aponta; antes ela apontava para 25%-55%, que e halo.
         nitidezRotulo: (() => {
-          const v = site.sharpen != null ? site.sharpen : 0.35;
+          const v = site.sharpen != null ? site.sharpen : 0.18;
           if (v <= 0.02) return 'sem realce';
-          if (v < 0.25) return 'leve';
-          if (v < 0.55) return 'média (recomendada)';
-          if (v < 0.85) return 'alta';
-          return 'forte — confira se não criou contorno';
+          if (v < 0.10) return 'discreto';
+          if (v < 0.26) return 'equilibrado (recomendado)';
+          if (v < 0.50) return 'forte';
+          if (v < 0.80) return 'muito forte — provável contorno claro';
+          return 'exagerado — contorno claro visível';
         })(),
         watermarkEnabled: !!site.watermarkEnabled,
         watermarkBlog: !!site.watermarkBlog,
