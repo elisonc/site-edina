@@ -30,6 +30,10 @@
       mark.alt = '';
       mark.setAttribute('aria-hidden', 'true');
       mark.decoding = 'async';
+      // Sao sete marcas por pagina e quase todas nascem abaixo da dobra. Sem isto o
+      // navegador decodifica as sete no carregamento, cada uma de 680x680, para desenhar
+      // quadradinhos de 40px.
+      mark.loading = 'lazy';
       // Dimensões declaradas: sem elas o navegador não sabe quanto espaço a marca vai ocupar
       // e reposiciona o conteúdo quando ela carrega — e são sete por página.
       mark.width = 300; mark.height = 300;

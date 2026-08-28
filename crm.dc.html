@@ -2959,6 +2959,9 @@ class Component extends DCLogic {
     im.onload = () => {
       const ctx = el.getContext('2d');
       const L = el.width, A = el.height;
+      // Mesmo filtro que o site usa ao gravar, para a previa mostrar o resultado de verdade.
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
       // Recorte do meio, ampliado: é onde a diferença de definição se enxerga.
       const larguraFonte = Math.min(im.naturalWidth, Math.round(im.naturalWidth * 0.34));
       const alturaFonte = Math.round(larguraFonte * A / L);

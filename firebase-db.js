@@ -264,8 +264,13 @@
   // 1920px em 190 KB deixa marca visível, ainda mais esticada num monitor grande. Elas
   // ganham cota própria e nunca descem de 1600px de largura. São quatro imagens — o peso
   // extra fica só nelas, e a prévia local continua cobrindo a primeira pintura.
-  const COTA_CAPA = 420 * 1024;
-  const ETAPAS_CAPA = [[1920, 0.92], [1920, 0.88], [1760, 0.84], [1600, 0.8]];
+  // Medido na capa de Navegantes, 1920px de largura: a cota de 420 KB obrigava a descer as
+  // quatro etapas e a capa acabava gravada a 1600px e qualidade 0,80 -- perdendo 320px de
+  // largura e cerca de 4 dB de fidelidade. Era essa a queda que a cliente enxergava. Com
+  // 640 KB a capa cabe a 1920px, e a regua passa a ceder qualidade antes de ceder tamanho:
+  // numa tela cheia, resolucao de menos aparece mais do que compressao de mais.
+  const COTA_CAPA = 640 * 1024;
+  const ETAPAS_CAPA = [[1920, 0.92], [1920, 0.88], [1920, 0.84], [1920, 0.8], [1760, 0.78]];
 
   async function guardarImagens(chave, fotos, cotasEspeciais) {
     await ready;
@@ -310,7 +315,10 @@
       for (let i = 0; i < etapasDesta.length && f.length > cotaDesta; i++) {
         f = await reduzir(f, etapasDesta[i][0], etapasDesta[i][1]);
       }
-      if (usadoNoBloco + f.length > TETO_BLOCO) {
+      // So abre bloco novo se o atual ja tiver alguma coisa. Uma capa sozinha passa de 600 KB,
+      // e sem essa condicao ela empurrava um bloco vazio na frente -- um documento a mais para
+      // gravar e para ler, sem nada dentro.
+      if (usadoNoBloco && usadoNoBloco + f.length > TETO_BLOCO) {
         if (blocos.length >= MAX_BLOCOS) break;
         blocos.push([]);
         usadoNoBloco = 0;
@@ -423,7 +431,11 @@
     } catch (e) { return null; }
   }
 
-  async function lerImagens(chave) {
+  // aoChegar recebe o que ja veio a cada grupo de blocos. Com as capas em alta as imagens
+  // do site passam de 1,5 MB, e esperar o conjunto inteiro deixava a logo -- que vem no
+  // primeiro bloco, com poucos KB -- refem das quatro capas. Entregando por grupo, o que e
+  // pequeno e aparece primeiro entra em cena assim que chega.
+  async function lerImagens(chave, aoChegar) {
     await ready;
     if (!firebase.apps.length) return [];
     // Os blocos eram lidos em fila, cada um esperando o anterior — cinco blocos custavam
@@ -442,6 +454,7 @@
           fotos.push(...(snap.data().data || []));
         }
       } catch (e) { acabou = true; }
+      if (aoChegar && fotos.length) { try { aoChegar(fotos.slice()); } catch (e) {} }
       if (acabou) break;
     }
     if (fotos.length) return fotos;
@@ -458,9 +471,12 @@
   // dado — e essa versão inchada acabava gravada no navegador (enchendo o armazenamento) e
   // reenviada ao banco por quem não conseguia lê-la (apagando a foto). Guardando só a
   // referência, nenhum dos dois acontece.
-  async function carregarParaCache(rotulo) {
+  async function carregarParaCache(rotulo, aoParcial) {
     if (!window.CRMData || !window.CRMData.registrarImagensDoBanco) return [];
-    const imgs = await lerImagens(rotulo);
+    const imgs = await lerImagens(rotulo, (parcial) => {
+      window.CRMData.registrarImagensDoBanco(rotulo, parcial);
+      if (aoParcial) { try { aoParcial(); } catch (e) {} }
+    });
     if (imgs.length) window.CRMData.registrarImagensDoBanco(rotulo, imgs);
     return imgs;
   }
@@ -493,10 +509,10 @@
     return p;
   }
 
-  async function hidratarConjunto(alvo, campos, rotulo) {
+  async function hidratarConjunto(alvo, campos, rotulo, aoParcial) {
     const precisa = campos.some(c => usaReferencia(alvo[c], rotulo)) ||
       (Array.isArray(alvo.heroSlides) && alvo.heroSlides.some(v => usaReferencia(v, rotulo)));
-    if (precisa) await carregarParaCache(rotulo);
+    if (precisa) await carregarParaCache(rotulo, aoParcial);
     return alvo;
   }
 
@@ -967,7 +983,10 @@
           return;
         }
         if (name === 'site' && dados) {
-          hidratarConjunto(dados, CAMPOS_DE_IMAGEM, 'site').then(() => onChange(name, dados)).catch(() => onChange(name, dados));
+          // Repinta a cada grupo de blocos que chega, em vez de so no fim: a logo aparece
+          // sem esperar as capas, que sao o que pesa no conjunto.
+          hidratarConjunto(dados, CAMPOS_DE_IMAGEM, 'site', () => onChange(name, dados))
+            .then(() => onChange(name, dados)).catch(() => onChange(name, dados));
           return;
         }
         if (name === 'posts' && Array.isArray(dados)) {
