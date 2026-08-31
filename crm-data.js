@@ -612,15 +612,43 @@
 
   // Força escolhida no painel. Guardada junto com o conteúdo do site para valer em qualquer
   // aparelho que envie foto.
-  function forcaDeNitidez() {
+  // O realce deixou de ser um valor fixo aplicado a toda foto. Ele agora responde ao quanto
+  // a foto foi reduzida, que e a unica coisa que ele existe para compensar.
+  //
+  // Medido numa foto de 1600px deste site, gravada tambem em 1600px (ou seja, sem reducao
+  // nenhuma), comparada com a original:
+  //
+  //   sem realce   489 KB  fidelidade 40,82 dB  definicao 48,5  (a original tem 48,7)
+  //   realce 0,18  583 KB  fidelidade 32,89 dB  definicao 65,5  (+34%)
+  //   realce 0,40  680 KB  fidelidade 26,72 dB  definicao 78,5  (+61%)
+  //   realce 0,75  801 KB  fidelidade 22,08 dB  definicao 91,4  (+87%)
+  //
+  // Sem reducao, a foto ja sai identica a original e qualquer realce so afasta dela — e
+  // ainda engorda o arquivo, porque contorno artificial e caro de comprimir. Numa foto que
+  // desce de 4000 para 1920px acontece o contrario: sem realce a definicao cai de 57 para
+  // 45,8, e ai ele repoe o que a reducao levou.
+  //
+  // Dai a regra: proporcional ao fator de reducao, e nada quando nao ha reducao. 0,12 por
+  // duplicacao acerta os dois pontos medidos (2,08x pede 0,127; 1,0x pede 0).
+  function realceAutomatico(larguraOriginal, larguraFinal) {
+    const fator = (larguraOriginal || 0) / Math.max(1, larguraFinal || 1);
+    if (!(fator > 1.15)) return 0;
+    return Math.min(0.25, 0.12 * Math.log2(fator));
+  }
+
+  // O valor do painel virou um MULTIPLICADOR do realce automatico, e nao mais uma forca
+  // absoluta: 100% e o que a medicao indica, abaixo disso e mais discreto, acima e questao
+  // de gosto. Assim nao existe mais posicao do controle que destrua a foto.
+  function multiplicadorDeNitidez() {
     try {
       const n = (window.CRMData && window.CRMData.getSiteContentRaw)
         ? window.CRMData.getSiteContentRaw().sharpen : null;
-      // 0,18 e o padrao medido: a reducao para 1920px custa definicao (energia de bordas cai
-      // de 57 para 46) e este valor devolve o que foi perdido, sem passar do ponto. Acima de
-      // ~0,26 a imagem fica com mais contorno do que a foto tinha, o que aparece como halo.
-      return n == null ? 0.18 : Math.max(0, Math.min(1.2, Number(n)));
-    } catch (e) { return 0.18; }
+      return n == null ? 1 : Math.max(0, Math.min(2, Number(n)));
+    } catch (e) { return 1; }
+  }
+
+  function forcaDeNitidez(larguraOriginal, larguraFinal) {
+    return realceAutomatico(larguraOriginal, larguraFinal) * multiplicadorDeNitidez();
   }
 
   // Uma imagem de fundo vazado — logo, selo, marca d'água — não pode virar JPEG: o formato
@@ -701,7 +729,7 @@
           desenharReduzido(ctx, img, width, height);
           try {
             if (format === 'png') { resolve(canvas.toDataURL('image/png')); return; }
-            if (realcar) realcarNitidez(ctx, width, height, forcaDeNitidez());
+            if (realcar) realcarNitidez(ctx, width, height, forcaDeNitidez(img.width, width));
             resolve(codificar(canvas, ctx, width, height, quality));
           } catch (e) {
             reject(new Error('encode-failed'));
@@ -746,7 +774,7 @@
         desenharReduzido(ctx, img, width, height);
         try {
           if (format === 'png') { resolve(canvas.toDataURL('image/png')); return; }
-          if (realcar) realcarNitidez(ctx, width, height, forcaDeNitidez());
+          if (realcar) realcarNitidez(ctx, width, height, forcaDeNitidez(img.width, width));
           resolve(codificar(canvas, ctx, width, height, quality));
         } catch (e) {
           reject(new Error('encode-failed'));
@@ -954,6 +982,8 @@
     resizeDataUrl,
     // Usado pelo painel para desenhar a prévia do realce sem gravar nada.
     realcarNitidezEm: realcarNitidez,
+    realceAutomatico: realceAutomatico,
+    multiplicadorDeNitidez: multiplicadorDeNitidez,
     // ---- Photo storage (IndexedDB) ----
     // 50 empreendimentos x 50 fotos como base64 em localStorage estoura a cota (5-10MB).
     // As fotos vão para o IndexedDB (centenas de MB) e no registro do imóvel fica só a

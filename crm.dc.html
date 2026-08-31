@@ -1852,8 +1852,8 @@
           <div style="font-size:12.5px;color:#3e7a4f;margin-top:12px;font-weight:600">{{ photoQualityMsg }}</div>
           <div style="margin-top:20px;border-top:1px solid #eee4d0;padding-top:16px">
             <div style="font-size:12.5px;color:#746b5c;margin-bottom:6px">Nitidez: <strong>{{ site.nitidezRotulo }}</strong></div>
-            <input type="range" min="0" max="120" step="5" value="{{ site.nitidezValor }}" onChange="{{ onNitidez }}" onInput="{{ onNitidez }}" style="width:100%;max-width:520px;accent-color:var(--accent)" />
-            <div style="display:flex;justify-content:space-between;max-width:520px;font-size:11px;color:#8a7f6a"><span>Sem realce</span><span>Forte</span></div>
+            <input type="range" min="0" max="200" step="5" value="{{ site.nitidezValor }}" onChange="{{ onNitidez }}" onInput="{{ onNitidez }}" style="width:100%;max-width:520px;accent-color:var(--accent)" />
+            <div style="display:flex;justify-content:space-between;max-width:520px;font-size:11px;color:#8a7f6a"><span>Sem realce</span><span>100% = medido</span><span>Exagerado</span></div>
             <!-- Prévia com uma foto de verdade do site, para não precisar sair da tela,
                  reprocessar tudo e voltar só para ver se o realce ficou bom. -->
             <div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap;align-items:flex-start">
@@ -1867,7 +1867,7 @@
               </div>
             </div>
             <div style="font-size:11px;color:#8a7f6a;margin-top:6px">Recorte ampliado de uma foto do próprio site — é onde a diferença aparece.</div>
-            <div style="font-size:11.5px;color:#746b5c;margin-top:6px;max-width:520px">Reduzir uma foto sempre suaviza as bordas — é da natureza do processo. O realce devolve essa definição. Em excesso cria um contorno claro em volta dos objetos, por isso há um teto.</div>
+            <div style="font-size:11.5px;color:#746b5c;margin-top:6px;max-width:520px">Reduzir uma foto suaviza as bordas — é da natureza do processo. O realce devolve só o que a redução tirou, e o quanto depende de cada foto: uma que desce de 4000px para 1920px precisa de realce, uma que já chega no tamanho certo não precisa de nenhum. <strong>100% é o valor medido para cada caso</strong>; o controle serve para ajustar o gosto em volta dele.</div>
           </div>
 
           <div style="margin-top:16px">
@@ -2985,11 +2985,13 @@ class Component extends DCLogic {
     if (!el) return;
     const fonte = this._fotoDaPrevia();
     if (!fonte) return;
-    const forca = comRealce
-      ? (() => { const v = (this.state.siteContent || {}).sharpen; return v == null ? 0.35 : v; })()
+    // O multiplicador escolhido no painel. A força de verdade só dá para calcular depois de
+    // saber de quanto a foto foi reduzida, e isso é lá embaixo, com a imagem já carregada.
+    const mult = comRealce
+      ? (() => { const v = (this.state.siteContent || {}).sharpen; return v == null ? 1 : v; })()
       : 0;
     // Não redesenha se nada mudou — o deslizador dispara muitos eventos seguidos.
-    const marca = fonte.slice(-40) + '|' + forca;
+    const marca = fonte.slice(-40) + '|' + mult;
     if (el.__marca === marca) return;
     el.__marca = marca;
 
@@ -3007,6 +3009,12 @@ class Component extends DCLogic {
         Math.round((im.naturalWidth - larguraFonte) / 2),
         Math.round((im.naturalHeight - alturaFonte) / 2),
         larguraFonte, alturaFonte, 0, 0, L, A);
+      // A mesma conta que a gravação faz: o realce sai da redução que este recorte sofreu
+      // (larguraFonte para L), multiplicada pelo valor do painel. Usar um número fixo aqui
+      // mostraria na prévia um efeito diferente do que a foto vai receber de verdade.
+      const forca = mult > 0 && window.CRMData.realceAutomatico
+        ? window.CRMData.realceAutomatico(larguraFonte, L) * mult
+        : 0;
       if (forca > 0 && window.CRMData.realcarNitidezEm) {
         window.CRMData.realcarNitidezEm(ctx, L, A, forca);
       }
@@ -5597,21 +5605,20 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
         watermarkOpacityPct: Math.round((site.watermarkOpacity != null ? site.watermarkOpacity : 0.32) * 100),
         // Largura da marca em relação à foto. Trinta por cento era o valor fixo de antes.
         watermarkSizePct: site.watermarkSize != null ? site.watermarkSize : 30,
-        nitidezValor: Math.round((site.sharpen != null ? site.sharpen : 0.18) * 100),
-        // Faixas medidas, nao estimadas. Numa capa de 1920px, a energia de bordas da foto
-        // original reduzida sem realce nenhum e 57. O realce leva esse numero a 66 em 20%,
-        // 78 em 35% e 89 em 50% -- ou seja, a partir de ~25% a imagem ja tem mais contorno
-        // do que a foto tinha, e isso aparece como halo claro em volta dos objetos. O ponto
-        // que devolve a definicao natural fica perto de 12%. A faixa recomendada foi movida
-        // para onde a medicao aponta; antes ela apontava para 25%-55%, que e halo.
+        nitidezValor: Math.round((site.sharpen != null ? site.sharpen : 1) * 100),
+        // O valor deixou de ser uma força fixa e virou um multiplicador do realce que a
+        // medição indica para cada foto. Medido numa foto de 1600px gravada em 1600px, ou
+        // seja sem redução: sem realce ela sai com 40,82 dB de fidelidade e a mesma
+        // definição da original; com realce fixo de 0,75 cai para 22,08 dB, ganha 87% de
+        // contorno e engorda 64%. Com a regra nova, essa mesma foto não recebe realce
+        // nenhum, porque não houve redução para compensar.
         nitidezRotulo: (() => {
-          const v = site.sharpen != null ? site.sharpen : 0.18;
-          if (v <= 0.02) return 'sem realce';
-          if (v < 0.10) return 'discreto';
-          if (v < 0.26) return 'equilibrado (recomendado)';
-          if (v < 0.50) return 'forte';
-          if (v < 0.80) return 'muito forte — provável contorno claro';
-          return 'exagerado — contorno claro visível';
+          const v = site.sharpen != null ? site.sharpen : 1;
+          if (v <= 0.02) return 'desligado — nenhum realce';
+          if (v < 0.7) return 'discreto';
+          if (v <= 1.15) return '100% — o medido para cada foto (recomendado)';
+          if (v <= 1.5) return 'acima do medido';
+          return 'exagerado — provável contorno claro';
         })(),
         watermarkEnabled: !!site.watermarkEnabled,
         watermarkBlog: !!site.watermarkBlog,
