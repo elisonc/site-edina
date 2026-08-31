@@ -3463,7 +3463,10 @@ class Component extends DCLogic {
   onSignatureFile = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    (window.CRMData ? window.CRMData.resizeImage(file, 700, 0.9).then(d => window.CRMData.savePhoto(d)) : Promise.resolve(''))
+    // 900px porque a assinatura chega a ocupar 340px de largura na abertura, e numa tela
+    // de celular (que costuma ter o dobro de pontos por pixel) isso pede 680. Em 700 ela
+    // ficava no limite; traço fino ampliado é onde a falta de resolução aparece primeiro.
+    (window.CRMData ? window.CRMData.resizeImage(file, 900, 0.92).then(d => window.CRMData.savePhoto(d)) : Promise.resolve(''))
       .then(dataUrl => this.setState({ siteContent: { ...this.state.siteContent, signatureUrl: dataUrl }, siteSaved: false }))
       .catch(() => window.alert('Não foi possível ler essa imagem (formato não suportado, ex: HEIC do iPhone). Exporte como JPEG ou PNG e tente novamente.'));
   };

@@ -70,9 +70,12 @@
     // tamanho certo: medir depois que a imagem carrega empurra tudo que vem abaixo.
     logoRatio: 1,
     faviconUrl: "media/favicon-edina.png",
-    // Arquivo versionado junto com o site: a assinatura aparece para qualquer visitante desde
-    // a primeira visita, sem depender do que estiver salvo no navegador de quem administra.
-    signatureUrl: "assinatura-ink.png",
+    // Sem assinatura de fábrica, de propósito. Havia um arquivo embutido aqui, e como a
+    // abertura acontece antes de o banco responder, era ele que aparecia em toda visita
+    // nova — por cima da assinatura que a Edina tinha trocado no painel. A troca parecia
+    // não pegar. Vazio significa "não mostra nada": a abertura fica só com as portas até a
+    // assinatura enviada chegar, e quem nunca enviou nenhuma não vê assinatura alguma.
+    signatureUrl: "",
     heroLabel: "Navegantes · Itajaí · Camboriú · Praia Brava",
     heroTitle: "Bem-vindos ao litoral de alto padrão",
     heroSubtitle: "Os melhores imóveis de alto padrão em Navegantes, Itajaí, Camboriú e Praia Brava, selecionados para quem busca vista, exclusividade e conforto.",
@@ -119,8 +122,9 @@
   function withSiteDefaults(saved) {
     const sc = { ...seedSiteContent, ...(saved || {}) };
     sc.theme = { ...seedSiteContent.theme, ...((saved || {}).theme || {}) };
-    // Imagem de marca em branco significa "usa a que vem com o site", não "não mostra nada".
-    ['signatureUrl'].forEach(k => { if (!sc[k]) sc[k] = seedSiteContent[k]; });
+    // Antes, assinatura em branco era reposta pela de fábrica — o que tornava impossível
+    // apagá-la: o botão "Remover" do painel salvava vazio e o vazio virava a de fábrica de
+    // novo na leitura seguinte. Em branco agora quer dizer em branco.
     return sc;
   }
 

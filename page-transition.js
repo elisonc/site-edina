@@ -62,12 +62,24 @@
   // Assinatura guardada no banco chega depois. Buscar é uma ida à rede, então o quadro
   // nasce vazio e recebe a imagem quando ela vem — em vez de ficar sem assinatura para
   // sempre por ter perguntado cedo demais.
+  // O quadro da assinatura pode não existir ainda: numa visita nova o conteúdo do site
+  // ainda não chegou, então a abertura nasce só com as portas. Quando a assinatura aparece
+  // depois, o quadro é criado na hora — antes ela era simplesmente descartada, porque só
+  // havia onde colocá-la se ela já estivesse em mãos no primeiro instante.
+  function porAssinatura(src) {
+    if (!src) return;
+    var img = overlay.querySelector('.et-sig');
+    if (!img) {
+      img = document.createElement('img');
+      img.className = 'et-sig';
+      img.alt = '';
+      overlay.appendChild(img);
+    }
+    if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+  }
+
   if (conf.sigChave && !conf.sigSrc && window.CRMData && window.CRMData.getDocURL) {
-    window.CRMData.getDocURL(conf.sigChave).then(function (u) {
-      if (!u) return;
-      var img = overlay.querySelector('.et-sig');
-      if (img) img.src = u;
-    }).catch(function () {});
+    window.CRMData.getDocURL(conf.sigChave).then(porAssinatura).catch(function () {});
   }
   overlay.querySelectorAll('.et-door').forEach(function (d) { d.style.background = conf.doorColor; });
   applySpeed(conf.speedMs);
@@ -84,8 +96,7 @@
       return window.CRMData.warm([sc0.signatureUrl]);
     }).then(function () {
       var c = build();
-      var img = overlay.querySelector('.et-sig');
-      if (img && c.sigSrc && img.getAttribute('src') !== c.sigSrc) img.setAttribute('src', c.sigSrc);
+      porAssinatura(c.sigSrc);
       overlay.querySelectorAll('.et-door').forEach(function (d) { d.style.background = c.doorColor; });
       applySpeed(c.speedMs);
     });
