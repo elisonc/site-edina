@@ -296,7 +296,11 @@
     const perfis = {
       leve:         { cota: 90 * 1024,  etapas: [[1100, 0.8], [900, 0.76], [760, 0.7], [640, 0.64]] },
       equilibrada:  { cota: 160 * 1024, etapas: [[1600, 0.86], [1400, 0.82], [1100, 0.76], [900, 0.7]] },
-      alta:         { cota: 260 * 1024, etapas: [[1920, 0.9], [1760, 0.86], [1500, 0.82], [1280, 0.76]] }
+      // Medido em quatro fotos de imóvel deste site: 1600px em WebP 0,86 dá 278 KB de
+      // dataURL na mediana. Com a cota em 260 KB, quase toda foto estourava e descia as
+      // etapas — foi assim que fotos de ficha acabaram gravadas com 900px. Em 340 KB elas
+      // cabem em 1600px, e as etapas passam a ceder qualidade antes de ceder tamanho.
+      alta:         { cota: 340 * 1024, etapas: [[1600, 0.86], [1600, 0.82], [1500, 0.78], [1400, 0.76], [1280, 0.72]] }
     };
     const perfil = perfis[qualidade] || perfis.equilibrada;
     // Galeria grande aperta um pouco a cota, para a ficha inteira caber.
@@ -465,6 +469,23 @@
     } catch (e) { return []; }
   }
 
+  // Lê só o PRIMEIRO bloco de fotos de uma ficha — onde mora a capa. Serve para os cards de
+  // "imóveis parecidos": eles são largos e a miniatura que viaja junto com a ficha tem 420px,
+  // esticada quase três vezes ali. Baixar o conjunto inteiro de cada parecido (dez a doze
+  // fotos, alguns megabytes) só para mostrar três cards seria pior do que o problema.
+  async function carregarCapaDoImovel(id) {
+    await ready;
+    if (!firebase.apps.length || !window.CRMData || !window.CRMData.registrarImagensDoBanco) return '';
+    try {
+      const snap = await DOC(nomeBloco(id, 0)).get();
+      if (!snap.exists) return '';
+      const fotos = snap.data().data || [];
+      if (!fotos.length) return '';
+      window.CRMData.registrarImagensDoBanco(id, fotos);
+      return fotos[0];
+    } catch (e) { return ''; }
+  }
+
   // Troca as referências 'fotodoc:' pelas imagens de verdade, para quem for exibir.
   // As imagens do banco entram no cache de memória; os dados continuam guardando apenas a
   // referência 'fotodoc:'. Antes a referência era trocada pela imagem dentro do próprio
@@ -569,9 +590,14 @@
           // da listagem. Sem isso, cada card baixaria a foto inteira do documento de fotos e
           // o portfólio ficaria pesado conforme os imóveis fossem cadastrados.
           if (dados[0] && window.CRMData && window.CRMData.resizeDataUrl) {
+            // Ela era fixa em 420px e qualidade 0,55, o que sobrava peso na cota sem
+            // necessidade: em WebP boa parte das fotos cabe nos mesmos 40 KB com quase o
+            // dobro da largura. Tenta do maior para o menor e fica com o primeiro que couber.
             try {
-              const mini = await window.CRMData.resizeDataUrl(dados[0], 420, 0.55);
-              if (mini && mini.length < 40 * 1024) q.thumb = mini;
+              for (const [larg, qual] of [[820, 0.62], [700, 0.6], [560, 0.56], [420, 0.55]]) {
+                const mini = await window.CRMData.resizeDataUrl(dados[0], larg, qual);
+                if (mini && mini.length < 40 * 1024) { q.thumb = mini; break; }
+              }
             } catch (e) {}
           }
           if (q.videoFile) q.videoFile = await externalizeMedia(q.videoFile, 'videos', cache);
@@ -1068,6 +1094,7 @@
     guardarImagens: guardarImagens,
     usoDeFotos: usoDeFotos,
     lerImagens: lerImagens,
+    carregarCapaDoImovel: carregarCapaDoImovel,
     guardarImagens: guardarImagens,
     // O painel precisa saber se o Storage responde para decidir o que aceitar de vídeo.
     storageAtivo: () => !storageIndisponivel && !storageMarcadoFora(),

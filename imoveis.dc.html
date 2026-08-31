@@ -369,9 +369,24 @@ class Component extends DCLogic {
     this.setState({ fontScale: 100 });
   };
 
-  componentWillUnmount() { if (this._onPub) window.removeEventListener('edina:published-updated', this._onPub); }
+  componentWillUnmount() {
+    if (this._onPub) window.removeEventListener('edina:published-updated', this._onPub);
+    if (this._onMidia) window.removeEventListener('edina:midia-chegou', this._onMidia);
+    if (this._redesenhoPendente) clearTimeout(this._redesenhoPendente);
+  }
 
   componentDidMount() {
+    // As fotos do banco chegam depois da página desenhada. Sem um redesenho atrás delas, o
+    // card ficava com a miniatura de 420px para sempre. Agrupado em 60 ms para não
+    // redesenhar uma vez por bloco de imagens.
+    this._onMidia = () => {
+      if (this._redesenhoPendente) return;
+      this._redesenhoPendente = setTimeout(() => {
+        this._redesenhoPendente = null;
+        this.setState({ midiaEm: Date.now() });
+      }, 60);
+    };
+    window.addEventListener('edina:midia-chegou', this._onMidia);
     try {
       const fav = JSON.parse(localStorage.getItem('edina_favorites') || '{}');
       this.setState({ favorites: fav });
@@ -472,7 +487,11 @@ class Component extends DCLogic {
       specs: `${p.area} m² · ${p.suites} suítes · ${p.baths} banheiros · ${p.garage} vagas`,
       priceLabel: this.money(p.price),
       imgStyle: p.image ? `height:290px;position:relative;background-size:cover;background-position:center` : `background:${tones[p.tone % 3]};height:290px;position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:16px;color:#e9e4d8bb;font-family:monospace;font-size:11px`,
-      imgRef: (el) => { const src = p.thumb || p.image; if (el && src) window.__lazyFoto(el, src); },
+      // A foto de verdade primeiro, a miniatura só como tapa-buraco. A miniatura tem 420px e
+      // é gravada com qualidade baixa: ela existe para o card ter o que mostrar enquanto a
+      // foto não chegou do banco. Vindo antes, ela ficava para sempre — e um card de 633px
+      // numa tela comum esticava esses 420px quase três vezes. Era essa a foto borrada.
+      imgRef: (el) => { const src = p.image || p.thumb; if (el && src) window.__lazyFoto(el, src); },
       hasPlaceholderText: !p.image,
       overlayStyle: `position:absolute;left:0;right:0;bottom:0;padding:18px 20px 16px;color:#fff;background:linear-gradient(180deg,rgba(20,17,10,0) 0%,rgba(20,17,10,.85) 70%)`,
       toggleFav: this.toggleFav(p.id),

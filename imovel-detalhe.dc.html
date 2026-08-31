@@ -391,9 +391,41 @@ class Component extends DCLogic {
     this.setState({ fontScale: 100 });
   };
 
-  componentWillUnmount() { if (this._onPub) window.removeEventListener('edina:published-updated', this._onPub); }
+  componentWillUnmount() {
+    if (this._onPub) window.removeEventListener('edina:published-updated', this._onPub);
+    if (this._onMidia) window.removeEventListener('edina:midia-chegou', this._onMidia);
+    if (this._redesenhoPendente) clearTimeout(this._redesenhoPendente);
+  }
+
+  // Busca, uma única vez por ficha, a capa em tamanho real dos imóveis parecidos. Só o
+  // primeiro bloco de cada um, que é onde a capa está — o resto da galeria deles não
+  // interessa aqui. Quando a imagem entra no cache, o aviso 'edina:midia-chegou' redesenha
+  // e o card troca a miniatura pela foto de verdade.
+  buscarCapasDosParecidos = (similar) => {
+    const F = window.FirebaseDB, D = window.CRMData;
+    if (!F || !F.carregarCapaDoImovel || !D) return;
+    this._capasPedidas = this._capasPedidas || {};
+    (similar || []).forEach(sp => {
+      const cru = sp && sp.image;
+      if (typeof cru !== 'string' || cru.indexOf('fotodoc:') !== 0) return;
+      if (this._capasPedidas[sp.id] || D.photoURL(cru)) return;
+      this._capasPedidas[sp.id] = true;
+      F.carregarCapaDoImovel(sp.id).catch(() => {});
+    });
+  };
 
   componentDidMount() {
+    // As fotos do banco chegam depois da página desenhada. Sem um redesenho atrás delas, o
+    // card ficava com a miniatura de 420px para sempre. Agrupado em 60 ms para não
+    // redesenhar uma vez por bloco de imagens.
+    this._onMidia = () => {
+      if (this._redesenhoPendente) return;
+      this._redesenhoPendente = setTimeout(() => {
+        this._redesenhoPendente = null;
+        this.setState({ midiaEm: Date.now() });
+      }, 60);
+    };
+    window.addEventListener('edina:midia-chegou', this._onMidia);
     if (window.CRMData) this.setState({ fontScale: window.CRMData.applyFontScale() });
     const params = new URLSearchParams(window.location.search);
     const id = parseInt(params.get('id'), 10) || 1;
@@ -671,7 +703,11 @@ class Component extends DCLogic {
         const pid = parseInt(new URLSearchParams(location.search).get('id') || '1', 10);
         const raw = window.CRMData.getPropertiesRaw();
         const p = raw.find(x => x.id === pid);
-        const similarCovers = raw.filter(x => x.id !== pid && p && (x.region === p.region || x.type === p.type)).slice(0, 3).map(x => x.image).filter(Boolean);
+        const parecidos = raw.filter(x => x.id !== pid && p && (x.region === p.region || x.type === p.type)).slice(0, 3);
+        const similarCovers = parecidos.map(x => x.image).filter(Boolean);
+        // Fora do caminho da pintura: as capas dos parecidos chegam depois e o aviso de
+        // mídia redesenha os cards.
+        setTimeout(() => this.buscarCapasDosParecidos(parecidos), 0);
         const site2 = window.CRMData.getSiteContentRaw ? window.CRMData.getSiteContentRaw() : {};
         const headerKeys = ['logoUrl', 'watermarkLogoUrl'].map(k => site2[k]).filter(Boolean);
         warmKeys = window.CRMData.propertyKeys(pid).concat(similarCovers, headerKeys);
@@ -837,6 +873,21 @@ class Component extends DCLogic {
     const tone = tones[(p.tone || 0) % 3];
     const isFav = !!s.favorites[s.id];
 
+    const cruPorId = {};
+    try { (window.CRMData.getPropertiesRaw() || []).forEach(x => { cruPorId[x.id] = x; }); } catch (e) {}
+    const fotoDoCard = (sp) => {
+      const cru = (cruPorId[sp.id] || {}).image;
+      if (typeof cru === 'string' && cru) {
+        if (cru.indexOf('data:') === 0) return cru;
+        if (cru.indexOf('fotodoc:') === 0 || cru.indexOf('idb') === 0) {
+          const pronta = window.CRMData.photoURL(cru);
+          if (pronta) return pronta;
+        } else {
+          return cru;   // arquivo servido pelo próprio site
+        }
+      }
+      return sp.thumb || '';
+    };
     let similar = all.filter(x => x.id !== p.id && (x.region === p.region || x.type === p.type)).slice(0, 3);
     if (similar.length < 3) {
       const already = new Set(similar.map(x => x.id).concat([p.id]));
@@ -975,6 +1026,11 @@ class Component extends DCLogic {
       formName: s.formName, formPhone: s.formPhone, formError: s.formError,
       onNameChange: this.onNameChange, onPhoneChange: this.onPhoneChange, submitLead: this.submitLead,
       leadSent: s.leadSent, leadNotSent: !s.leadSent,
+      // Resolve a capa do card A CADA PINTURA, a partir da referência crua. A lista de
+      // imóveis é resolvida uma vez, quando os dados chegam — e nesse instante a capa dos
+      // parecidos ainda está vindo do banco, então ela resolvia para vazio e o card ficava
+      // com a miniatura de 420px para sempre. Num card de 633px isso é quase três vezes de
+      // esticada, que era a foto borrada aqui embaixo.
       hasSimilar: similar.length > 0,
       similarProperties: similar.map(sp => ({
         href: `imovel-detalhe.dc.html?id=${sp.id}`,
@@ -982,11 +1038,15 @@ class Component extends DCLogic {
         // A miniatura viaja junto com a ficha; a foto cheia só é buscada para o imóvel que
         // está aberto. Usar apenas a foto cheia deixava estes cards vazios — buscar a
         // galeria dos três só para mostrar um card seria pior ainda.
-        noImg: !(sp.thumb || sp.image),
-        imgStyle: (sp.thumb || sp.image)
+      // A foto de verdade primeiro, a miniatura só como tapa-buraco. A miniatura tem 420px e
+      // é gravada com qualidade baixa: ela existe para o card ter o que mostrar enquanto a
+      // foto não chegou do banco. Vindo antes, ela ficava para sempre — e um card de 633px
+      // numa tela comum esticava esses 420px quase três vezes. Era essa a foto borrada.
+        noImg: !fotoDoCard(sp),
+        imgStyle: fotoDoCard(sp)
           ? `height:170px;background-size:cover;background-position:center`
           : `background:#f1ece0;height:170px`,
-        imgRef: (el) => { const u = sp.thumb || sp.image; if (el && u) el.style.backgroundImage = `url('${u}')`; }
+        imgRef: (el) => { const u = fotoDoCard(sp); if (el && u) el.style.backgroundImage = `url('${u}')`; }
       }))
     };
   }
