@@ -293,14 +293,19 @@
     try { qualidade = (window.CRMData.getSiteContentRaw() || {}).photoQuality || 'equilibrada'; } catch (e) {}
     // Cotas e etapas em números de WebP. Como ele é ~28% mais econômico que o JPEG para a
     // mesma fidelidade, a mesma cota agora compra bem mais nitidez do que comprava antes.
+    // Piso medido em cinco fotos de imovel deste site, a 1600px em WebP: qualidade 0,86 da
+    // 0,149 bytes por pixel, 0,90 da 0,184 e 0,92 da 0,214. As fotos que estao guardadas hoje
+    // marcam de 0,052 a 0,105 -- metade a um quarto disso, e e nessa faixa que a granulacao
+    // aparece nas areas lisas (parede, ceu, tecido). As cotas abaixo foram levantadas para
+    // que a qualidade escolhida caiba de verdade, em vez de a foto descer as etapas.
     const perfis = {
-      leve:         { cota: 90 * 1024,  etapas: [[1100, 0.8], [900, 0.76], [760, 0.7], [640, 0.64]] },
-      equilibrada:  { cota: 160 * 1024, etapas: [[1600, 0.86], [1400, 0.82], [1100, 0.76], [900, 0.7]] },
+      leve:         { cota: 130 * 1024, etapas: [[1280, 0.78], [1100, 0.74], [900, 0.7], [760, 0.66]] },
+      equilibrada:  { cota: 260 * 1024, etapas: [[1600, 0.84], [1500, 0.8], [1280, 0.76], [1100, 0.72]] },
       // Medido em quatro fotos de imóvel deste site: 1600px em WebP 0,86 dá 278 KB de
       // dataURL na mediana. Com a cota em 260 KB, quase toda foto estourava e descia as
       // etapas — foi assim que fotos de ficha acabaram gravadas com 900px. Em 340 KB elas
       // cabem em 1600px, e as etapas passam a ceder qualidade antes de ceder tamanho.
-      alta:         { cota: 340 * 1024, etapas: [[1600, 0.86], [1600, 0.82], [1500, 0.78], [1400, 0.76], [1280, 0.72]] }
+      alta:         { cota: 420 * 1024, etapas: [[1600, 0.9], [1600, 0.86], [1600, 0.82], [1500, 0.78], [1280, 0.74]] }
     };
     const perfil = perfis[qualidade] || perfis.equilibrada;
     // Galeria grande aperta um pouco a cota, para a ficha inteira caber.

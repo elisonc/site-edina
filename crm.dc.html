@@ -122,7 +122,6 @@
       [data-crm-main] [style*="width:190px"][style*="height:140px"] { width: 100% !important; height: 180px !important; }
       [data-crm-main] [style*="grid-column:span 3"] { grid-column: span 2 !important; }
     }  </style>
-  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <script src="./facebook-login.js"></script>
   <script src="./google-login.js"></script>
   <script src="./favicon.js"></script>
@@ -2960,12 +2959,13 @@ class Component extends DCLogic {
     window.CRMData && window.CRMData.saveSiteContent(siteContent);
   };
   photoPresetFor = (q) => {
-    // Números calibrados para WebP, que é o formato usado agora. Em WebP, 0,86 rende a
-    // mesma nitidez que 0,92 em JPEG por cerca de 28% menos peso — por isso dá para pedir
-    // mais qualidade sem a foto ficar mais pesada do que era antes.
-    if (q === 'leve') return { cover: [1280, 0.74], gallery: [1100, 0.7] };
-    if (q === 'alta') return { cover: [1920, 0.9], gallery: [1600, 0.86] };
-    return { cover: [1600, 0.84], gallery: [1400, 0.8] };
+    // Números em WebP, medidos em cinco fotos de imóvel deste site a 1600px: qualidade 0,86
+    // dá 0,149 bytes por pixel, 0,90 dá 0,184 e 0,92 dá 0,214. As fotos que estão guardadas
+    // hoje marcam de 0,052 a 0,105 — metade a um quarto disso, e é nessa faixa que a
+    // granulação aparece nas áreas lisas: parede, céu, tecido. Daí "alta" subir para 0,90.
+    if (q === 'leve') return { cover: [1280, 0.78], gallery: [1100, 0.74] };
+    if (q === 'alta') return { cover: [1920, 0.92], gallery: [1600, 0.9] };
+    return { cover: [1600, 0.86], gallery: [1400, 0.82] };
   };
   // Prévia do realce, com uma foto de verdade do site. Sem ela seria preciso reprocessar
   // tudo, sair da tela e voltar só para descobrir se o ajuste ficou bom.
@@ -4144,15 +4144,9 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       : 'Não encontramos informações reconhecíveis nesse texto. Preencha os campos manualmente.';
     this.setState({ propertyDraft: { ...this.state.propertyDraft, ...patch, smartMsg: msg } });
   };
-  photoPreset = () => {
-    const q = (this.state.siteContent || {}).photoQuality || 'equilibrada';
-    // Números calibrados para WebP, que é o formato usado agora. Em WebP, 0,86 rende a
-    // mesma nitidez que 0,92 em JPEG por cerca de 28% menos peso — por isso dá para pedir
-    // mais qualidade sem a foto ficar mais pesada do que era antes.
-    if (q === 'leve') return { cover: [1280, 0.74], gallery: [1100, 0.7] };
-    if (q === 'alta') return { cover: [1920, 0.9], gallery: [1600, 0.86] };
-    return { cover: [1600, 0.84], gallery: [1400, 0.8] };
-  };
+  // A mesma tabela do reprocessamento, e de propósito: eram duas cópias iguais, uma para o
+  // envio e outra para refazer. Duas cópias da mesma regra é uma que fica para trás.
+  photoPreset = () => this.photoPresetFor((this.state.siteContent || {}).photoQuality || 'equilibrada');
   onPropertyImageFile = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
