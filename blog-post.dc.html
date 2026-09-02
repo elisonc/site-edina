@@ -156,7 +156,7 @@
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:22px">
         <sc-for list="{{ relatedPosts }}" as="rp" hint-placeholder-count="3">
           <a href="{{ rp.href }}" style="text-decoration:none;color:inherit;display:block">
-            <div style="{{ rp.imgStyle }}"><span>[ imagem ]</span></div>
+            <div style="{{ rp.imgStyle }}" ref="{{ rp.imgRef }}"><sc-if value="{{ rp.semImagem }}" hint-placeholder-val="{{ false }}"><span>[ imagem ]</span></sc-if></div>
             <div style="padding:14px 0 0">
               <div style="font-size:11.5px;color:var(--accent);margin-bottom:6px">{{ rp.cat }} · {{ rp.date }}</div>
               <div style="font-family:'Cormorant Garamond',serif;font-size:16.5px;font-weight:600;line-height:1.3">{{ rp.title }}</div>
@@ -262,14 +262,30 @@ class Component extends DCLogic {
       logoImgStyle: site.logoUrl ? `width:${site.logoWidth || 210}px;height:${Math.round((site.logoWidth||210)*0.28)}px;background-size:contain;background-repeat:no-repeat;background-position:left center` : `width:0;height:0`,
       logoImgRef: (el) => { if (el && site.logoUrl) { el.style.backgroundImage = `url('${site.logoUrl}')`;
         alturaDaLogo(el, site.logoUrl, site.logoWidth || 210, 132, site.logoRatio); } },
-      heroImgStyle: p.image ? `height:340px;background-size:cover;background-position:center;margin-bottom:34px` : `background:${tones[(p.tone || 0) % 3]};height:340px;display:flex;align-items:center;justify-content:center;color:#8a7c5c;font-family:monospace;font-size:12px;margin-bottom:34px`,
+      heroImgStyle: p.image ? `height:340px;background-size:cover;background-repeat:no-repeat;background-position:center;margin-bottom:34px` : `background:${tones[(p.tone || 0) % 3]};height:340px;display:flex;align-items:center;justify-content:center;color:#8a7c5c;font-family:monospace;font-size:12px;margin-bottom:34px`,
       heroImgRef: (el) => { if (el && p.image) el.style.backgroundImage = `url('${p.image}')`; },
       hasNoHeroImage: !p.image,
       hasRelated: relatedFallback.length > 0,
       relatedPosts: relatedFallback.map(rp => ({
         href: `blog-post.dc.html?id=${rp.id}`,
         cat: rp.cat, date: rp.date, title: rp.title,
-        imgStyle: `background:${tones[rp.tone % 3]};height:140px;display:flex;align-items:center;justify-content:center;color:#8a7c5c;font-family:monospace;font-size:11px`
+        // Os cards de "Leia Também" nunca mostraram a foto do artigo: o quadro era só uma cor
+        // de fundo com a palavra "[ imagem ]" escrita dentro, sem nenhuma ligação com
+        // rp.image. Os posts têm foto — todos os sete — e ela simplesmente não era pedida.
+        // Onde existe versão reduzida do arquivo, é ela que entra: o quadro tem 140px de
+        // altura e não precisa da foto inteira.
+        semImagem: !rp.image,
+        imgStyle: rp.image
+          ? `height:140px;background-size:cover;background-repeat:no-repeat;background-position:center`
+          : `background:${tones[rp.tone % 3]};height:140px;display:flex;align-items:center;justify-content:center;color:#8a7c5c;font-family:monospace;font-size:11px`,
+        imgRef: (el) => {
+          if (!el || !rp.image) return;
+          const mini = /^media\/[^/]+-1\.jpg$/.test(rp.image) ? rp.image.replace('media/', 'media/mini/') : rp.image;
+          const teste = new Image();
+          teste.onload = () => { el.style.backgroundImage = `url('${mini}')`; };
+          teste.onerror = () => { el.style.backgroundImage = `url('${rp.image}')`; };
+          teste.src = mini;
+        }
       }))
     };
   }
