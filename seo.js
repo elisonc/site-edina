@@ -77,7 +77,7 @@
         url: base + '/',
         telephone: site.phone || '',
         email: site.email || '',
-        areaServed: ['Navegantes', 'Itajaí', 'Balneário Camboriú', 'Praia Brava'],
+        areaServed: ['Praia Brava', 'Itajaí', 'Balneário Camboriú', 'Navegantes'],
         address: { '@type': 'PostalAddress', addressRegion: 'SC', addressCountry: 'BR',
                    streetAddress: site.address || '' },
         knowsLanguage: 'pt-BR'
