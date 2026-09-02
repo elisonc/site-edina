@@ -678,8 +678,12 @@ class Component extends DCLogic {
     }
   };
 
+  // Imóvel sem preço cadastrado mostrava "R$ 0", que soa a erro e derruba a confiança na
+  // ficha inteira. Alto padrão costuma anunciar sob consulta mesmo, então é o texto certo.
   money(v) {
-    return window.CRMData ? window.CRMData.money(v) : ('R$ ' + Number(v).toLocaleString('pt-BR'));
+    const n = Number(v);
+    if (!n || !isFinite(n)) return 'Valor a consultar';
+    return window.CRMData ? window.CRMData.money(n) : ('R$ ' + n.toLocaleString('pt-BR'));
   }
 
   _form = {};
@@ -769,7 +773,7 @@ class Component extends DCLogic {
       '#eceee9',
       '#efe8e8'
     ];
-    const cardImg = (tone, h, img) => img ? `height:${h}px;background-size:cover;background-position:center` : `background:${tones[tone % 3]};height:${h}px;display:flex;align-items:center;justify-content:center;color:#8a7c5c;font-family:monospace;font-size:12px;text-align:center;padding:10px`;
+    const cardImg = (tone, h, img) => img ? `height:${h}px;background-size:cover;background-repeat:no-repeat;background-position:center` : `background:${tones[tone % 3]};height:${h}px;display:flex;align-items:center;justify-content:center;color:#8a7c5c;font-family:monospace;font-size:12px;text-align:center;padding:10px`;
     const cardImgRef = (img) => (el) => { if (el && img) window.__lazyFoto(el, img); };
 
     const featuredSource = properties.filter(p => p.featured);
@@ -810,7 +814,7 @@ class Component extends DCLogic {
     const latestPosts = blogPosts.slice(0, 3).map(p => ({
       href: `blog-post.dc.html?id=${p.id}`,
       cat: p.cat, date: p.date, title: p.title,
-      imgStyle: p.image ? `height:170px;background-size:cover;background-position:center;opacity:.95` : `background:${tones[p.tone % 3]};height:170px;display:flex;align-items:center;justify-content:center;color:#8a7c5c;font-family:monospace;font-size:12px;text-align:center;padding:10px;opacity:.9`,
+      imgStyle: (p.image || p.thumb) ? `height:170px;background-size:cover;background-repeat:no-repeat;background-position:center;opacity:.95` : `background:${tones[p.tone % 3]};height:170px;display:flex;align-items:center;justify-content:center;color:#8a7c5c;font-family:monospace;font-size:12px;text-align:center;padding:10px;opacity:.9`,
       imgRef: (el) => { const src = p.image || p.thumb; if (el && src) window.__lazyFoto(el, src); },
       hasPlaceholderText: !p.image
     }));

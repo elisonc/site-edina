@@ -813,7 +813,13 @@ class Component extends DCLogic {
     return this.state.lightboxTab === 'plantas' ? this.getPlantas() : this.getShots();
   }
 
-  money(v) { return window.CRMData ? window.CRMData.money(v) : ('R$ ' + Number(v).toLocaleString('pt-BR')); }
+  // Imóvel sem preço cadastrado mostrava "R$ 0", que soa a erro e derruba a confiança na
+  // ficha inteira. Alto padrão costuma anunciar sob consulta mesmo, então é o texto certo.
+  money(v) {
+    const n = Number(v);
+    if (!n || !isFinite(n)) return 'Valor a consultar';
+    return window.CRMData ? window.CRMData.money(n) : ('R$ ' + n.toLocaleString('pt-BR'));
+  }
 
   toggleFav = () => {
     const fav = { ...this.state.favorites };

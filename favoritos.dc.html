@@ -219,7 +219,13 @@ class Component extends DCLogic {
     }
   };
 
-  money(v) { return window.CRMData ? window.CRMData.money(v) : ('R$ ' + Number(v).toLocaleString('pt-BR')); }
+  // Imóvel sem preço cadastrado mostrava "R$ 0", que soa a erro e derruba a confiança na
+  // ficha inteira. Alto padrão costuma anunciar sob consulta mesmo, então é o texto certo.
+  money(v) {
+    const n = Number(v);
+    if (!n || !isFinite(n)) return 'Valor a consultar';
+    return window.CRMData ? window.CRMData.money(n) : ('R$ ' + n.toLocaleString('pt-BR'));
+  }
 
   removeFavorite = (id) => () => {
     const fav = { ...this.state.favorites };
@@ -243,7 +249,12 @@ class Component extends DCLogic {
       location: p.location, title: p.title,
       specs: `${p.area} m² · ${p.suites} suítes · ${p.baths} banheiros · ${p.garage} vagas`,
       priceLabel: this.money(p.price),
-      imgStyle: p.image ? `height:220px;background-size:cover;background-position:center` : `background:${tones[p.tone % 3]};height:220px;display:flex;align-items:center;justify-content:center;color:#e9e4d8bb;font-family:monospace;font-size:11px`,
+      // O estilo olhava só p.image e o desenho pintava p.image || p.thumb. Quando a foto
+      // ainda não tinha chegado do banco, o card ganhava o estilo de "sem foto" -- sem
+      // background-size -- e recebia a miniatura mesmo assim: 420px no tamanho natural,
+      // repetida lado a lado até preencher os 553px do card. Era a capa "duplicada".
+      // As duas linhas passam a olhar a mesma coisa, e no-repeat fecha a porta de vez.
+      imgStyle: (p.image || p.thumb) ? `height:220px;background-size:cover;background-repeat:no-repeat;background-position:center` : `background:${tones[p.tone % 3]};height:220px;display:flex;align-items:center;justify-content:center;color:#e9e4d8bb;font-family:monospace;font-size:11px`,
       imgRef: (el) => { if (el && p.image) el.style.backgroundImage = `url('${p.image}')`; },
       hasPlaceholderText: !p.image,
       remove: this.removeFavorite(p.id)
