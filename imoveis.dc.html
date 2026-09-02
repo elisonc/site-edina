@@ -452,6 +452,28 @@ class Component extends DCLogic {
 
   // Imóvel sem preço cadastrado mostrava "R$ 0", que soa a erro e derruba a confiança na
   // ficha inteira. Alto padrão costuma anunciar sob consulta mesmo, então é o texto certo.
+  // De onde sai a regiao de um imovel, para o filtro.
+  //
+  // O filtro comparava com p.region, um campo que o painel NAO escreve: la existe apenas
+  // "Localizacao / Endereco", texto livre, que vai para p.location. O p.region ficou como
+  // resto de dados antigos -- 15 imoveis marcados "praia-brava", inclusive alguns que nao
+  // ficam na Praia Brava, e 5 sem marca nenhuma. Resultado: filtrar por Itajai ou por
+  // Balneario Camboriu nao devolvia nada, e 5 imoveis nao apareciam em filtro algum.
+  //
+  // Agora a regiao e lida do que a Edina realmente preenche. Um imovel pode pertencer a
+  // mais de uma: Praia Brava fica em Itajai, entao quem filtra por Itajai ve tudo que e de
+  // Itajai, e quem filtra por Praia Brava recebe so a praia. Balneario Camboriu vem antes
+  // de Itajai na leitura porque "Camboriu" tambem aparece em endereco de Itajai.
+  regioesDo(p) {
+    const cru = [p.region, p.location, p.address].filter(Boolean).join(' ');
+    const t = cru.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const achadas = [];
+    if (/praia[\s-]*brava/.test(t)) achadas.push('praia-brava');
+    if (/balneario[\s-]*cambori|(^|[^a-z])cambori/.test(t)) achadas.push('camboriu');
+    if (/navegantes/.test(t)) achadas.push('navegantes');
+    if (/itajai/.test(t)) achadas.push('itajai');
+    return achadas;
+  }
   money(v) {
     const n = Number(v);
     if (!n || !isFinite(n)) return 'Valor a consultar';
@@ -485,7 +507,7 @@ class Component extends DCLogic {
     ];
 
     let filtered = all.slice();
-    if (s.region !== 'all') filtered = filtered.filter(p => p.region === s.region);
+    if (s.region !== 'all') filtered = filtered.filter(p => this.regioesDo(p).indexOf(s.region) >= 0);
     // Imóvel marcado como "venda-aluguel" aparece nas duas finalidades.
     if (s.purpose !== 'all') filtered = filtered.filter(p => p.purpose === s.purpose || p.purpose === 'venda-aluguel');
     if (s.stage !== 'all') filtered = filtered.filter(p => (p.stage || 'pronto') === s.stage);
