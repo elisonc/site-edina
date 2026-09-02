@@ -88,6 +88,20 @@
       [style*="padding:100px"],[style*="padding: 100px"]{padding:52px 22px !important}
       [style*="padding:70px"],[style*="padding: 70px"]{padding:44px 22px !important}
       [style*="gap:60px"],[style*="gap: 60px"]{gap:30px !important}
+
+      /* O selo tem 11px no computador e caía na regra acima, que sobe letra miúda para
+         12,5px no celular — pensada para rótulo de formulário, não para ele. Com a letra
+         maior, "Em construção · Entrega Setembro/28" quebrava em duas linhas em um card e
+         cabia em uma no outro: dois cards lado a lado com alturas de selo diferentes.
+         Aqui ele fica menor que no computador e proibido de quebrar, então é sempre uma
+         linha só, do mesmo tamanho em todos os cards. */
+      [data-selo]{font-size:10px !important;letter-spacing:.03em !important;padding:5px 10px !important;white-space:nowrap !important;line-height:1.35 !important}
+
+      /* A lista de cards tinha 40px de recheio de cada lado, dentro de uma seção que já
+         tinha 18px. Em uma tela de 375px sobravam 259px para o card — quase um terço da
+         largura desperdiçado nas laterais. A margem da seção já separa o conteúdo da borda;
+         aqui dentro ela não precisa se repetir. */
+      [data-filters] + div{padding-left:0 !important;padding-right:0 !important}
     }
     @media (max-width:520px){
       section,header,footer{padding-left:18px !important;padding-right:18px !important}
@@ -235,10 +249,10 @@
           <div style="position:relative;border:1px solid #e5ddcd">
             <button onClick="{{ p.toggleFav }}" style="position:absolute;top:14px;right:14px;z-index:2;background:#fffdf8ee;border:none;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:15px;color:{{ p.favColor }}">♥</button>
             <sc-if value="{{ p.hasStatusBadge }}" hint-placeholder-val="{{ false }}">
-              <div style="{{ p.statusBadgeStyle }}">{{ p.statusLabel }}</div>
+              <div data-selo="status" style="{{ p.statusBadgeStyle }}">{{ p.statusLabel }}</div>
             </sc-if>
             <sc-if value="{{ p.hasStageBadge }}" hint-placeholder-val="{{ false }}">
-              <div style="{{ p.stageBadgeStyle }}">{{ p.stageLabel }}</div>
+              <div data-selo="estagio" style="{{ p.stageBadgeStyle }}">{{ p.stageLabel }}</div>
             </sc-if>
             <a href="{{ p.href }}" style="text-decoration:none;color:inherit;display:block">
               <div style="{{ p.imgStyle }}" ref="{{ p.imgRef }}">
