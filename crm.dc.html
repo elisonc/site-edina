@@ -983,6 +983,15 @@
                   </sc-for>
                 </datalist>
               </div>
+              <div>
+                <div style="{{ propertyDraft.labelStyle }}">Região (filtro do site)</div>
+                <select value="{{ propertyDraft.region }}" onChange="{{ propertyDraft.onRegion }}" style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
+                  <sc-for list="{{ propertyDraft.regionFiltro }}" as="rf" hint-placeholder-count="5">
+                    <option value="{{ rf.key }}">{{ rf.label }}</option>
+                  </sc-for>
+                </select>
+                <div style="font-size:11px;color:#8a7f6a;margin-top:5px;line-height:1.45">É por aqui que o imóvel entra no filtro "Localização" do site. Deixando em branco, o site deduz pelo que estiver escrito acima.</div>
+              </div>
               <div style="grid-column:span 2">
                 <div style="{{ propertyDraft.labelStyle }}">Endereço completo (usado no botão "Localização" para abrir o Google Maps)</div>
                 <input placeholder="Ex: Av. Atlântica, 1200, Praia Brava, Itajaí/SC" value="{{ propertyDraft.address }}" onChange="{{ propertyDraft.onAddress }}" style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13.5px" />
@@ -5264,6 +5273,15 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       title: pd.title, onTitle: this.updatePropertyDraft('title'),
       code: window.CRMData ? window.CRMData.propertyCode(pd.id) : '',
       location: pd.location, onLocation: this.updatePropertyDraft('location'),
+      // O filtro do site trabalha com estas chaves; o rótulo é só o que aparece aqui.
+      region: pd.region || '', onRegion: this.updatePropertyDraft('region'),
+      regionFiltro: [
+        { key: '', label: 'Deduzir pela localização escrita acima' },
+        { key: 'praia-brava', label: 'Praia Brava' },
+        { key: 'itajai', label: 'Itajaí' },
+        { key: 'camboriu', label: 'Balneário Camboriú' },
+        { key: 'navegantes', label: 'Navegantes' }
+      ],
       purpose: pd.purpose || 'venda', onPurpose: this.updatePropertyDraft('purpose'),
       // Regiões de atuação como sugestão — o campo continua livre para escrever qualquer outra.
       regionChoices: ['Praia Brava', 'Itajaí', 'Balneário Camboriú', 'Navegantes', 'Itapema', 'Penha', 'Piçarras', 'Bombinhas'],

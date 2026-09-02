@@ -260,7 +260,7 @@
                   
                 </sc-if>
                 <div style="{{ p.overlayStyle }}">
-                  <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#dba98a;margin-bottom:6px">{{ p.location }}</div>
+                  <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#f6dcc6;margin-bottom:6px;text-shadow:0 1px 4px rgba(20,17,10,.85)">{{ p.location }}</div>
                   <h3 style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;margin:0 0 8px">{{ p.title }}</h3>
                   <sc-if value="{{ p.descProvisional }}" hint-placeholder-val="{{ false }}">
                     <div style="display:inline-block;background:#e0b978;color:#3a2a10;font-size:10px;font-weight:700;padding:3px 8px;margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase">Texto provisório</div>
@@ -540,7 +540,11 @@ class Component extends DCLogic {
       // numa tela comum esticava esses 420px quase três vezes. Era essa a foto borrada.
       imgRef: (el) => { const src = p.image || p.thumb; if (el && src) window.__lazyFoto(el, src); },
       hasPlaceholderText: !p.image,
-      overlayStyle: `position:absolute;left:0;right:0;bottom:0;padding:18px 20px 16px;color:#fff;background:linear-gradient(180deg,rgba(20,17,10,0) 0%,rgba(20,17,10,.85) 70%)`,
+      // A localização fica na primeira linha da faixa, e a faixa começava transparente
+      // justamente ali: sobre foto clara, "Itajaí" sumia. O escurecimento passa a subir mais
+      // cedo, e o texto ganha cor mais clara e uma sombra própria — assim ele não depende de
+      // ter uma foto escura por baixo para ser lido.
+      overlayStyle: `position:absolute;left:0;right:0;bottom:0;padding:22px 20px 16px;color:#fff;background:linear-gradient(180deg,rgba(20,17,10,0) 0%,rgba(20,17,10,.45) 30%,rgba(20,17,10,.9) 100%)`,
       toggleFav: this.toggleFav(p.id),
       favColor: s.favorites[p.id] ? 'var(--accent)' : '#c9beac',
       hasStatusBadge: p.status === 'reservado' || p.status === 'vendido',
