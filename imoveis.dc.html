@@ -450,14 +450,12 @@ class Component extends DCLogic {
 
   // Imóvel sem preço cadastrado mostrava "R$ 0", que soa a erro e derruba a confiança na
   // ficha inteira. Alto padrão costuma anunciar sob consulta mesmo, então é o texto certo.
-  // Os lugares que o site sabe reconhecer, na ordem em que aparecem no filtro. E a mesma
-  // lista que o cadastro sugere. Para atender uma cidade nova basta acrescentar uma linha
-  // aqui: o filtro passa a oferece-la sozinho, assim que houver imovel nela.
-  //
-  // "dentroDe" existe porque bairro pertence a cidade: quem filtra por Itajai tem de ver
-  // tambem os da Praia Brava, sem que o contrario aconteca.
+  // Os lugares que o site sabe reconhecer, na ordem em que aparecem no filtro -- a mesma
+  // sequencia pedida para as regioes no resto do site. E a mesma lista que o cadastro
+  // sugere. Para atender uma cidade nova basta acrescentar uma linha aqui: o filtro passa
+  // a oferece-la sozinho, assim que houver imovel nela.
   static LUGARES = [
-    { key: 'praia-brava', label: 'Praia Brava',        re: /praia[\s-]*brava/,                     dentroDe: 'itajai' },
+    { key: 'praia-brava', label: 'Praia Brava',        re: /praia[\s-]*brava/ },
     { key: 'itajai',      label: 'Itaja\u00ed',             re: /itajai/ },
     { key: 'camboriu',    label: 'Balne\u00e1rio Cambori\u00fa', re: /balneario[\s-]*cambori|(^|[^a-z])cambori/ },
     { key: 'navegantes',  label: 'Navegantes',         re: /navegantes/ },
@@ -467,32 +465,25 @@ class Component extends DCLogic {
     { key: 'bombinhas',   label: 'Bombinhas',          re: /bombinhas/ }
   ];
 
-  // De onde sai a regiao de um imovel, para o filtro "Localizacao" do site.
+  // Em que lugar o imovel entra no filtro "Localizacao". Um imovel pertence a UM lugar.
   //
-  // A escolha feita no cadastro manda. Antes o texto da ficha entrava na conta junto com
-  // ela, e isso anulava a edicao: o BRAVA CONCETTO foi marcado como Itajai no painel, mas o
-  // endereco completo dele diz "Praia Brava, Itajai/SC" -- entao ele continuava aparecendo
-  // no filtro de Praia Brava. Marcar a regiao tem de decidir, senao o campo nao serve.
+  // Praia Brava e bairro de Itajai, e por um tempo o filtro tratou assim: quem pedia Itajai
+  // recebia os da praia junto. O pedido foi separar, e separado e mais previsivel -- cada
+  // filtro devolve exatamente o que foi marcado, e nada aparece em dois lugares.
   //
-  // Sem escolha no cadastro, o site deduz do que estiver escrito na ficha, que e o que a
-  // opcao "Deduzir pela localizacao escrita acima" promete.
+  // A escolha feita no cadastro manda. So quando ela esta em branco o site le da ficha.
+  // Ai um endereco pode casar com mais de um lugar -- "Praia Brava, Itajai/SC" casa com os
+  // dois -- e fica com o bairro, que e a informacao mais precisa. Itajai so e escolhido
+  // quando e a unica coisa que o endereco diz.
   regioesDo(p) {
     const lugares = Component.LUGARES;
     const marcada = String(p.region || '').trim().toLowerCase();
-    let achadas;
-    if (lugares.some(l => l.key === marcada)) {
-      achadas = [marcada];
-    } else {
-      const t = [p.location, p.address].filter(Boolean).join(' ')
-        .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      achadas = lugares.filter(l => l.re.test(t)).map(l => l.key);
-    }
-    // Bairro puxa a cidade junto.
-    achadas.slice().forEach(k => {
-      const l = lugares.find(x => x.key === k);
-      if (l && l.dentroDe && achadas.indexOf(l.dentroDe) < 0) achadas.push(l.dentroDe);
-    });
-    return achadas;
+    if (lugares.some(l => l.key === marcada)) return [marcada];
+    const t = [p.location, p.address].filter(Boolean).join(' ')
+      .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const casaram = lugares.filter(l => l.re.test(t)).map(l => l.key);
+    if (!casaram.length) return [];
+    return [casaram.find(k => k !== 'itajai') || casaram[0]];
   }
   money(v) {
     const n = Number(v);
