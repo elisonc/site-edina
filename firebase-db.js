@@ -555,7 +555,20 @@
     const out = [];
     for (const p of props) {
       const q = { ...p };
-      const originais = [q.image].concat(Array.isArray(q.images) ? q.images : []).filter(Boolean);
+      // A capa E a primeira foto da galeria: depois de uma gravacao, q.image e q.images[0]
+      // apontam para o mesmo lugar. Juntar as duas listas sem olhar contava a capa duas
+      // vezes, e a gravacao seguinte guardava uma copia dela. Como a lista resultante virava
+      // a nova galeria, a copia entrava na conta da vez seguinte e o erro se multiplicava --
+      // foi assim que uma ficha de 14 fotos acabou com 23 guardadas, 9 delas repetidas.
+      const originais = [];
+      {
+        const jaVi = new Set();
+        [q.image].concat(Array.isArray(q.images) ? q.images : []).forEach(v => {
+          if (!v || jaVi.has(v)) return;
+          jaVi.add(v);
+          originais.push(v);
+        });
+      }
       const precisamSubir = originais.some(v => /^idb/.test(String(v)) || String(v).indexOf('data:') === 0);
 
       // Antes de decidir o caminho, uma sondagem: a primeira foto vai ao Storage. Deu certo,
@@ -571,11 +584,21 @@
       // A ficha guarda só a referência: o catálogo continua leve e nenhuma foto se perde
       // por falta de espaço.
       if (precisamSubir && (storageIndisponivel || storageMarcadoFora())) {
+        // Duas referencias diferentes podem guardar exatamente a mesma imagem -- e o que
+        // sobrou das gravacoes anteriores. Guardar uma vez so tira o peso em dobro do banco
+        // e o slide repetido da galeria; a lista de referencias e remontada abaixo a partir
+        // do que sobrou, entao ninguem fica apontando para um lugar que nao existe mais.
         const dados = [];
         let algumaNaoAbriu = false;
-        for (const v of originais) {
-          const d = await paraDataUrl(v);
-          if (d) dados.push(d); else algumaNaoAbriu = true;
+        {
+          const porConteudo = new Set();
+          for (const v of originais) {
+            const d = await paraDataUrl(v);
+            if (!d) { algumaNaoAbriu = true; continue; }
+            if (porConteudo.has(d)) continue;
+            porConteudo.add(d);
+            dados.push(d);
+          }
         }
         // Se alguma foto da ficha não abriu neste navegador, ela veio de outro aparelho:
         // reescrever a lista aqui apagaria justamente essa. Deixa como está.
