@@ -5275,12 +5275,18 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       location: pd.location, onLocation: this.updatePropertyDraft('location'),
       // O filtro do site trabalha com estas chaves; o rótulo é só o que aparece aqui.
       region: pd.region || '', onRegion: this.updatePropertyDraft('region'),
+      // Mesma lista que o filtro do site conhece. Acrescentar uma cidade aqui pede a linha
+      // correspondente em LUGARES, no imoveis.dc.html — é lá que mora o reconhecimento.
       regionFiltro: [
         { key: '', label: 'Deduzir pela localização escrita acima' },
         { key: 'praia-brava', label: 'Praia Brava' },
         { key: 'itajai', label: 'Itajaí' },
         { key: 'camboriu', label: 'Balneário Camboriú' },
-        { key: 'navegantes', label: 'Navegantes' }
+        { key: 'navegantes', label: 'Navegantes' },
+        { key: 'itapema', label: 'Itapema' },
+        { key: 'penha', label: 'Penha' },
+        { key: 'picarras', label: 'Piçarras' },
+        { key: 'bombinhas', label: 'Bombinhas' }
       ],
       purpose: pd.purpose || 'venda', onPurpose: this.updatePropertyDraft('purpose'),
       // Regiões de atuação como sugestão — o campo continua livre para escrever qualquer outra.

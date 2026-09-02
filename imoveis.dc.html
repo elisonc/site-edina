@@ -162,11 +162,9 @@
       <div style="margin-bottom:20px">
         <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#746b5c;margin-bottom:8px">Localização</div>
         <select onChange="{{ onRegionChange }}" aria-label="Filtrar por localização" value="{{ region }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:13.5px">
-          <option value="all">Todas</option>
-          <option value="praia-brava">Praia Brava</option>
-          <option value="itajai">Itajaí</option>
-          <option value="camboriu">Balneário Camboriú</option>
-          <option value="navegantes">Navegantes</option>
+          <sc-for list="{{ regionOptions }}" as="ro" hint-placeholder-count="5">
+            <option value="{{ ro.key }}">{{ ro.label }}</option>
+          </sc-for>
         </select>
       </div>
 
@@ -452,6 +450,23 @@ class Component extends DCLogic {
 
   // Imóvel sem preço cadastrado mostrava "R$ 0", que soa a erro e derruba a confiança na
   // ficha inteira. Alto padrão costuma anunciar sob consulta mesmo, então é o texto certo.
+  // Os lugares que o site sabe reconhecer, na ordem em que aparecem no filtro. E a mesma
+  // lista que o cadastro sugere. Para atender uma cidade nova basta acrescentar uma linha
+  // aqui: o filtro passa a oferece-la sozinho, assim que houver imovel nela.
+  //
+  // "dentroDe" existe porque bairro pertence a cidade: quem filtra por Itajai tem de ver
+  // tambem os da Praia Brava, sem que o contrario aconteca.
+  static LUGARES = [
+    { key: 'praia-brava', label: 'Praia Brava',        re: /praia[\s-]*brava/,                     dentroDe: 'itajai' },
+    { key: 'itajai',      label: 'Itaja\u00ed',             re: /itajai/ },
+    { key: 'camboriu',    label: 'Balne\u00e1rio Cambori\u00fa', re: /balneario[\s-]*cambori|(^|[^a-z])cambori/ },
+    { key: 'navegantes',  label: 'Navegantes',         re: /navegantes/ },
+    { key: 'itapema',     label: 'Itapema',            re: /itapema/ },
+    { key: 'penha',       label: 'Penha',              re: /(^|[^a-z])penha/ },
+    { key: 'picarras',    label: 'Pi\u00e7arras',          re: /picarras/ },
+    { key: 'bombinhas',   label: 'Bombinhas',          re: /bombinhas/ }
+  ];
+
   // De onde sai a regiao de um imovel, para o filtro "Localizacao" do site.
   //
   // A escolha feita no cadastro manda. Antes o texto da ficha entrava na conta junto com
@@ -460,27 +475,23 @@ class Component extends DCLogic {
   // no filtro de Praia Brava. Marcar a regiao tem de decidir, senao o campo nao serve.
   //
   // Sem escolha no cadastro, o site deduz do que estiver escrito na ficha, que e o que a
-  // opcao "Deduzir pela localizacao escrita acima" promete. Balneario Camboriu e lido antes
-  // de Itajai porque "Camboriu" tambem aparece em endereco de Itajai.
-  //
-  // Uma regra de geografia sobrevive a escolha: Praia Brava e bairro de Itajai. Quem filtra
-  // por Itajai ve tambem os da praia; quem filtra por Praia Brava recebe so a praia.
+  // opcao "Deduzir pela localizacao escrita acima" promete.
   regioesDo(p) {
-    const conhecidas = ['praia-brava', 'itajai', 'camboriu', 'navegantes'];
+    const lugares = Component.LUGARES;
     const marcada = String(p.region || '').trim().toLowerCase();
     let achadas;
-    if (conhecidas.indexOf(marcada) >= 0) {
+    if (lugares.some(l => l.key === marcada)) {
       achadas = [marcada];
     } else {
       const t = [p.location, p.address].filter(Boolean).join(' ')
         .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      achadas = [];
-      if (/praia[\s-]*brava/.test(t)) achadas.push('praia-brava');
-      if (/balneario[\s-]*cambori|(^|[^a-z])cambori/.test(t)) achadas.push('camboriu');
-      if (/navegantes/.test(t)) achadas.push('navegantes');
-      if (/itajai/.test(t)) achadas.push('itajai');
+      achadas = lugares.filter(l => l.re.test(t)).map(l => l.key);
     }
-    if (achadas.indexOf('praia-brava') >= 0 && achadas.indexOf('itajai') < 0) achadas.push('itajai');
+    // Bairro puxa a cidade junto.
+    achadas.slice().forEach(k => {
+      const l = lugares.find(x => x.key === k);
+      if (l && l.dentroDe && achadas.indexOf(l.dentroDe) < 0) achadas.push(l.dentroDe);
+    });
     return achadas;
   }
   money(v) {
@@ -604,6 +615,17 @@ class Component extends DCLogic {
       logoImgRef: (el) => { if (el && site.logoUrl) { el.style.backgroundImage = `url('${site.logoUrl}')`;
         alturaDaLogo(el, site.logoUrl, site.logoWidth || 210, 132, site.logoRatio); } },
       region: s.region, purpose: s.purpose, stage: s.stage, type: s.type, suitesMin: s.suitesMin, priceMin: s.priceMin, priceMax: s.priceMax, sort: s.sort,
+      // Só entram no menu os lugares onde existe imóvel — mais o que estiver selecionado, para
+      // um filtro vindo por link não sumir da lista e parecer que a página ignorou o pedido.
+      regionOptions: (() => {
+        const tem = {};
+        all.forEach(x => this.regioesDo(x).forEach(k => { tem[k] = true; }));
+        const opts = [{ key: 'all', label: 'Todas' }];
+        Component.LUGARES.forEach(l => {
+          if (tem[l.key] || s.region === l.key) opts.push({ key: l.key, label: l.label });
+        });
+        return opts;
+      })(),
       onRegionChange: this.onRegionChange, onPurposeChange: this.onPurposeChange, onStageChange: this.onStageChange, onTypeChange: this.onTypeChange,
       onSuitesChange: this.onSuitesChange, onPriceMinChange: this.onPriceMinChange, onPriceMaxChange: this.onPriceMaxChange,
       onSortChange: this.onSortChange, clearFilters: this.clearFilters,
