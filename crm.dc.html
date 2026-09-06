@@ -781,6 +781,7 @@
       <div>
         <h1 style="font-family:'Manrope',sans-serif;font-size:34px;font-weight:600;margin:0 0 6px">Leads — Kanban</h1>
         <div style="color:#746b5c;font-size:14px;margin-bottom:26px">Arraste os cards entre as colunas para mudar de etapa, ou clique num card para abrir o registro completo do lead.</div>
+        <div style="margin-bottom:16px"><button onClick="{{ abrirNovoLead }}" style="background:var(--accent);color:#fff;border:none;padding:12px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">+ Criar lead</button></div>
         <div style="overflow-x:auto;padding-bottom:10px">
         <input placeholder="🔍 Buscar lead por nome, telefone, email…" value="{{ kanbanSearch }}" onChange="{{ onKanbanSearch }}" style="width:100%;box-sizing:border-box;margin-bottom:14px;padding:10px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13px" />
         <select value="{{ kanbanStageFilter }}" onChange="{{ onKanbanStageFilter }}" aria-label="Filtrar por etapa" style="width:260px;box-sizing:border-box;margin-bottom:14px;padding:10px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13px">
@@ -849,6 +850,7 @@
           <h1 style="font-family:'Manrope',sans-serif;font-size:34px;font-weight:600;margin:0">Leads — Lista</h1>
           <sc-if value="{{ canExportLeads }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+              <button onClick="{{ abrirNovoLead }}" style="background:var(--accent);color:#fff;border:none;padding:12px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">+ Criar lead</button>
               <button onClick="{{ downloadLeadsCsv }}" style="background:#1d1a15;color:#fff;border:none;padding:12px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">⬇ Baixar todos os leads (CSV)</button>
               <label style="background:#fff;color:#1d1a15;border:1px solid #ddd3bd;padding:12px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">
                 ⬆ Importar leads (CSV)
@@ -1312,6 +1314,8 @@
               <input type="file" accept="audio/*" onChange="{{ testimonialDraft.onAudioFile }}" style="font-size:13px" />
               <sc-if value="{{ testimonialDraft.hasAudio }}" hint-placeholder-val="{{ false }}">
                 <audio controls="{{ true }}" preload="metadata" ref="{{ testimonialDraft.audioRef }}" style="display:block;margin-top:10px;width:100%;max-width:360px;height:34px"></audio>
+                <button onClick="{{ testimonialDraft.onRemoveAudio }}" style="margin-top:8px;background:none;border:1px solid #ddd3bd;color:#b4432f;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Remover áudio</button>
+                <div style="font-size:11px;color:#8a7f6a;margin-top:6px">Sai daqui e do site ao salvar o depoimento.</div>
               </sc-if>
             </div>
             <div style="display:flex;gap:10px">
@@ -1568,6 +1572,11 @@
             <div style="font-size:12px;color:#746b5c;max-width:560px;line-height:1.55;margin-bottom:12px">Apaga imóveis, leads, visitas, vendas, histórico, favoritos e todas as fotos/mídias deste navegador. Use antes de subir o conteúdo real. Fica registrado permanentemente quem fez isso e quando.</div>
             <sc-if value="{{ canFactoryReset }}" hint-placeholder-val="{{ false }}">
               <button onClick="{{ openResetPassword }}" style="background:#fff;color:#b4432f;border:1px solid #b4432f;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Zerar tudo agora</button>
+              <button onClick="{{ zerarDadosDeUso }}" style="margin-left:10px;background:#fff;color:#4a4438;border:1px solid #ddd3bd;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Zerar só os dados de uso</button>
+              <div style="font-size:11.5px;color:#746b5c;margin-top:8px;max-width:560px;line-height:1.5">Apaga contatos, visitas, vendas, histórico e os registros de navegação (cliques em botões e acessos por horário). <strong>Imóveis, blog, depoimentos e textos do site continuam intactos.</strong></div>
+              <sc-if value="{{ zerandoUso }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:12px;color:var(--accent);margin-top:8px">{{ zerandoUso }}</div>
+              </sc-if>
             </sc-if>
             <sc-if value="{{ !canFactoryReset }}" hint-placeholder-val="{{ true }}">
               <div style="font-size:12px;color:#a89a7c;font-style:italic">Só o usuário Master pode zerar o site.</div>
@@ -2565,6 +2574,59 @@
       </div>
     </sc-if>
 
+    <sc-if value="{{ showNovoLead }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;inset:0;background:rgba(20,17,10,.5);z-index:210;display:flex;align-items:center;justify-content:center;padding:20px">
+        <div style="background:#fffdf8;border-radius:6px;padding:28px;width:100%;max-width:460px;max-height:90vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+          <div style="font-size:16px;font-weight:700;margin-bottom:4px">Novo lead</div>
+          <div style="font-size:13px;color:#746b5c;margin-bottom:20px">Os mesmos campos que o site pergunta a quem entra em contato. Nome ou telefone bastam para salvar.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="grid-column:span 2">
+              <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Nome</div>
+              <input value="{{ novoLead.name }}" onChange="{{ novoLead.onName }}" placeholder="Ex: Camila Fontoura" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:14px;box-sizing:border-box" />
+            </div>
+            <div>
+              <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Telefone</div>
+              <input value="{{ novoLead.phone }}" onChange="{{ novoLead.onPhone }}" placeholder="(47) 99999-0000" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:14px;box-sizing:border-box" />
+            </div>
+            <div>
+              <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">E-mail</div>
+              <input value="{{ novoLead.email }}" onChange="{{ novoLead.onEmail }}" placeholder="opcional" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:14px;box-sizing:border-box" />
+            </div>
+            <div style="grid-column:span 2">
+              <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Interesse</div>
+              <input value="{{ novoLead.interest }}" onChange="{{ novoLead.onInterest }}" placeholder="Ex: CASA CAMBORIÚ" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:14px;box-sizing:border-box" />
+            </div>
+            <div>
+              <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Canal</div>
+              <select value="{{ novoLead.channel }}" onChange="{{ novoLead.onChannel }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:14px;box-sizing:border-box">
+                <sc-for list="{{ novoLead.canais }}" as="cn" hint-placeholder-count="5">
+                  <option value="{{ cn }}">{{ cn }}</option>
+                </sc-for>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Etapa</div>
+              <select value="{{ novoLead.stage }}" onChange="{{ novoLead.onStage }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;background:#fffdf8;font-family:'Manrope',sans-serif;font-size:14px;box-sizing:border-box">
+                <sc-for list="{{ novoLead.etapas }}" as="et" hint-placeholder-count="6">
+                  <option value="{{ et.key }}">{{ et.label }}</option>
+                </sc-for>
+              </select>
+            </div>
+            <div style="grid-column:span 2">
+              <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">Valor estimado (R$)</div>
+              <input inputmode="numeric" value="{{ novoLead.value }}" onChange="{{ novoLead.onValue }}" placeholder="opcional" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:14px;box-sizing:border-box" />
+            </div>
+          </div>
+          <sc-if value="{{ novoLeadErro }}" hint-placeholder-val="{{ false }}">
+            <div style="color:#b4432f;font-size:12.5px;margin-top:12px">{{ novoLeadErro }}</div>
+          </sc-if>
+          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+            <button onClick="{{ fecharNovoLead }}" style="background:#fff;color:#4a4438;border:1px solid #ddd3bd;padding:11px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Cancelar</button>
+            <button onClick="{{ salvarNovoLead }}" style="background:#3e7a4f;color:#fff;border:none;padding:11px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Salvar lead</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
     <sc-if value="{{ showCloseDealModal }}" hint-placeholder-val="{{ false }}">
       <div style="position:fixed;inset:0;background:rgba(20,17,10,.5);z-index:210;display:flex;align-items:center;justify-content:center;padding:20px">
         <div style="background:#fffdf8;border-radius:6px;padding:28px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
@@ -3530,8 +3592,12 @@ class Component extends DCLogic {
 
   TRANSPARENT_PX = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBTAA7';
   money(v) { return window.CRMData ? window.CRMData.money(v) : ('R$ ' + Number(v || 0).toLocaleString('pt-BR')); }
-  setTab = (t) => () => this.setState({ tab: t });
-  goToTable = (stageFilter, channelFilter) => () => this.setState({ tab: 'table', stageFilter: stageFilter || 'all', channelFilter: channelFilter || 'all' });
+  // Fechar a ficha do lead junto faz parte de trocar de tela. Toda pagina do painel exige
+  // "nenhum lead aberto" para aparecer; com uma ficha aberta, clicar em Imoveis ou Dashboard
+  // mudava a aba por dentro e continuava mostrando o lead. O menu parecia morto -- clicava e
+  // nao ia -- e era so isto.
+  setTab = (t) => () => this.setState({ tab: t, selectedLeadId: null });
+  goToTable = (stageFilter, channelFilter) => () => this.setState({ tab: 'table', selectedLeadId: null, stageFilter: stageFilter || 'all', channelFilter: channelFilter || 'all' });
   onSearchChange = (e) => this.setState({ search: e.target.value });
   onStageFilterChange = (e) => this.setState({ stageFilter: e.target.value });
   onChannelFilterChange = (e) => this.setState({ channelFilter: e.target.value });
@@ -3666,6 +3732,26 @@ class Component extends DCLogic {
   stopPropagation = (e) => e.stopPropagation();
 
   // ---- Lead detail (full record) ----
+  // Ate aqui so entrava lead pelo formulario do site ou por importacao de CSV. Quem chega
+  // por telefone ou indicacao precisava de um lugar para ser anotado na hora.
+  abrirNovoLead = () => this.setState({ showNovoLead: true, novoLead: { name: '', phone: '', email: '', interest: '', channel: 'Telefone', stage: 'novo', value: '' }, novoLeadErro: '' });
+  fecharNovoLead = () => this.setState({ showNovoLead: false, novoLeadErro: '' });
+  campoNovoLead = (campo) => (e) => this.setState({ novoLead: { ...this.state.novoLead, [campo]: e.target.value } });
+  salvarNovoLead = () => {
+    const d = this.state.novoLead || {};
+    const nome = String(d.name || '').trim();
+    const fone = String(d.phone || '').trim();
+    if (!nome && !fone) { this.setState({ novoLeadErro: 'Preencha ao menos o nome ou o telefone.' }); return; }
+    const valor = parseInt(String(d.value || '').replace(/[^0-9]/g, ''), 10) || 0;
+    window.CRMData && window.CRMData.addLead({
+      name: nome || 'Sem nome', phone: fone, email: String(d.email || '').trim(),
+      interest: String(d.interest || '').trim(), channel: d.channel || 'Telefone',
+      stage: d.stage || 'novo', value: valor
+    });
+    this.logAction('Cadastrou lead manualmente', nome || fone);
+    this.setState({ leads: window.CRMData.getLeads(), showNovoLead: false, novoLeadErro: '' });
+  };
+
   openLeadDetail = (id) => (e) => { if (e) e.preventDefault(); this.setState({ selectedLeadId: id, leadTimelineText: '' }); };
   closeLeadDetail = (e) => { if (e) e.preventDefault(); this.setState({ selectedLeadId: null }); };
   updateLeadField = (field) => (e) => {
@@ -4357,6 +4443,12 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
   };
   editTestimonial = (t) => () => this.setState({ testimonialDraft: { ...t } });
   updateTestimonialDraft = (field) => (e) => this.setState({ testimonialDraft: { ...this.state.testimonialDraft, [field]: e.target.value } });
+  // So havia como TROCAR o audio, enviando outro por cima; nao havia como tirar. Um
+  // depoimento gravado por engano ficava tocando ate alguem apagar o depoimento inteiro.
+  removerAudioDoDepoimento = () => {
+    this.setState({ testimonialDraft: { ...this.state.testimonialDraft, audioUrl: '' } });
+  };
+
   onTestimonialAudioFile = (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -4571,6 +4663,32 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
     document.head.appendChild(s2);
   };
   toggleMobileMenu = () => this.setState({ mobileMenuOpen: !this.state.mobileMenuOpen });
+  // Zerar o que os testes encheram, sem desmontar o site. O botao vermelho ao lado apaga
+  // TUDO, imoveis inclusive; este apaga so o que se acumula com o uso: contatos, visitas,
+  // vendas, historico e os registros de navegacao -- cliques em botoes e acessos por hora.
+  zerarDadosDeUso = async () => {
+    const ok = window.confirm('Apagar contatos, visitas, vendas, historico e todos os registros de navegacao?' +
+      String.fromCharCode(10, 10) +
+      'Imoveis, blog, depoimentos e textos do site NAO sao tocados.' +
+      String.fromCharCode(10, 10) + 'Nao da para desfazer.');
+    if (!ok) return;
+    const D = window.CRMData;
+    this.setState({ zerandoUso: 'Apagando…' });
+    try {
+      D.saveLeads([]);
+      D.saveVisits([]);
+      if (D.saveSales) D.saveSales([]);
+      if (D.clearSyncHistory) D.clearSyncHistory();
+      ['edina_db_history_v1', 'edina_db_analytics_v1'].forEach(k => { try { localStorage.setItem(k, '[]'); } catch (e) {} });
+      let n = 0;
+      if (window.FirebaseDB && window.FirebaseDB.apagarNavegacao) n = await window.FirebaseDB.apagarNavegacao(18);
+      this.logAction('Zerou os dados de uso', n + ' registro(s) de navegacao');
+      this.setState({ leads: [], zerandoUso: 'Pronto. Contatos, visitas e registros de navegacao apagados (' + n + ' do banco).' });
+    } catch (e) {
+      this.setState({ zerandoUso: 'Falhou: ' + (e.message || e) });
+    }
+  };
+
   openResetPassword = () => this.setState({ showResetPasswordModal: true, resetPasswordInput: '', resetPasswordError: '' });
   closeResetPassword = () => this.setState({ showResetPasswordModal: false, resetPasswordInput: '', resetPasswordError: '' });
   onResetPasswordInput = (e) => this.setState({ resetPasswordInput: e.target.value });
@@ -5402,7 +5520,8 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
         const src = window.CRMData.mediaURL(td.audioUrl);
         if (src && el.getAttribute('src') !== src) { el.setAttribute('src', src); el.load(); }
       },
-      onAudioFile: this.onTestimonialAudioFile
+      onAudioFile: this.onTestimonialAudioFile,
+      onRemoveAudio: this.removerAudioDoDepoimento
     } : null;
 
     const integ = s.integrations || {};
@@ -5972,6 +6091,21 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       })(),
       visitAlertTitle: nextVisit ? `Próxima visita: ${nextVisit.lead} — ${fmtVisitDate(nextVisit.date)} às ${nextVisit.time}` : '',
       visitAlertSubtitle: `${upcomingVisitsAll.length} visita(s) agendada(s) aguardando confirmação`,
+      abrirNovoLead: this.abrirNovoLead, fecharNovoLead: this.fecharNovoLead,
+      salvarNovoLead: this.salvarNovoLead,
+      showNovoLead: !!s.showNovoLead, novoLeadErro: s.novoLeadErro || '',
+      novoLead: {
+        name: (s.novoLead || {}).name || '', phone: (s.novoLead || {}).phone || '',
+        email: (s.novoLead || {}).email || '', interest: (s.novoLead || {}).interest || '',
+        channel: (s.novoLead || {}).channel || 'Telefone', stage: (s.novoLead || {}).stage || 'novo',
+        value: (s.novoLead || {}).value || '',
+        onName: this.campoNovoLead('name'), onPhone: this.campoNovoLead('phone'),
+        onEmail: this.campoNovoLead('email'), onInterest: this.campoNovoLead('interest'),
+        onChannel: this.campoNovoLead('channel'), onStage: this.campoNovoLead('stage'),
+        onValue: this.campoNovoLead('value'),
+        canais: ['Telefone', 'WhatsApp', 'Indicacao', 'Instagram', 'Site', 'Portal', 'Outro'],
+        etapas: stageOrder.map(st => ({ key: st, label: stageLabels[st] }))
+      },
       search: s.search, onSearchChange: this.onSearchChange,
       stageFilter: s.stageFilter, onStageFilterChange: this.onStageFilterChange,
       channelFilter: s.channelFilter, onChannelFilterChange: this.onChannelFilterChange,
@@ -6050,7 +6184,8 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       })),
       downloadBackup: this.downloadBackup, onRestoreBackup: this.onRestoreBackup, resetMsg: s.resetMsg || '',
       canFactoryReset: effectiveRole === 'master',
-      openResetPassword: this.openResetPassword, closeResetPassword: this.closeResetPassword,
+      openResetPassword: this.openResetPassword,
+      zerarDadosDeUso: this.zerarDadosDeUso, zerandoUso: s.zerandoUso || '', closeResetPassword: this.closeResetPassword,
       showResetPasswordModal: !!s.showResetPasswordModal, resetPasswordInput: s.resetPasswordInput || '',
       onResetPasswordInput: this.onResetPasswordInput, resetPasswordError: s.resetPasswordError || '',
       confirmFactoryReset: this.confirmFactoryReset,

@@ -908,6 +908,35 @@
     return true;
   }
 
+  // Apaga os registros de navegação: os cliques em botões, mês a mês, e as visitas.
+  // O cadastro do site não é tocado -- imóveis, blog, depoimentos e textos ficam onde estão.
+  // Serve para começar a contar do zero depois dos testes, sem desmontar o site.
+  async function apagarNavegacao(meses) {
+    await ready;
+    if (!firebase.apps.length) return 0;
+    let apagados = 0;
+    const hoje = new Date();
+    for (let i = 0; i < (meses || 18); i++) {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+      const mes = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      try { await DOC('cliques_' + mes).delete(); apagados++; } catch (e) {}
+    }
+    try {
+      const col = firebase.firestore().collection('edina_analytics');
+      let sobrou = true;
+      while (sobrou) {
+        const lote = await col.limit(400).get();
+        if (lote.empty) { sobrou = false; break; }
+        const b = firebase.firestore().batch();
+        lote.docs.forEach(doc => b.delete(doc.ref));
+        await b.commit();
+        apagados += lote.size;
+        if (lote.size < 400) sobrou = false;
+      }
+    } catch (e) {}
+    return apagados;
+  }
+
   // Devolve os cliques abertos por dia, para o painel filtrar pelo período escolhido do
   // mesmo jeito que já filtra os acessos.
   async function lerCliques(meses) {
@@ -1135,6 +1164,7 @@
     watch: watch,
     logPageview: logPageview,
     somarCliques: somarCliques,
+    apagarNavegacao: apagarNavegacao,
     lerCliques: lerCliques,
     fetchAnalytics: fetchAnalytics,
     watchAnalytics: watchAnalytics
