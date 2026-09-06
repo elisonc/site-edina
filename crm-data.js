@@ -1481,6 +1481,13 @@
           aplicandoDoServidor = true;
           set(LS.leads, leads);
           aplicandoDoServidor = false;
+          // O espelho tambem entra no cache do conteudo publicado, e nao so no armazenamento
+          // local. A leitura consulta o cache primeiro e so cai no armazenamento local quando
+          // ha edicao pendente -- e este espelho, de proposito, nao marca edicao nenhuma, para
+          // nao reenviar ao banco o que o banco ja recebeu. Sem esta linha o contato era
+          // gravado e a leitura seguinte devolvia a lista antiga: quem cadastrava um lead pelo
+          // painel via a janela fechar e nada aparecer.
+          if (published) { published.leads = leads; storeCache(published); }
           return { ...base, id };
         } catch (e) { return base; }
       }

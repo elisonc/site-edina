@@ -387,23 +387,6 @@
       </div>
     </sc-if>
 
-    <sc-if value="{{ showResetPasswordModal }}" hint-placeholder-val="{{ false }}">
-      <div style="position:fixed;inset:0;background:rgba(20,17,10,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:20px">
-        <div style="background:#fffdf8;max-width:400px;width:100%;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-          <div style="font-size:16px;font-weight:700;margin-bottom:8px;color:#b4432f">Confirme com a senha do Master</div>
-          <div style="font-size:12.5px;color:#746b5c;margin-bottom:16px;line-height:1.5">Esta ação apaga tudo e não pode ser desfeita. Digite a senha de login do Master para continuar.</div>
-          <input type="password" value="{{ resetPasswordInput }}" onChange="{{ onResetPasswordInput }}" placeholder="Senha do Master" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:14px;margin-bottom:10px" />
-          <sc-if value="{{ resetPasswordError }}" hint-placeholder-val="{{ false }}">
-            <div style="font-size:12px;color:#b4432f;margin-bottom:10px;font-weight:600">{{ resetPasswordError }}</div>
-          </sc-if>
-          <div style="display:flex;gap:10px;justify-content:flex-end">
-            <button onClick="{{ closeResetPassword }}" style="background:none;border:1px solid #ddd3bd;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Cancelar</button>
-            <button onClick="{{ confirmFactoryReset }}" style="background:#b4432f;color:#fff;border:none;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Confirmar e zerar</button>
-          </div>
-        </div>
-      </div>
-    </sc-if>
-
     <sc-if value="{{ showLeadEditModal }}" hint-placeholder-val="{{ false }}">
       <div style="position:fixed;inset:0;background:rgba(20,17,10,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px">
         <div style="background:#fff;border-radius:6px;padding:28px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
@@ -1568,18 +1551,16 @@
           </div>
 
           <div style="margin-top:20px;padding-top:18px;border-top:1px solid #eee4d0">
-            <div style="font-size:12.5px;font-weight:700;color:#b4432f;margin-bottom:6px">⚠️ Zerar tudo</div>
-            <div style="font-size:12px;color:#746b5c;max-width:560px;line-height:1.55;margin-bottom:12px">Apaga imóveis, leads, visitas, vendas, histórico, favoritos e todas as fotos/mídias deste navegador. Use antes de subir o conteúdo real. Fica registrado permanentemente quem fez isso e quando.</div>
+            <div style="font-size:12.5px;font-weight:700;color:#4a4438;margin-bottom:6px">Zerar os dados de uso</div>
+            <div style="font-size:12px;color:#746b5c;max-width:560px;line-height:1.55;margin-bottom:12px">Apaga contatos, visitas, vendas, histórico e os registros de navegação (cliques em botões e acessos por horário). <strong>Imóveis, blog, depoimentos e textos do site continuam intactos.</strong> Serve para começar a contar do zero depois dos testes.</div>
             <sc-if value="{{ canFactoryReset }}" hint-placeholder-val="{{ false }}">
-              <button onClick="{{ openResetPassword }}" style="background:#fff;color:#b4432f;border:1px solid #b4432f;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Zerar tudo agora</button>
-              <button onClick="{{ zerarDadosDeUso }}" style="margin-left:10px;background:#fff;color:#4a4438;border:1px solid #ddd3bd;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Zerar só os dados de uso</button>
-              <div style="font-size:11.5px;color:#746b5c;margin-top:8px;max-width:560px;line-height:1.5">Apaga contatos, visitas, vendas, histórico e os registros de navegação (cliques em botões e acessos por horário). <strong>Imóveis, blog, depoimentos e textos do site continuam intactos.</strong></div>
+              <button onClick="{{ zerarDadosDeUso }}" style="background:#fff;color:#4a4438;border:1px solid #ddd3bd;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Zerar os dados de uso</button>
               <sc-if value="{{ zerandoUso }}" hint-placeholder-val="{{ false }}">
                 <div style="font-size:12px;color:var(--accent);margin-top:8px">{{ zerandoUso }}</div>
               </sc-if>
             </sc-if>
             <sc-if value="{{ !canFactoryReset }}" hint-placeholder-val="{{ true }}">
-              <div style="font-size:12px;color:#a89a7c;font-style:italic">Só o usuário Master pode zerar o site.</div>
+              <div style="font-size:12px;color:#a89a7c;font-style:italic">Só o usuário Master pode fazer isso.</div>
             </sc-if>
           </div>
         </div>
@@ -1838,19 +1819,6 @@
         <h1 style="font-family:'Manrope',sans-serif;font-size:34px;font-weight:600;margin:0 0 6px">Conteúdo do Site</h1>
         <div style="color:#746b5c;font-size:14px;margin-bottom:28px">Edite a capa da Home, palavras-chave de SEO e a logo exibida no site.</div>
 
-        <div style="background:#fff8f0;border:1px solid #e0b0a0;padding:20px 24px;margin-bottom:26px">
-          <div style="font-weight:700;font-size:14px;color:#b4432f;margin-bottom:6px">⚠️ Zerar site (deixar como template)</div>
-          <div style="font-size:12.5px;color:#8a5040;max-width:600px;line-height:1.55;margin-bottom:12px">Apaga TUDO que é editável: imóveis, leads, visitas, vendas, histórico, favoritos, blog, depoimentos, textos do site e todas as fotos/mídias deste navegador. O site volta a ser um template em branco, pronto para começar do zero. Fica registrado permanentemente quem fez isso e quando — esse registro não pode ser apagado.</div>
-          <sc-if value="{{ canFactoryReset }}" hint-placeholder-val="{{ false }}">
-            <button onClick="{{ openResetPassword }}" style="background:#b4432f;color:#fff;border:none;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Zerar site agora</button>
-          </sc-if>
-          <sc-if value="{{ !canFactoryReset }}" hint-placeholder-val="{{ true }}">
-            <div style="font-size:12px;color:#8a5040;font-style:italic">Só o usuário Master pode zerar o site.</div>
-          </sc-if>
-          <sc-if value="{{ resetMsg }}" hint-placeholder-val="{{ false }}">
-            <div style="font-size:12px;margin-top:10px;font-weight:600;color:#3e7a4f">{{ resetMsg }}</div>
-          </sc-if>
-        </div>
 
         <div style="background:#fffdf8;border:1px solid #ddd3bd;padding:26px;margin-bottom:20px">
           <div style="font-size:15px;font-weight:700;margin-bottom:6px">Qualidade das fotos</div>
@@ -4689,60 +4657,14 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
     }
   };
 
-  openResetPassword = () => this.setState({ showResetPasswordModal: true, resetPasswordInput: '', resetPasswordError: '' });
-  closeResetPassword = () => this.setState({ showResetPasswordModal: false, resetPasswordInput: '', resetPasswordError: '' });
-  onResetPasswordInput = (e) => this.setState({ resetPasswordInput: e.target.value });
-  confirmFactoryReset = () => {
-    const D = window.CRMData;
-    const masterUser = (D.getUsers() || []).find(u => u.role === 'master') || {};
-    const pwd = this.state.resetPasswordInput || '';
-    const verified = D.verifyLogin(masterUser.username || 'master', pwd);
-    if (!verified || verified.role !== 'master') {
-      D.addAuditEntry(this.state.session ? (this.state.session.name || this.state.session.username) : 'Desconhecido', 'Tentativa de zerar o site — SENHA INCORRETA');
-      this.setState({ resetPasswordError: 'Senha incorreta. Esta tentativa ficou registrada.' });
-      return;
-    }
-    this.setState({ showResetPasswordModal: false });
-    this.factoryReset(verified.name || verified.username);
-  };
-  factoryReset = (actorName) => {
-    const D = window.CRMData;
-    D.addAuditEntry(actorName || (this.state.session && (this.state.session.name || this.state.session.username)) || 'Master', 'ZEROU O SITE INTEIRO', `${D.getPropertiesRaw().length} imóveis, ${D.getLeads().length} leads apagados`);
-    const site = D.getSiteContentRaw() || {};
-    Object.keys(site).forEach(k => {
-      const v = site[k];
-      if (typeof v === 'string' && (v.startsWith('idb') || v.startsWith('data:') || (v.startsWith('./') && /\.(png|jpe?g|webp|gif|svg)$/i.test(v)))) site[k] = '';
-      if (Array.isArray(v)) site[k] = v.map(x => (typeof x === 'string' && (x.startsWith('idb') || x.startsWith('data:'))) ? '' : x);
-    });
-    D.saveSiteContent(site);
-    D.saveProperties([]);
-    D.saveLeads([]);
-    D.saveVisits([]);
-    if (D.saveSales) D.saveSales([]);
-    if (D.clearSyncHistory) D.clearSyncHistory();
-    D.savePosts((D.getPostsRaw ? D.getPostsRaw() : D.getPosts()).map(p => ({ ...p, image: '' })));
-    D.saveTestimonials((D.getTestimonialsRaw ? D.getTestimonialsRaw() : D.getTestimonials()).map(t => ({ ...t, image: '', audioUrl: '' })));
-    ['edina_db_history_v1', 'edina_db_analytics_v1'].forEach(k => { try { localStorage.setItem(k, '[]'); } catch (e) {} });
-    try { localStorage.setItem('edina_favorites', '{}'); localStorage.setItem('edina_pub_cache_v1', '{}'); } catch (e) {}
-    localStorage.removeItem('edina_gh_config');
-    D._openMediaDB().then(db => {
-      const tx = db.transaction('media', 'readwrite');
-      const store = tx.objectStore('media');
-      const req = store.openCursor();
-      let n = 0;
-      req.onsuccess = () => {
-        const c = req.result;
-        if (!c) {
-          D._photoCache = {};
-          const msg = `✓ Site zerado (${n} arquivo(s) de mídia apagado(s)). Recarregando…`;
-          this.setState({ backupMsg: msg, resetMsg: msg });
-          setTimeout(() => location.reload(), 1200);
-          return;
-        }
-        store.delete(c.key); n++; c.continue();
-      };
-    });
-  };
+  // O botao que zerava o site inteiro saiu do painel a pedido do Elison: com o site
+  // entregue, um clique capaz de apagar os 19 imoveis e todo o conteudo e risco sem
+  // contrapartida. Ficou "Zerar os dados de uso", em Configuracoes, que limpa contatos,
+  // visitas e registros de navegacao sem encostar no cadastro.
+  //
+  // O caminho antigo -- janela pedindo a senha do Master, confirmacao e limpeza geral --
+  // foi removido junto, e nao apenas escondido: codigo que ninguem alcanca e codigo que
+  // ninguem revisa, e este apagava tudo.
   testFirebase = () => {
     if (!window.FirebaseDB || !window.FirebaseDB.enabled) {
       this.setState({ firebaseTestMsg: '✗ Não conectado.', firebaseTestColor: '#b4432f' });
@@ -6182,13 +6104,9 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
         download: this.downloadSyncVersion(h),
         remove: this.deleteSyncRecord(h)
       })),
-      downloadBackup: this.downloadBackup, onRestoreBackup: this.onRestoreBackup, resetMsg: s.resetMsg || '',
+      downloadBackup: this.downloadBackup, onRestoreBackup: this.onRestoreBackup,
       canFactoryReset: effectiveRole === 'master',
-      openResetPassword: this.openResetPassword,
-      zerarDadosDeUso: this.zerarDadosDeUso, zerandoUso: s.zerandoUso || '', closeResetPassword: this.closeResetPassword,
-      showResetPasswordModal: !!s.showResetPasswordModal, resetPasswordInput: s.resetPasswordInput || '',
-      onResetPasswordInput: this.onResetPasswordInput, resetPasswordError: s.resetPasswordError || '',
-      confirmFactoryReset: this.confirmFactoryReset,
+      zerarDadosDeUso: this.zerarDadosDeUso, zerandoUso: s.zerandoUso || '',
       backupButtonLabel: s.backingUp ? 'Preparando…' : 'Baixar backup completo',
       backupMsg: s.backupMsg || '', backupMsgColor: s.backupMsgColor || '#4a4438',
       hasNoSyncHistory: !(window.CRMData ? window.CRMData.getSyncHistory() : []).length,
