@@ -1250,7 +1250,13 @@
                 <input type="file" accept="image/*,.heic,.heif,.HEIC,.HEIF" onChange="{{ postDraft.onImageFile }}" style="font-size:13px" />
               </div>
             </div>
-            <textarea placeholder="Corpo do artigo (separe parágrafos com linha em branco)" rows="6" value="{{ postDraft.body }}" onChange="{{ postDraft.onBody }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13.5px;resize:vertical;box-sizing:border-box;margin-bottom:16px"></textarea>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
+              <sc-for list="{{ postDraft.ferramentas }}" as="fr" hint-placeholder-count="6">
+                <button onClick="{{ fr.aplicar }}" title="{{ fr.dica }}" style="{{ fr.style }}">{{ fr.label }}</button>
+              </sc-for>
+            </div>
+            <textarea placeholder="Corpo do artigo (separe parágrafos com linha em branco)" rows="10" ref="{{ postDraft.bodyRef }}" value="{{ postDraft.body }}" onChange="{{ postDraft.onBody }}" style="width:100%;padding:11px 12px;border:1px solid #ddd3bd;font-family:'Manrope',sans-serif;font-size:13.5px;resize:vertical;box-sizing:border-box;margin-bottom:8px"></textarea>
+            <div style="font-size:11.5px;color:#8a7f6a;margin-bottom:16px;line-height:1.5">Selecione o texto e clique no botão. <strong>Link</strong> pergunta o endereço — serve para citar a fonte de um dado. Um parágrafo por linha em branco.</div>
             <div style="display:flex;gap:10px">
               <button onClick="{{ savePostDraft }}" style="background:#3e7a4f;color:#fff;border:none;padding:12px 22px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Salvar</button>
               <button onClick="{{ cancelPostDraft }}" style="background:#fff;color:#4a4438;border:1px solid #ddd3bd;padding:12px 22px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Cancelar</button>
@@ -4384,6 +4390,57 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
     window.CRMData && window.CRMData.savePosts(posts);
     this.autoPublish('exclusão de artigo');
   };
+  // Formatacao do artigo pela barra de botoes. O texto e guardado com marcacoes simples --
+  // **negrito**, *italico*, ## Titulo, [texto](endereco) -- e nao como HTML. O que o painel
+  // grava vai para uma pagina publica, e HTML solto vindo de um campo de texto e superficie
+  // de ataque; a pagina do artigo escapa tudo e so entao converte estas poucas marcacoes.
+  //
+  // Os botoes existem para ninguem precisar decorar a sintaxe: envolvem o que estiver
+  // selecionado e devolvem o cursor para dentro da marcacao.
+  _campoDoCorpo = null;
+  guardarCampoDoCorpo = (el) => { if (el) this._campoDoCorpo = el; };
+
+  aplicarFormato = (tipo) => () => {
+    const el = this._campoDoCorpo;
+    if (!el) return;
+    const texto = el.value || '';
+    const ini = el.selectionStart || 0;
+    const fim = el.selectionEnd || 0;
+    const sel = texto.slice(ini, fim);
+    let antes = texto.slice(0, ini);
+    let depois = texto.slice(fim);
+    let novo = sel, deslocaInicio = 0;
+
+    if (tipo === 'negrito') { novo = '**' + (sel || 'texto') + '**'; deslocaInicio = 2; }
+    else if (tipo === 'italico') { novo = '*' + (sel || 'texto') + '*'; deslocaInicio = 1; }
+    else if (tipo === 'titulo' || tipo === 'subtitulo') {
+      const marca = tipo === 'titulo' ? '## ' : '### ';
+      // Titulo vale para a linha inteira, entao recua ate o comeco dela.
+      const quebra = antes.lastIndexOf('\n');
+      const inicioDaLinha = quebra + 1;
+      const linha = texto.slice(inicioDaLinha, fim || texto.length).replace(/^#{2,3}\s*/, '');
+      antes = texto.slice(0, inicioDaLinha);
+      depois = texto.slice(fim || texto.length);
+      novo = marca + (linha || 'Título');
+      deslocaInicio = marca.length;
+    } else if (tipo === 'link') {
+      const url = window.prompt('Endereço do link (comece com https://)', 'https://');
+      if (!url || !/^https?:\/\//i.test(url)) return;
+      novo = '[' + (sel || 'texto do link') + '](' + url.trim() + ')';
+      deslocaInicio = 1;
+    }
+
+    const resultado = antes + novo + depois;
+    this.setState({ postDraft: { ...this.state.postDraft, body: resultado } });
+    const pos = antes.length + deslocaInicio;
+    setTimeout(() => {
+      try {
+        el.focus();
+        el.setSelectionRange(pos, pos + (sel ? sel.length : (tipo === 'titulo' || tipo === 'subtitulo' ? 6 : 5)));
+      } catch (e) {}
+    }, 0);
+  };
+
   updatePostDraft = (field) => (e) => this.setState({ postDraft: { ...this.state.postDraft, [field]: e.target.value } });
   onPostImageFile = (e) => {
     const file = e.target.files && e.target.files[0];
@@ -5417,6 +5474,17 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       title: pod.title, onTitle: this.updatePostDraft('title'),
       cat: pod.cat, onCat: this.updatePostDraft('cat'),
       excerpt: pod.excerpt, onExcerpt: this.updatePostDraft('excerpt'),
+      bodyRef: this.guardarCampoDoCorpo,
+      ferramentas: (() => {
+        const base = "background:#fffdf8;border:1px solid #ddd3bd;color:#4a4438;padding:6px 11px;font-size:12.5px;cursor:pointer;font-family:'Manrope',sans-serif;min-width:34px";
+        return [
+          { label: 'B',  dica: 'Negrito',    style: base + ';font-weight:800', aplicar: this.aplicarFormato('negrito') },
+          { label: 'I',  dica: 'Itálico',    style: base + ';font-style:italic', aplicar: this.aplicarFormato('italico') },
+          { label: 'Título',    dica: 'Título da seção',    style: base + ";font-family:'Cormorant Garamond',serif;font-size:15px", aplicar: this.aplicarFormato('titulo') },
+          { label: 'Subtítulo', dica: 'Subtítulo',          style: base + ";font-family:'Cormorant Garamond',serif;font-size:13px", aplicar: this.aplicarFormato('subtitulo') },
+          { label: '🔗 Link',   dica: 'Vincular uma fonte', style: base, aplicar: this.aplicarFormato('link') }
+        ];
+      })(),
       body: pod.body, onBody: this.updatePostDraft('body'),
       status: pod.status, onStatus: this.updatePostDraft('status'),
       imgStyle: pod.image ? `width:100px;height:70px;border:1px solid #ddd3bd;background-size:cover;background-position:center` : `width:0;height:70px`,
