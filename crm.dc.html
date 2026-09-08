@@ -1557,10 +1557,10 @@
           </div>
 
           <div style="margin-top:20px;padding-top:18px;border-top:1px solid #eee4d0">
-            <div style="font-size:12.5px;font-weight:700;color:#4a4438;margin-bottom:6px">Zerar os dados de uso</div>
-            <div style="font-size:12px;color:#746b5c;max-width:560px;line-height:1.55;margin-bottom:12px">Apaga contatos, visitas, vendas, histórico e os registros de navegação (cliques em botões e acessos por horário). <strong>Imóveis, blog, depoimentos e textos do site continuam intactos.</strong> Serve para começar a contar do zero depois dos testes.</div>
+            <div style="font-size:12.5px;font-weight:700;color:#4a4438;margin-bottom:6px">Zerar os números do painel</div>
+            <div style="font-size:12px;color:#746b5c;max-width:560px;line-height:1.55;margin-bottom:12px">Zera acessos, horários e cliques em botões — os números do Dashboard voltam do zero. <strong>Contatos, imóveis, blog, depoimentos e textos do site continuam intactos.</strong> Os acessos antigos não são apagados do banco (as regras não permitem, para que nenhum visitante consiga apagar o rastro dos outros); o painel passa a contar a partir de agora.</div>
             <sc-if value="{{ canFactoryReset }}" hint-placeholder-val="{{ false }}">
-              <button onClick="{{ zerarDadosDeUso }}" style="background:#fff;color:#4a4438;border:1px solid #ddd3bd;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Zerar os dados de uso</button>
+              <button onClick="{{ zerarDadosDeUso }}" style="background:#fff;color:#4a4438;border:1px solid #ddd3bd;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Zerar os números do painel</button>
               <sc-if value="{{ zerandoUso }}" hint-placeholder-val="{{ false }}">
                 <div style="font-size:12px;color:var(--accent);margin-top:8px">{{ zerandoUso }}</div>
               </sc-if>
@@ -4692,23 +4692,23 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
   // TUDO, imoveis inclusive; este apaga so o que se acumula com o uso: contatos, visitas,
   // vendas, historico e os registros de navegacao -- cliques em botoes e acessos por hora.
   zerarDadosDeUso = async () => {
-    const ok = window.confirm('Apagar contatos, visitas, vendas, historico e todos os registros de navegacao?' +
+    const ok = window.confirm('Zerar os numeros do painel: acessos, horarios e cliques em botoes?' +
       String.fromCharCode(10, 10) +
-      'Imoveis, blog, depoimentos e textos do site NAO sao tocados.' +
+      'Contatos, imoveis, blog, depoimentos e textos do site NAO sao tocados.' +
       String.fromCharCode(10, 10) + 'Nao da para desfazer.');
     if (!ok) return;
     const D = window.CRMData;
-    this.setState({ zerandoUso: 'Apagando…' });
+    this.setState({ zerandoUso: 'Zerando…' });
     try {
-      D.saveLeads([]);
+      // Os contatos ficam. Zerar aqui e sobre os numeros de navegacao, nao sobre a carteira.
       D.saveVisits([]);
       if (D.saveSales) D.saveSales([]);
       if (D.clearSyncHistory) D.clearSyncHistory();
       ['edina_db_history_v1', 'edina_db_analytics_v1'].forEach(k => { try { localStorage.setItem(k, '[]'); } catch (e) {} });
       let n = 0;
       if (window.FirebaseDB && window.FirebaseDB.apagarNavegacao) n = await window.FirebaseDB.apagarNavegacao(18);
-      this.logAction('Zerou os dados de uso', n + ' registro(s) de navegacao');
-      this.setState({ leads: [], zerandoUso: 'Pronto. Contatos, visitas e registros de navegacao apagados (' + n + ' do banco).' });
+      this.logAction('Zerou os numeros do painel', n + ' documento(s) de cliques');
+      this.setState({ zerandoUso: 'Pronto. Acessos, horarios e cliques zerados. Os contatos continuam onde estavam.' });
     } catch (e) {
       this.setState({ zerandoUso: 'Falhou: ' + (e.message || e) });
     }

@@ -940,19 +940,10 @@
       const mes = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
       try { await DOC('cliques_' + mes).delete(); apagados++; } catch (e) {}
     }
-    try {
-      const col = firebase.firestore().collection('edina_analytics');
-      let sobrou = true;
-      while (sobrou) {
-        const lote = await col.limit(400).get();
-        if (lote.empty) { sobrou = false; break; }
-        const b = firebase.firestore().batch();
-        lote.docs.forEach(doc => b.delete(doc.ref));
-        await b.commit();
-        apagados += lote.size;
-        if (lote.size < 400) sobrou = false;
-      }
-    } catch (e) {}
+    // Os registros de visita nao podem ser apagados -- as regras do banco recusam, para que
+    // um visitante nao consiga limpar o rastro dos outros. Verificado: permission-denied.
+    // Em vez de apagar, marca a data a partir da qual o painel deve contar.
+    try { await DOC('analytics_marco').set({ desde: Date.now() }); } catch (e) {}
     return apagados;
   }
 
@@ -1024,15 +1015,28 @@
   // registradas no banco.
   const TETO_VISITAS = 3000;
 
+  // Marco zero dos acessos. As regras do banco proibem APAGAR um registro de visita, e com
+  // razao: quem grava e o visitante, e se ele pudesse apagar poderia limpar o rastro de
+  // todo mundo. Entao "zerar" nao apaga -- guarda a data em que se pediu para recomecar, e a
+  // leitura ignora tudo que e mais antigo. O painel mostra zero e o historico continua la.
+  async function marcoDosAcessos() {
+    try {
+      const d = await DOC('analytics_marco').get();
+      return (d.exists && Number(d.data().desde)) || 0;
+    } catch (e) { return 0; }
+  }
+
   async function fetchAnalytics() {
     const ok = await ready;
     if (!ok || !firebase.apps.length) return [];
+    const desde = await marcoDosAcessos();
+    const filtrar = (lista) => desde ? lista.filter(v => Number(v && v.ts) >= desde) : lista;
     const col = firebase.firestore().collection('edina_analytics');
     // Mais recentes primeiro, para que o teto corte o que já é histórico antigo.
     return col.orderBy('ts', 'desc').limit(TETO_VISITAS).get()
-      .then(snap => snap.docs.map(d => d.data()))
+      .then(snap => filtrar(snap.docs.map(d => d.data())))
       .catch(() => col.limit(TETO_VISITAS).get()
-        .then(snap => snap.docs.map(d => d.data()))
+        .then(snap => filtrar(snap.docs.map(d => d.data())))
         .catch(() => []));
   }
 
@@ -1184,6 +1188,7 @@
     logPageview: logPageview,
     somarCliques: somarCliques,
     apagarNavegacao: apagarNavegacao,
+    marcoDosAcessos: marcoDosAcessos,
     lerCliques: lerCliques,
     fetchAnalytics: fetchAnalytics,
     watchAnalytics: watchAnalytics
