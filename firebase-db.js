@@ -624,7 +624,7 @@
             try {
               for (const [larg, qual] of [[820, 0.62], [700, 0.6], [560, 0.56], [420, 0.55]]) {
                 const mini = await window.CRMData.resizeDataUrl(dados[0], larg, qual);
-                if (mini && mini.length < 40 * 1024) { q.thumb = mini; break; }
+                if (mini && mini.length < 40 * 1024) { q.thumb = mini; q.thumbDe = q.image; break; }
               }
             } catch (e) {}
           }
@@ -632,6 +632,25 @@
           out.push(q);
           continue;
         }
+      }
+
+      // Trocar a foto de capa sem enviar nenhuma foto nova nao passa pelo caminho de cima:
+      // nao ha o que subir, entao a ficha era gravada com a capa nova e a MINIATURA ANTIGA.
+      // E a miniatura que aparece nos cards da listagem, porque a foto cheia so e buscada na
+      // pagina do imovel -- entao a troca era salva e nao se via em lugar nenhum. Era isso
+      // que parecia "nao salvou".
+      //
+      // thumbDe guarda de qual foto a miniatura foi feita. Diferente da capa atual, refaz.
+      if (q.image && q.thumbDe !== q.image && window.CRMData && window.CRMData.resizeDataUrl) {
+        try {
+          const daCapa = await paraDataUrl(q.image);
+          if (daCapa) {
+            for (const [larg, qual] of [[820, 0.62], [700, 0.6], [560, 0.56], [420, 0.55]]) {
+              const mini = await window.CRMData.resizeDataUrl(daCapa, larg, qual);
+              if (mini && mini.length < 40 * 1024) { q.thumb = mini; q.thumbDe = q.image; break; }
+            }
+          }
+        } catch (e) {}
       }
 
       if (q.image) q.image = await externalizeMedia(q.image, 'fotos', cache);

@@ -561,37 +561,35 @@
   // Converts an uploaded file to a normal image Blob first if it's an iPhone HEIC/HEIF
   // photo (browsers can't decode those natively into a canvas) using the heic2any
   // WASM library, then continues to the regular resize/compress pipeline below.
-  // A biblioteca que abre HEIC pesa 1,3 MB e era carregada travando o desenho do painel em
-  // TODA visita, mesmo sem ninguém enviar foto de iPhone. Agora ela só é buscada no momento
-  // em que um arquivo HEIC aparece — e uma vez só, porque a promessa fica guardada.
+  // A biblioteca que abre HEIC so e buscada no momento em que um arquivo HEIC aparece --
+  // sao alguns megabytes que ninguem mais precisa baixar -- e uma vez so, porque a promessa
+  // fica guardada.
+  //
+  // Era o heic2any 0.0.4, e ele nao dava conta: numa foto de iPhone de 2026 devolvia
+  // "ERR_LIBHEIF format not supported" em um decimo de segundo. A libheif embutida nele e
+  // antiga demais para o formato que os iPhones gravam hoje, e 0.0.4 e a ultima versao
+  // publicada -- nao havia atualizacao para pegar. O heic-to usa a libheif atual e abriu o
+  // mesmo arquivo sem reclamar.
   let heicPronto = null;
   function carregarHeic() {
     if (heicPronto) return heicPronto;
-    if (window.heic2any) { heicPronto = Promise.resolve(true); return heicPronto; }
-    heicPronto = new Promise(resolve => {
-      const tag = document.createElement('script');
-      tag.src = 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
-      tag.async = true;
-      tag.onload = () => resolve(!!window.heic2any);
-      tag.onerror = () => resolve(false);
-      document.head.appendChild(tag);
-      // Rede ruim não pode deixar o envio pendurado para sempre.
-      setTimeout(() => resolve(!!window.heic2any), 20000);
-    });
+    heicPronto = import('https://cdn.jsdelivr.net/npm/heic-to@1.1.14/+esm')
+      .then(m => (m && typeof m.heicTo === 'function') ? m : null)
+      .catch(() => null);
     return heicPronto;
   }
 
   function toDecodableBlob(file) {
     const isHeic = /\.hei[cf]$/i.test(file.name || '') || /hei[cf]/i.test(file.type || '');
     if (!isHeic) return Promise.resolve(file);
-    return carregarHeic().then(pronto => {
-      if (!pronto || !window.heic2any) return file;
-      // 0,94 e não 0,85: esta conversão é só uma parada no caminho — a foto ainda vai ser
-      // redimensionada e recomprimida depois. Comprimir forte aqui jogava fora detalhe que
-      // a etapa seguinte nunca teria como recuperar, e o arquivo intermediário nem chega a
-      // ser guardado, então o peso a mais não custa nada.
-      return window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.94 })
-        .then(result => Array.isArray(result) ? result[0] : result)
+    return carregarHeic().then(mod => {
+      if (!mod) return file;
+      // 0,94 e nao 0,85: esta conversao e so uma parada no caminho -- a foto ainda vai ser
+      // redimensionada e recomprimida depois. Comprimir forte aqui jogava fora detalhe que a
+      // etapa seguinte nunca teria como recuperar, e o arquivo intermediario nem chega a ser
+      // guardado, entao o peso a mais nao custa nada.
+      return mod.heicTo({ blob: file, type: 'image/jpeg', quality: 0.94 })
+        .then(b => b || file)
         .catch(() => file);
     });
   }
