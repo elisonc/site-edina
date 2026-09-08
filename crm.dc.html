@@ -4424,9 +4424,22 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       novo = marca + (linha || 'Título');
       deslocaInicio = marca.length;
     } else if (tipo === 'link') {
-      const url = window.prompt('Endereço do link (comece com https://)', 'https://');
-      if (!url || !/^https?:\/\//i.test(url)) return;
-      novo = '[' + (sel || 'texto do link') + '](' + url.trim() + ')';
+      // O campo vinha preenchido com "https://" e a checagem so exigia comecar com http.
+      // Confirmar sem digitar nada passava: entrava um link com endereco vazio, que a pagina
+      // do artigo nao tem como transformar em link -- e a marcacao aparecia crua para o
+      // visitante, do jeito "[Balneario ](https://)Camboriu". Agora o campo comeca vazio,
+      // aceita tambem "exemplo.com" ou "www.exemplo.com", e recusa o que nao for endereco.
+      let url = window.prompt('Endereço do link — ex: www.abrainc.org.br/pesquisa', '');
+      if (url === null) return;
+      url = String(url).trim();
+      if (!url) return;
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url.replace(/^\/+/, '');
+      const corpo = url.replace(/^https?:\/\//i, '');
+      if (!/^[^\s\/]+\.[a-z]{2,}/i.test(corpo)) {
+        window.alert('Esse endereço não parece completo. Escreva algo como www.exemplo.com.br/pagina.');
+        return;
+      }
+      novo = '[' + (sel || 'texto do link') + '](' + url + ')';
       deslocaInicio = 1;
     }
 

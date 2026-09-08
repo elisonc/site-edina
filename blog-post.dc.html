@@ -244,8 +244,17 @@ class Component extends DCLogic {
     const comMarcas = (t) => {
       let h = escapar(t);
       // Link antes do resto: o texto dele pode ter negrito dentro, o contrario nao acontece.
-      h = h.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g,
-        (m, texto, url) => '<a href="' + url + '" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:underline">' + texto + '</a>');
+      // Pega QUALQUER [texto](...), e nao so os com endereco valido. Um link mal escrito no
+      // painel aparecia cru na tela do visitante -- "[Balneario ](https://)Camboriu". Aqui,
+      // endereco que nao serve perde a marcacao e sobra o texto, que ao menos se le.
+      h = h.replace(/\[([^\]\n]+)\]\(([^)\n]*)\)/g, (m, texto, url) => {
+        let limpo = String(url || '').trim();
+        // Endereço escrito à mão, sem o "https://" na frente, também vale.
+        if (limpo && !/^https?:\/\//i.test(limpo)) limpo = 'https://' + limpo.replace(/^\/+/, '');
+        const serve = /^https?:\/\/[^\s\/]+\.[a-z]{2,}/i.test(limpo);
+        if (!serve) return texto;
+        return '<a href="' + limpo + '" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:underline">' + texto + '</a>';
+      });
       h = h.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
       h = h.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
       return h;
