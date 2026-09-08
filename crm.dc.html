@@ -121,6 +121,67 @@
       }
       [data-crm-main] [style*="width:190px"][style*="height:140px"] { width: 100% !important; height: 180px !important; }
       [data-crm-main] [style*="grid-column:span 3"] { grid-column: span 2 !important; }
+
+      /* --- Ajustes medidos numa tela de 375px ------------------------------------
+         Cada regra abaixo corrige algo que foi medido estourando a borda ou ficando
+         ilegivel, e nao um palpite de layout. */
+
+      /* Cartao de numero tem 166px numa tela de 375. "R$ 108.100.000" com 28px de
+         fonte ocupa 166px sozinho e vazava para fora do cartao. */
+      [data-crm-main] div[data-metrica="valor"],[data-crm-main] div[data-metrica="valor"] *{
+        font-size:clamp(15px,4.9vw,22px) !important;line-height:1.15 !important;
+        overflow-wrap:anywhere;word-break:break-word;
+      }
+
+      /* Filho de flex nao encolhe abaixo do proprio conteudo sem isto. Era o que fazia
+         a barra dos "botoes mais clicados" terminar em 395px numa tela de 375. */
+      [data-crm-main] [style*="display:flex"] > *{min-width:0}
+
+      /* Grade de cartao com TEXTO dentro vai para uma coluna: integracoes e cores do
+         tema ficavam com 166px, quebrando titulo em tres linhas. Cartao de numero
+         continua em duas colunas, que ali cabe. */
+      /* minmax(0,1fr) e nao 1fr: uma coluna "1fr" nao encolhe abaixo do conteudo minimo
+         dela, e dentro destes cartoes ha campo e texto que nao quebram -- as colunas
+         ficavam com 221px e 199px numa tela de 343px, transbordando 77px. Com o minimo
+         zerado, e com os filhos autorizados a encolher, a coluna acompanha a tela. */
+      [data-crm-main] div[data-cartoes="conteudo"]{
+        grid-template-columns:minmax(0,1fr) !important;gap:14px !important;
+      }
+      [data-crm-main] div[data-cartoes="conteudo"] > *{min-width:0;overflow-wrap:anywhere}
+      [data-crm-main] div[data-cartoes="conteudo"] input{max-width:100% !important}
+
+      /* O seletor de cor tem tamanho proprio e nao e campo de texto: a regra que
+         estica todo input para 100% jogava a amostra de cor para fora da linha. */
+      [data-crm-main] input[type=color]{
+        width:54px !important;max-width:54px !important;min-width:54px !important;
+        flex:0 0 54px !important;height:40px !important;padding:0 !important;
+      }
+
+      /* Fileira de acoes de um item (Editar / Redefinir Senha / Desativar): os botoes
+         dividem a linha em vez de ficarem espremidos. */
+      [data-crm-main] [style*="display:flex"][style*="gap:8px"] > button,
+      [data-crm-main] [style*="display:flex"][style*="gap:10px"] > button{flex:1 1 auto}
+
+      /* Tabela larga rola dentro do proprio quadro, sem empurrar a pagina. */
+      [data-crm-main] table{display:block;overflow-x:auto;white-space:nowrap}
+
+      /* Linha dos "botoes mais clicados": rotulo, barra e contagem numa fileira que nao
+         cabia -- terminava em 395px numa tela de 375. Encolhe junto com a tela. */
+      [data-crm-main] [data-linha="clique"]{max-width:100% !important;gap:8px !important}
+      /* O rotulo tem flex:0 0 190px e a contagem flex:0 0 76px -- os dois com encolhimento
+         zero no proprio estilo, que vence qualquer regra sem !important. Somados aos 60px
+         minimos da barra passam da largura da tela. Aqui eles voltam a poder encolher. */
+      [data-crm-main] [data-linha="clique"] > *{
+        min-width:0 !important;flex-shrink:1 !important;flex-basis:auto !important;
+      }
+      [data-crm-main] [data-linha="clique"] > *:last-child{white-space:nowrap}
+
+      /* Filtro de periodo em Valores: dois campos de data lado a lado somam mais que a
+         largura da tela. Passam a caber e, quando nao cabem, quebram a linha. */
+      [data-crm-main] input[type=date]{max-width:100% !important;min-width:0 !important;flex:1 1 130px}
+      /* A fileira que segura os dois campos de data quebra a linha quando eles nao cabem,
+         em vez de empurrar o conteudo para fora da tela. */
+      [data-crm-main] [style*="display:flex"]:has(> input[type=date]){flex-wrap:wrap !important;max-width:100% !important}
     }  </style>
   <script src="./facebook-login.js"></script>
   <script src="./google-login.js"></script>
@@ -542,7 +603,7 @@
           <sc-for list="{{ metrics }}" as="m" hint-placeholder-count="4">
             <div onClick="{{ m.onClick }}" style="background:#fffdf8;border:1px solid #ddd3bd;border-top:3px solid {{ m.accent }};padding:22px;cursor:pointer;transition:transform .15s">
               <div style="font-size:12px;color:#746b5c;margin-bottom:8px">{{ m.label }}</div>
-              <div style="font-family:'Manrope',sans-serif;font-size:28px;font-weight:700;color:{{ m.accent }}">{{ m.value }}</div>
+              <div data-metrica="valor" style="font-family:'Manrope',sans-serif;font-size:28px;font-weight:700;color:{{ m.accent }}">{{ m.value }}</div>
               <div style="font-size:11.5px;color:#7d7157;margin-top:8px">Ver detalhes →</div>
             </div>
           </sc-for>
@@ -619,7 +680,7 @@
             <div style="font-size:11.5px;color:#8a7f6a;margin-bottom:12px">Cliques dos visitantes no período escolhido acima — WhatsApp, agendar visita, ebook, mapa, cards de imóvel.</div>
             <div style="display:grid;gap:6px">
               <sc-for list="{{ cliques.lista }}" as="cq" hint-placeholder-count="5">
-                <div style="display:flex;align-items:center;gap:12px;font-size:13px">
+                <div data-linha="clique" style="display:flex;align-items:center;gap:12px;font-size:13px">
                   <div style="flex:0 0 190px;color:#4a4438;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ cq.nome }}</div>
                   <div style="flex:1;height:16px;background:#f0e9da;position:relative;min-width:60px">
                     <div style="{{ cq.barraStyle }}"></div>
@@ -1411,7 +1472,7 @@
         <h1 style="font-family:'Manrope',sans-serif;font-size:34px;font-weight:600;margin:0 0 6px">Integrações</h1>
         <div style="color:#746b5c;font-size:14px;margin-bottom:30px">Conecte canais de aquisição e conecte o CRM a outras ferramentas via API aberta.</div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px">
+        <div data-cartoes="conteudo" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px">
           <div style="background:#fffdf8;border:1px solid #ddd3bd;padding:24px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
               <div style="font-size:15px;font-weight:700">📘 Facebook / Instagram Ads</div>
@@ -1582,7 +1643,7 @@
           <div style="font-size:11.5px;color:#746b5c;margin-top:10px;line-height:1.55">Depois de colar a chave, salve as alterações e publique o site para valer no ar.</div>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px">
+        <div data-cartoes="conteudo" style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px">
           <div style="background:#fffdf8;border:1px solid #ddd3bd;padding:24px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
               <div style="font-size:15px;font-weight:700">🏠 DWV</div>
@@ -2279,7 +2340,7 @@
             <button onClick="{{ applyReferencePalette }}" style="background:none;border:1px solid var(--accent);color:var(--accent);padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Usar paleta de referência</button>
           </div>
           <div style="font-size:12.5px;color:#746b5c;margin-bottom:18px">Essas cores controlam os destaques, fundos e textos em todo o site e no CRM.</div>
-          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px">
+          <div data-cartoes="conteudo" style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px">
             <sc-for list="{{ themeSwatches }}" as="sw" hint-placeholder-count="8">
               <div style="min-width:0">
                 <div style="font-size:11.5px;color:#746b5c;margin-bottom:6px">{{ sw.label }}</div>
