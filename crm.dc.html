@@ -6222,5 +6222,66 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
 }
 
 </script>
+<script>
+/* Aviso de versao nova do painel.
+ *
+ * O painel fica aberto por horas. Quando uma correcao e publicada, a aba que ja estava
+ * aberta continua rodando o codigo antigo -- e quem esta usando ve o problema que acabou de
+ * ser corrigido, sem ter como saber que precisa recarregar. Aconteceu com a barra de
+ * formatacao do blog: estava no ar e nao aparecia, porque a pagina era a de antes.
+ *
+ * A cada minuto e meio isto pergunta ao servidor se o arquivo do painel mudou (uma requisicao
+ * HEAD, so cabecalhos, sem baixar nada) e compara com o que foi carregado. Mudou, aparece uma
+ * faixa discreta com o botao de recarregar. Nunca recarrega sozinho: alguem pode estar no meio
+ * de um cadastro. */
+(function () {
+  var marcaInicial = null, avisando = false;
+
+  function marcaDoServidor() {
+    return fetch(location.pathname + '?v=' + Date.now(), { method: 'HEAD', cache: 'no-store' })
+      .then(function (r) { return r.headers.get('etag') || r.headers.get('last-modified') || null; })
+      .catch(function () { return null; });
+  }
+
+  function mostrarAviso() {
+    if (avisando) return;
+    avisando = true;
+    var faixa = document.createElement('div');
+    faixa.setAttribute('role', 'status');
+    faixa.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:900;background:#1d1a15;color:#f6f3ec;' +
+      'padding:12px 18px;font-family:Manrope,system-ui,sans-serif;font-size:13.5px;display:flex;gap:14px;' +
+      'align-items:center;justify-content:center;flex-wrap:wrap;box-shadow:0 -4px 20px rgba(0,0,0,.25)';
+    var texto = document.createElement('span');
+    texto.textContent = 'Uma versão mais nova do painel foi publicada.';
+    var botao = document.createElement('button');
+    botao.textContent = 'Recarregar agora';
+    botao.style.cssText = 'background:#c1664a;color:#fff;border:none;padding:9px 18px;font-size:13px;' +
+      'font-weight:600;cursor:pointer;font-family:Manrope,system-ui,sans-serif';
+    botao.onclick = function () { location.reload(); };
+    var depois = document.createElement('button');
+    depois.textContent = 'Depois';
+    depois.style.cssText = 'background:none;color:#c9beac;border:1px solid #3a3529;padding:9px 14px;' +
+      'font-size:13px;cursor:pointer;font-family:Manrope,system-ui,sans-serif';
+    depois.onclick = function () { faixa.remove(); };
+    faixa.appendChild(texto); faixa.appendChild(botao); faixa.appendChild(depois);
+    document.body.appendChild(faixa);
+  }
+
+  function conferir() {
+    marcaDoServidor().then(function (m) {
+      if (!m) return;
+      if (marcaInicial === null) { marcaInicial = m; return; }
+      if (m !== marcaInicial) mostrarAviso();
+    });
+  }
+
+  conferir();
+  setInterval(conferir, 90000);
+  // Voltar para a aba e o momento mais provavel de ter perdido uma publicacao.
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') conferir();
+  });
+})();
+</script>
 </body>
 </html>
