@@ -32,6 +32,14 @@
     return new Promise((resolve) => {
       let feito = false;
       const ir = () => { if (feito) return; feito = true; resolve(); };
+      // Na pagina do imovel as fotos SAO o conteudo: adiar o banco ate a pagina ter folga
+      // era adiar justamente o que a pessoa veio ver. La ele comeca assim que o HTML foi
+      // lido. A primeira pintura nao depende disso -- a miniatura da ficha ja cobre a foto.
+      if (/imovel-detalhe/i.test(location.pathname)) {
+        if (document.readyState !== 'loading') ir();
+        else document.addEventListener('DOMContentLoaded', ir, { once: true });
+        return;
+      }
       const agendar = () => (window.requestIdleCallback
         ? requestIdleCallback(ir, { timeout: 1000 })
         : setTimeout(ir, 120));
@@ -452,7 +460,21 @@
     // não existe, então uma ficha pequena continua barata.
     const POR_GRUPO = 4;
     const fotos = [];
-    for (let base = 0; base < MAX_BLOCOS; base += POR_GRUPO) {
+    // O bloco 0 vem sozinho, antes dos grupos. E nele que moram a capa e as primeiras fotos.
+    // Em grupo de quatro, a capa esperava o mais lento dos quatro blocos -- cerca de 2 MB de
+    // fotos que nem estao na tela -- para aparecer. Medido na ficha 16: 1,5 s de espera.
+    try {
+      const primeiro = await DOC(nomeBloco(chave, 0)).get();
+      if (primeiro.exists) {
+        fotos.push(...(primeiro.data().data || []));
+        if (aoChegar && fotos.length) { try { aoChegar(fotos.slice()); } catch (e) {} }
+      }
+      if (!primeiro.exists) {
+        const antigo = await DOC('fotos_' + chave).get();
+        return antigo.exists ? (antigo.data().data || []) : [];
+      }
+    } catch (e) { return fotos; }
+    for (let base = 1; base < MAX_BLOCOS; base += POR_GRUPO) {
       const lote = [];
       for (let n = base; n < Math.min(base + POR_GRUPO, MAX_BLOCOS); n++) lote.push(DOC(nomeBloco(chave, n)).get());
       let acabou = false;

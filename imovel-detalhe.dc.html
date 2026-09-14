@@ -776,15 +776,38 @@ class Component extends DCLogic {
     const all = this.state.properties || [];
     const p = all.find(x => x.id === this.state.id) || all[0] || {};
     const tones = ['#8a7654', '#5f6b5c', '#6b5a54'];
-    if (p.images && p.images.length) {
+    const vazio = { real: false, color: tones[(p.tone || 0) % 3] };
+    // As fotos sao resolvidas A CADA PINTURA, a partir das referencias cruas. A lista de
+    // imoveis do estado foi resolvida quando os dados chegaram -- antes das fotos -- e ali
+    // cada foto virou texto vazio. A galeria desenhava um quadro vazio e so mostrava a foto
+    // quando alguma outra coisa refazia os dados. Medido na ficha 16: as fotos estavam na
+    // memoria em 2,4 s e a principal so aparecia meio segundo depois, na melhor hipotese.
+    let cru = null;
+    try { cru = (window.CRMData.getPropertiesRaw() || []).find(x => x.id === p.id) || null; } catch (e) {}
+    const D = window.CRMData;
+    const pronta = (v) => {
+      if (typeof v !== 'string' || !v) return '';
+      if (v.indexOf('data:') === 0) return v;
+      if (/^(fotodoc|idb)/.test(v)) return (D && D.photoURL(v)) || '';
+      return v;
+    };
+    const capa = cru ? cru.image : p.image;
+    const refs = (cru && Array.isArray(cru.images) && cru.images.length) ? cru.images : (p.images || []);
+    // A miniatura ja viaja dentro da ficha e esta em maos no primeiro instante. Ela cobre a
+    // foto principal enquanto a foto cheia vem do banco: a tela abre com a imagem certa,
+    // um pouco menos nitida por um momento, em vez de um quadro bege por segundos.
+    const miniatura = p.thumb || (cru && cru.thumb) || '';
+    if (refs.length || capa) {
       // A capa escolhida no CRM abre a galeria — sem isso, trocar a capa não mudava nada
       // aqui, porque a galeria seguia a ordem de upload das fotos.
-      const rest = p.image ? p.images.filter(img => img !== p.image) : p.images;
-      const ordered = p.image ? [p.image].concat(rest) : rest;
-      return ordered.map(img => ({ real: true, src: img }));
+      const rest = capa ? refs.filter(r => r !== capa) : refs;
+      const ordered = capa ? [capa].concat(rest) : rest;
+      return ordered.map((r, i) => {
+        const src = pronta(r) || (i === 0 ? miniatura : '');
+        return src ? { real: true, src } : vazio;
+      });
     }
-    if (p.image) return [{ real: true, src: p.image }];
-    return [0, 1, 2].map(() => ({ real: false, color: tones[(p.tone || 0) % 3] }));
+    return [0, 1, 2].map(() => vazio);
   }
   getPlantas() {
     const all = this.state.properties || [];
