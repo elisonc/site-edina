@@ -955,10 +955,16 @@
         <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px">
           <h1 style="font-family:'Manrope',sans-serif;font-size:34px;font-weight:600;margin:0">Imóveis</h1>
           <sc-if value="{{ canEditProperties }}" hint-placeholder-val="{{ false }}">
-            <button onClick="{{ startNewProperty }}" disabled="{{ propertyLimitReached }}" style="{{ newPropertyButtonStyle }}">+ Novo Imóvel</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+              <button onClick="{{ recuperarImoveis }}" style="background:#fffdf8;border:1px solid #ddd3bd;color:#4a4438;padding:11px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Recuperar imóveis sem ficha</button>
+              <button onClick="{{ startNewProperty }}" disabled="{{ propertyLimitReached }}" style="{{ newPropertyButtonStyle }}">+ Novo Imóvel</button>
+            </div>
           </sc-if>
         </div>
         <div style="font-size:13px;color:#746b5c;margin-bottom:22px">{{ propertyCountLabel }}</div>
+        <sc-if value="{{ recuperandoMsg }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff8f0;border:1px solid #e0b0a0;color:#8a5040;padding:12px 16px;font-size:13px;margin-bottom:18px">{{ recuperandoMsg }}</div>
+        </sc-if>
 
         <sc-if value="{{ hasPropertyDraft }}" hint-placeholder-val="{{ false }}">
           <div style="background:#fffdf8;border:1px solid var(--accent);padding:26px;margin-bottom:24px">
@@ -3929,8 +3935,45 @@ class Component extends DCLogic {
   startNewProperty = () => {
     if ((this.state.properties || []).length >= (window.CRMData ? window.CRMData.getMaxProperties() : 50)) return;
     const nextId = this.state.properties.reduce((m, p) => Math.max(m, p.id), 0) + 1;
+    // O numero local e so provisorio: o servidor confirma um id que nenhum outro navegador
+    // usou e que nao pertence a um conjunto de fotos sem ficha. O rascunho e corrigido antes
+    // de a pessoa conseguir enviar a primeira foto.
+    if (window.FirebaseDB && window.FirebaseDB.proximoIdDeImovel) {
+      window.FirebaseDB.proximoIdDeImovel(nextId).then(livre => {
+        const d = this.state.propertyDraft;
+        if (d && d.isNew && d.id !== livre) this.setState({ propertyDraft: { ...d, id: livre, tone: livre % 3 } });
+      }).catch(() => {});
+    }
     this.setState({ propertyDraft: { id: nextId, isNew: true, title: '', location: '', address: '', condo: '', type: '', price: '', area: '', unitOptions: [], suites: '', baths: '', garage: '', desc: '', amenities: '', stage: 'pronto', delivery: '', status: 'ativo', published: true, tone: nextId % 3, region: '', purpose: 'venda', featured: false, tour: false, image: '', images: [], plantas: [], ebookUrl: '', videoUrl: '', videoFile: '' } });
   };
+  // Procura conjuntos de fotos que ficaram no banco sem ficha -- o que sobra quando uma
+  // ficha e perdida -- e cria para cada um um rascunho fora do site, com as fotos ligadas.
+  // Titulo, preco e descricao nao estavam nas fotos e precisam ser preenchidos de novo.
+  recuperarImoveis = async () => {
+    const F = window.FirebaseDB;
+    if (!F || !F.fotosSemFicha) return;
+    this.setState({ recuperandoMsg: 'Procurando fotos sem ficha no banco…' });
+    let achados = [];
+    try { achados = await F.fotosSemFicha(); } catch (e) {}
+    if (!achados.length) { this.setState({ recuperandoMsg: 'Nenhum conjunto de fotos sem ficha. Nada a recuperar.' }); return; }
+    const linhas = achados.map(a => 'Imóvel ' + a.id + ': ' + a.fotos + ' fotos, gravadas em ' + new Date(a.gravadoEm).toLocaleString('pt-BR'));
+    if (!window.confirm('Encontrei fotos sem ficha:' + String.fromCharCode(10, 10) + linhas.join(String.fromCharCode(10)) +
+        String.fromCharCode(10, 10) + 'Criar um rascunho (fora do site) para cada um, com as fotos ligadas?')) {
+      this.setState({ recuperandoMsg: '' }); return;
+    }
+    const novos = achados.map(a => {
+      const refs = Array.from({ length: a.fotos }, (_, i) => 'fotodoc:' + a.id + ':' + i);
+      return { id: a.id, title: 'IMÓVEL RECUPERADO #' + a.id, location: '', address: '', condo: '', type: '', price: 0,
+        area: '', suites: '', baths: '', garage: '', desc: '', amenities: '', stage: 'pronto', delivery: '', status: 'ativo',
+        published: false, tone: a.id % 3, region: '', purpose: 'venda', featured: false, tour: false,
+        image: refs[0], images: refs, plantas: [], ebookUrl: '', videoUrl: '', videoFile: '' };
+    });
+    const properties = this.state.properties.concat(novos).sort((x, y) => x.id - y.id);
+    this.setState({ properties, recuperandoMsg: novos.length + ' rascunho(s) criado(s), fora do site. Abra cada um, preencha título, preço e descrição e publique.' });
+    window.CRMData && window.CRMData.saveProperties(properties);
+    this.logAction('Recuperou imóveis a partir de fotos sem ficha', novos.map(n => '#' + n.id).join(', '));
+  };
+
   editProperty = (p) => () => {
     // Carrega a galeria deste imóvel sob demanda (não vem no preload da listagem).
     if (window.CRMData) window.CRMData.warm(window.CRMData.propertyKeys(p.id)).then(() => this.forceUpdate());
@@ -3947,7 +3990,11 @@ class Component extends DCLogic {
     if (!window.confirm('Excluir este imóvel definitivamente?')) return;
     const properties = this.state.properties.filter(p => p.id !== id);
     this.setState({ properties });
-    window.CRMData && window.CRMData.saveProperties(properties);
+    // Anotado no banco antes de gravar a lista: a gravacao mantem os imoveis que este
+    // navegador nao conhece, e sem esta marca o excluido voltaria na proxima gravacao.
+    const anotar = (window.FirebaseDB && window.FirebaseDB.marcarImovelApagado)
+      ? window.FirebaseDB.marcarImovelApagado(id) : Promise.resolve();
+    anotar.catch(() => {}).then(() => { window.CRMData && window.CRMData.saveProperties(properties); });
     this.autoPublish('exclusão de imóvel');
   };
   updatePropertyDraft = (field) => (e) => this.setState({ propertyDraft: { ...this.state.propertyDraft, [field]: e.target.value } });
@@ -4254,7 +4301,13 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       };
       doPhoto(0);
     };
-    doItem(0);
+    // Id confirmado com o servidor antes do primeiro imovel importado, pelo mesmo motivo do
+    // cadastro manual: contar so a lista local pode reusar o numero -- e as fotos -- de outro.
+    if (window.FirebaseDB && window.FirebaseDB.proximoIdDeImovel) {
+      window.FirebaseDB.proximoIdDeImovel(nextId).then(n => { nextId = n; doItem(0); }).catch(() => doItem(0));
+    } else {
+      doItem(0);
+    }
   };
 
   smartFillProperty = () => {
@@ -6178,6 +6231,7 @@ Responda em JSON puro: [{"text": "...", "hashtags": "#tag1 #tag2 ..."}]. Nada al
       tableLeads, downloadLeadsCsv: this.downloadLeadsCsv, onImportLeadsCsv: this.onImportLeadsCsv,
 
       propertyRows, startNewProperty: this.startNewProperty,
+      recuperarImoveis: this.recuperarImoveis, recuperandoMsg: s.recuperandoMsg || '',
       hasPropertyDraft: !!pd, propertyDraft, propertyDraftHeading: pd && pd.isNew ? 'Novo Imóvel' : 'Editar Imóvel',
       savePropertyDraft: this.savePropertyDraft, cancelPropertyDraft: this.cancelPropertyDraft,
 

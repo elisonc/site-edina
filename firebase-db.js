@@ -513,6 +513,91 @@
     } catch (e) { return ''; }
   }
 
+  // ── Lista de imoveis sem perda ─────────────────────────────────────────────
+  // A lista era gravada INTEIRA, por cima. Um navegador com a lista desatualizada salvava a
+  // versao dele e apagava o que tinha sido criado em outro lugar. Aconteceu: um imovel
+  // criado em 11/09 (id 23, 18 fotos gravadas) sumiu quando outro navegador, com a lista
+  // parando no 22, salvou em 15/09. As fotos ficaram no banco; a ficha nao.
+  //
+  // Agora a gravacao le o que esta no servidor dentro de uma transacao e mantem todo imovel
+  // que o navegador nao conhece -- a nao ser que ele tenha sido excluido de proposito, o que
+  // fica anotado na lista de excluidos.
+  const DOC_APAGADOS = 'imoveis_apagados';
+
+  async function idsApagados() {
+    try {
+      const d = await DOC(DOC_APAGADOS).get();
+      return new Set(((d.exists && d.data().ids) || []).map(String));
+    } catch (e) { return new Set(); }
+  }
+
+  async function marcarImovelApagado(id) {
+    await ready;
+    if (!firebase.apps.length) return false;
+    try {
+      await DOC(DOC_APAGADOS).set({ ids: firebase.firestore.FieldValue.arrayUnion(String(id)) }, { merge: true });
+      return true;
+    } catch (e) { return false; }
+  }
+
+  async function gravarImoveisSemPerder(lista) {
+    await ready;
+    if (!firebase.apps.length) return false;
+    const ref = DOC('properties');
+    const apagados = await idsApagados();
+    await firebase.firestore().runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const noServidor = (snap.exists && Array.isArray(snap.data().data)) ? snap.data().data : [];
+      const meus = (lista || []).filter(p => p && !apagados.has(String(p.id)));
+      const conhecidos = new Set(meus.map(p => String(p.id)));
+      const deOutroLugar = noServidor.filter(p => p && !conhecidos.has(String(p.id)) && !apagados.has(String(p.id)));
+      tx.set(ref, { data: meus.concat(deOutroLugar).sort((a, b) => Number(a.id) - Number(b.id)), updatedAt: Date.now() });
+    });
+    return true;
+  }
+
+  // Id para um imovel novo. Contar so a lista local escolhia um numero que outro navegador
+  // ja podia ter usado -- e o id tambem nomeia o conjunto de fotos, entao reusar um numero
+  // sobrescreve as fotos de outro imovel. Considera o servidor, os excluidos e os conjuntos
+  // de fotos que existem sem ficha.
+  async function proximoIdDeImovel(minimo) {
+    await ready;
+    let n = Number(minimo) || 1;
+    if (!firebase.apps.length) return n;
+    try {
+      const snap = await DOC('properties').get();
+      (snap.exists && snap.data().data || []).forEach(p => { n = Math.max(n, Number(p.id) + 1); });
+      (await idsApagados()).forEach(id => { n = Math.max(n, Number(id) + 1); });
+      for (let tentativas = 0; tentativas < 40; tentativas++) {
+        const b = await DOC(nomeBloco(n, 0)).get();
+        if (!b.exists) break;
+        n++;
+      }
+    } catch (e) {}
+    return n;
+  }
+
+  // Conjuntos de fotos que existem no banco sem ficha nenhuma apontando para eles.
+  async function fotosSemFicha() {
+    await ready;
+    if (!firebase.apps.length) return [];
+    const snap = await DOC('properties').get();
+    const lista = (snap.exists && snap.data().data) || [];
+    const comFicha = new Set(lista.map(p => String(p.id)));
+    const apagados = await idsApagados();
+    const maior = lista.reduce((m, p) => Math.max(m, Number(p.id) || 0), 0);
+    const achados = [];
+    for (let id = 1; id <= maior + 15; id++) {
+      if (comFicha.has(String(id)) || apagados.has(String(id))) continue;
+      const b = await DOC(nomeBloco(id, 0)).get().catch(() => null);
+      if (b && b.exists) {
+        const imgs = await lerImagens(String(id));
+        if (imgs.length) achados.push({ id, fotos: imgs.length, gravadoEm: b.data().updatedAt || 0 });
+      }
+    }
+    return achados;
+  }
+
   // Troca as referências 'fotodoc:' pelas imagens de verdade, para quem for exibir.
   // As imagens do banco entram no cache de memória; os dados continuam guardando apenas a
   // referência 'fotodoc:'. Antes a referência era trocada pela imagem dentro do próprio
@@ -1181,7 +1266,10 @@
   window.FirebaseDB = {
     enabled: true,
     ready: ready,
-    saveProperties: (arr) => externalizeProperties(arr).then(out => save('properties', out)),
+    saveProperties: (arr) => externalizeProperties(arr).then(out => gravarImoveisSemPerder(out)),
+    marcarImovelApagado: marcarImovelApagado,
+    proximoIdDeImovel: proximoIdDeImovel,
+    fotosSemFicha: fotosSemFicha,
     saveLeads: saveLeads,
     fetchLeads: fetchLeads,
     appendLead: appendLead,
@@ -1191,7 +1279,7 @@
     // para o que já está guardado como fotodoc:depoimentos.
     saveTestimonials: (arr) => externalizeTestimonials(arr).then(out => save('testimonials', out)),
     // Gravação genérica, para as chaves que não precisam de tratamento de mídia.
-    saveDoc: (nome, dados) => save(nome, dados),
+    saveDoc: (nome, dados) => nome === 'properties' ? gravarImoveisSemPerder(dados) : save(nome, dados),
     mediaErrors: () => mediaErrors.slice(),
     guardarImagens: guardarImagens,
     usoDeFotos: usoDeFotos,
